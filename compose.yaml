@@ -1,0 +1,28 @@
+services:
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/topshinalar.sqlite3
+    restart: unless-stopped
+    volumes:
+      - bot-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+  miniapp:
+    build: .
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/topshinalar.sqlite3
+      MINIAPP_HOST: 0.0.0.0
+      MINIAPP_PORT: 8080
+    command: ["python", "miniapp.py"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - bot-data:/app/data
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  bot-data:

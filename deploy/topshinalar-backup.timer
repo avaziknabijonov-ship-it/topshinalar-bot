@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily TOPSHINALAR database backup
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Asia/Tashkent
+Persistent=true
+RandomizedDelaySec=300
+Unit=topshinalar-backup.service
+
+[Install]
+WantedBy=timers.target

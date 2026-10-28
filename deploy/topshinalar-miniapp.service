@@ -1,0 +1,29 @@
+[Unit]
+Description=TOPSHINALAR Telegram Mini App
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=topshinalar
+Group=topshinalar
+WorkingDirectory=/opt/topshinalar
+EnvironmentFile=/etc/topshinalar.env
+Environment=DB_PATH=/var/lib/topshinalar/topshinalar.sqlite3
+Environment=PDF_FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+Environment=MINIAPP_HOST=127.0.0.1
+Environment=MINIAPP_PORT=8080
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/topshinalar/.venv/bin/python /opt/topshinalar/miniapp.py
+Restart=on-failure
+RestartSec=10
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/topshinalar
+
+[Install]
+WantedBy=multi-user.target

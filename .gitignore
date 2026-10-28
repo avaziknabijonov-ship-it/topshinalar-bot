@@ -1,11 +1,6 @@
 .env
-.env.*
-!.env.example
 .venv/
 __pycache__/
 *.pyc
 data/
 *.sqlite3*
-*.backup
-*.pem
-*.key

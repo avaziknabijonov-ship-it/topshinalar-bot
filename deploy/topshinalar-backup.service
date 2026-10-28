@@ -1,0 +1,15 @@
+[Unit]
+Description=Verified TOPSHINALAR database backup
+
+[Service]
+Type=oneshot
+User=topshinalar
+Group=topshinalar
+WorkingDirectory=/opt/topshinalar
+ExecStart=/opt/topshinalar/.venv/bin/python /opt/topshinalar/backup.py --source /var/lib/topshinalar/topshinalar.sqlite3 --directory /var/lib/topshinalar/backups --verify-restore
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/topshinalar
