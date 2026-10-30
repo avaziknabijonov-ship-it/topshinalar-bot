@@ -144,4 +144,4 @@ def tr(key,lang='uz',**kw):
 def label(key,lang='uz'):
     return MENU[key][lang=='ru']
 
-ERRORS.update({'staff_self':('O‘z rolingizni yoki kirishingizni bu yerdan o‘zgartirib bo‘lmaydi.','Здесь нельзя изменить свою роль или отключить собственный доступ.'),'director_limit':('Ko‘pi bilan 2 faol direktor yoki direktor taklifi bo‘lishi mumkin.','Допускается до 2 активных директоров с учётом приглашений.')})
+ERRORS.update({'staff_self':('O‘z rolingizni yoki kirishingizni bu yerdan o‘zgartirib bo‘lmaydi.','Здесь нельзя изменить свою роль или отключить собственный доступ.'),'director_limit':('Ko‘pi bilan 3 faol direktor yoki direktor taklifi bo‘lishi mumkin.','Допускается до 3 активных директоров с учётом приглашений.')})

@@ -32,6 +32,7 @@ class RoleTests(unittest.TestCase):
         for cmd,data in [('staff_role',{'employee':10,'role':'employee'}),('staff_set',{'employee':10,'active':False})]:
             with self.assertRaisesRegex(ValueError,'staff_self'):self.service.write(10,'self-guard-0000-'+cmd,cmd,data)
         invite=self.service.write(10,'reserved-director-1','staff_invite',{'label':'Director','role':'director'})['id']
+        self.service.write(10,'reserved-director-2','staff_invite',{'label':'Third director','role':'director'})
         with self.assertRaisesRegex(ValueError,'director_limit'):self.access.assign_role(10,20,'director')
         self.service.write(10,'cancel-director-01','staff_cancel_invite',{'invite':invite['invite_id']})
         self.service.write(10,'promote-after-0001','staff_role',{'employee':20,'role':'director'})
@@ -66,3 +67,20 @@ class RoleTests(unittest.TestCase):
         labels=[b['text'] for row in self.bot.keyboard(10)['keyboard'] for b in row]
         from i18n import label
         self.assertNotIn(label('startwork','uz'),labels)
+
+    def test_three_configured_directors_and_fourth_rejected(self):
+        self.s.configure([10, 30, 40], [20])
+        self.assertEqual(sum(u['role']=='director' for u in self.s.rows('SELECT * FROM users WHERE active=1')),3)
+        with self.assertRaisesRegex(ValueError,'director_limit'):
+            self.access.assign_role(10,20,'director')
+        with self.assertRaises(ValueError):
+            self.s.configure([10,30,40,50],[20])
+
+    def test_third_director_promotion_survives_restart(self):
+        self.s.configure([10,30],[20])
+        with self.s.db:
+            self.access.assign_role(10,20,'director')
+        self.s.configure([10,30],[20])
+        self.assertEqual(self.s.user(20)['role'],'director')
+        with self.assertRaisesRegex(ValueError,'director_limit'):
+            self.access.invite(10,'Fourth director','topshinalar_test_bot','director')

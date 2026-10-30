@@ -104,7 +104,7 @@ class TestCRM(unittest.TestCase):
         self.assertEqual(len(self.s.rows('SELECT * FROM outbox')),before)
 
     def test_user_caps_and_revocation(self):
-        with self.assertRaises(ValueError):self.s.configure([10,11,12],[])
+        with self.assertRaises(ValueError):self.s.configure([10,11,12,13],[])
         self.s.configure([10],[20,21,22,23,24])
         self.assertTrue(self.s.user(24)['active'])
         with self.assertRaises(ValueError):self.s.configure([10],[10])

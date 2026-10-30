@@ -65,7 +65,7 @@ class StaffAccess:
     def director_capacity(self,exclude=None):
         active=self.s.db.execute("SELECT COUNT(*) FROM users WHERE active=1 AND role='director' AND id<>?",(exclude or -1,)).fetchone()[0]
         reserved=sum(r['role']=='director' for r in self.pending())
-        if active+reserved>=2:raise ValueError('director_limit')
+        if active+reserved>=3:raise ValueError('director_limit')
 
     def assign_role(self,uid,employee,role):
         self.s.director(uid);self.validate_role(role)
@@ -129,7 +129,7 @@ class StaffAccess:
         self.validate_role(row['role'])
         if row['role']=='director':
             # This invitation already reserves its director seat.
-            if self.s.db.execute("SELECT COUNT(*) FROM users WHERE active=1 AND role='director'").fetchone()[0]>=2:raise ValueError('director_limit')
+            if self.s.db.execute("SELECT COUNT(*) FROM users WHERE active=1 AND role='director'").fetchone()[0]>=3:raise ValueError('director_limit')
         self.s.add('users', id=uid, role=row['role'], name=(name.strip() or str(uid))[:150])
         self.s.add('staff_access', user_id=uid, active=1, managed_role=row['role'])
         self.s.db.execute("UPDATE staff_invites SET status='used',joined_by=? WHERE id=?", (uid, row['id']))

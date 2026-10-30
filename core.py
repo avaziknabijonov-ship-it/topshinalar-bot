@@ -154,8 +154,8 @@ class Store:
         self.add('audit', actor=uid, action=action, ref=ref, created=now())
 
     def configure(self, directors, employees):
-        if len(directors)>2 or set(directors)&set(employees) or not directors:
-            raise ValueError('Configure 1-2 directors and distinct employees')
+        if len(directors)>3 or set(directors)&set(employees) or not directors:
+            raise ValueError('Configure 1-3 directors and distinct employees')
         with self.db:
             self.db.execute('UPDATE users SET active=0')
             for role, ids in [('director',directors),('employee',employees)]:
