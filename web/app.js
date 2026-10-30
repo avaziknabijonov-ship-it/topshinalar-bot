@@ -66,7 +66,19 @@ async function operations(action,id){
   if(action==='point'){fields=field('name',T('Ombor nomi','Название склада'));title=T('Yangi ombor','Новый склад')}
   if(action==='fine'){const staff=await api('/api/staff');fields=select('employee',T('Xodim','Сотрудник'),staff.map(r=>[r.id,r.name]))+field('amount',T('Summa, USD','Сумма, USD'),'number')+field('reason',T('Sabab','Причина'));title=T('Jarima qaydi','Записать штраф')}
   if(action==='delivery'){await prepareClients();fields=clientField()+field('driver',T('Haydovchi va telefon','Водитель и телефон'))+field('address',T('Manzil','Адрес'))+field('fee',T('Yetkazish haqi, USD','Стоимость доставки, USD'),'number')+field('paid',T('Yetkazish uchun to‘langan, USD','Оплата доставки, USD'),'number','0');title=T('Labo yetkazish','Доставка Labo')}
-  if(action==='report'){const date=state.dashboard?.date||new Date().toISOString().slice(0,10);fields=field('start',T('Boshlanish sanasi','С даты'),'date',date)+field('end',T('Tugash sanasi','По дату'),'date',date);title=T('Excel hisobot','Отчёт Excel')}
+  if(action==='report'){const date=state.dashboard?.date||new Date().toISOString().slice(0,10);fields=select('section',T('Qaysi bo‘lim bo‘yicha?','По какому разделу?'),[
+['all',T('Barchasi','Все разделы')],
+['sales',T('Sotuvlar','Продажи')],
+['payments',T('To‘lovlar va qaytarishlar','Платежи и возвраты')],
+['debts',T('Davrdagi sotuvlar qarzi (joriy)','Долги по продажам периода')],
+['stock',T('Ombor qoldig‘i (hozir)','Остатки склада сейчас')],
+['movements',T('Ombor kirim-chiqimi','Движения склада')],
+['employees',T('Xodimlar: ish kunlari va jarimalar','Сотрудники: рабочие дни и штрафы')],
+['calls',T('Qo‘ng‘iroqlar','Звонки')],
+['quotes',T('Tijorat takliflari (KP)','Коммерческие предложения (КП)')],
+['deliveries',T('Yetkazib berishlar','Доставки')],
+['tasks',T('Ochiq vazifalar (hozir)','Открытые задачи сейчас')]
+])+field('start',T('Boshlanish sanasi','С даты'),'date',date)+field('end',T('Tugash sanasi','По дату'),'date',date)+`<p id="report-period-help" class="help">${T('Tanlangan bo‘lim alohida Excel faylga olinadi.','Выбранный раздел будет выгружен в отдельный файл Excel.')}</p>`;title=T('Excel hisobot','Отчёт Excel')}
   if(action==='income'&&state.me.role==='director')fields+=`<div class="two"><button type="button" class="secondary" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button></div><p class="help">${T('Qo‘lda kirim mavjud qoldiqqa qo‘shiladi. Excel, PDF va rasm orqali ham kirim qilish mumkin.','Ручной приход добавляется к остатку. Также можно загрузить Excel, PDF или фото.')}</p><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`;
   form(title,action,fields,data);return
  }
@@ -106,3 +118,13 @@ $('language').addEventListener('click',async()=>{if(!state.me)return;try{const l
 tg?.BackButton?.onClick(closeModal);
 async function init(){tg?.ready();tg?.expand();tg?.setHeaderColor?.('#ffffff');tg?.setBackgroundColor?.('#ffffff');if(!tg?.initData){$('app').innerHTML=empty('Telegram orqali oching','Botdagi «Ilovani ochish» tugmasini bosing.<br>Откройте приложение кнопкой в Telegram-боте.');return}try{state.me=await api('/api/me');state.tab=can('catalog')?'catalog':'dashboard';state.points=await api('/api/points');await render()}catch(error){$('app').innerHTML=empty(T('Kirish imkoni yo‘q','Нет доступа'),E(error.message))+`<p class="help">${T('Botni qayta oching yoki direktorga murojaat qiling.','Откройте бот заново или обратитесь к директору.')}</p>`}}
 init();
+
+document.addEventListener('change',event=>{
+ if(event.target.name!=='section'||state.modal?.cmd!=='report')return;
+ const section=event.target.value,help=$('report-period-help');
+ if(help)help.textContent=section==='stock'||section==='tasks'
+ ?T('Joriy holat olinadi. Bu bo‘limga sana oralig‘i ta’sir qilmaydi.','Выгружается текущее состояние. Период не влияет на этот раздел.')
+ :section==='debts'
+ ?T('Tanlangan davrda sotilgan savdolarning hozirgi qolgan qarzi olinadi.','Выгружается текущий остаток долга по продажам выбранного периода.')
+ :T('Tanlangan sana oralig‘idagi ma’lumotlar olinadi.','Выгружаются данные за выбранный период.');
+});

@@ -480,9 +480,29 @@ class Bot(Usability):
             result[name]=out
         return result
 
-    def make_report(self,uid,start,end):
+    def make_report(self,uid,start,end,section='all'):
         require_command(self.s,uid,'report')
+        from reports import report_group, SECTIONS
+        labels,fields=report_group(section)
         data=self.s.report(uid,start,end)
+        if section!='all':
+            lang=self.lang(uid)
+            if section=='stock':
+                selected=self.s.inventory_report(uid)
+            elif section=='debts':
+                sale_ids={row['id'] for row in data['sales']}
+                selected={'debts':[row for row in self.s.debts(uid) if row['id'] in sale_ids]}
+            else:
+                selected={name:data[name] for name in fields}
+            title=labels[lang=='ru']+'\n'+start+' — '+end
+            title+='\n'+'\n'.join(SECTIONS[name][lang=='ru']+': '+str(len(rows)) for name,rows in selected.items())
+            if section in {'stock','tasks'}:
+                title+='\n'+('Joriy holat. Sana oralig‘i bu bo‘limni cheklamaydi.' if lang=='uz' else 'Текущее состояние. Период не ограничивает этот раздел.')
+            elif section=='debts':
+                title+='\n'+('Shu davrda sotilgan savdolarning hozirgi qolgan qarzi.' if lang=='uz' else 'Текущий остаток долга по продажам выбранного периода.')
+            self.queue(uid,title)
+            self.xlsx(uid,selected,f'TOPSHINALAR-{section}-{start}-{end}.xlsx')
+            return
         active=[s for s in data['sales'] if s.get('status')!='cancelled' and s['currency']=='USD']
         total=sum(s['total'] for s in active); paid=sum(s['paid'] for s in active)
         received=sum(p['amount'] for p in data['payments'] if p['currency']=='USD')

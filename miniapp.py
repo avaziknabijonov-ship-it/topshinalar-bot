@@ -171,7 +171,7 @@ class MiniService:
         if cmd=='excel_import':return InventoryExcel(self.s).apply(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100),d.get('fingerprint'))
         if cmd=='staff_role':return StaffAccess(self.s).assign_role(uid,telegram_id(d.get('employee')),d.get('role'))
         if cmd=='report':
-            self.b.make_report(uid,text(d.get('start','')),text(d.get('end','')))
+            self.b.make_report(uid,text(d.get('start','')),text(d.get('end','')),text(d.get('section','all')))
             return 'report_queued'
         if cmd=='staff_invite':
             self.s.director(uid)

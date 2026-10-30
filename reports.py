@@ -5,6 +5,27 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from payments import payment_label, fulfillment_label
 
+# Stable API keys; labels are shared by the summary and export filename.
+REPORT_GROUPS = {
+    'all': (('Barchasi', 'Все разделы'), None),
+    'sales': (('Sotuvlar', 'Продажи'), ('sales', 'sale_items')),
+    'payments': (('To‘lovlar va pul qaytarishlar', 'Платежи и возвраты'), ('payments', 'refunds')),
+    'debts': (('Davrdagi sotuvlar qarzi (joriy)', 'Долги по продажам периода'), ('debts',)),
+    'stock': (('Ombor qoldig‘i (hozir)', 'Остатки склада сейчас'), ('stock', 'warehouses')),
+    'movements': (('Ombor kirim-chiqimi', 'Движения склада'), ('movements', 'product_events')),
+    'employees': (('Xodimlar: ish kunlari va jarimalar', 'Сотрудники: рабочие дни и штрафы'), ('shifts', 'fines')),
+    'calls': (('Qo‘ng‘iroqlar', 'Звонки'), ('calls',)),
+    'quotes': (('Tijorat takliflari (KP)', 'Коммерческие предложения (КП)'), ('quotes',)),
+    'deliveries': (('Yetkazib berishlar', 'Доставки'), ('deliveries',)),
+    'tasks': (('Ochiq vazifalar (hozir)', 'Открытые задачи сейчас'), ('tasks',)),
+}
+
+def report_group(section):
+    if not isinstance(section, str) or section not in REPORT_GROUPS:
+        raise ValueError('report_section')
+    return REPORT_GROUPS[section]
+
+
 COLUMNS={
 'currency':('Valyuta','Валюта'),'exchange_rate':('USD kursi, so‘m','Курс USD, сум'),'source_total_usd':('Asl jami, USD','Исходная сумма, USD'),
 'warehouse_name':('Ombor','Склад'),'stock_value':('Narxi ma’lum qoldiq qiymati','Стоимость остатков с ценой'),'unknown_stock':('Qoldig‘i kiritilmagan mahsulotlar','Товары без остатка'),'unknown_price':('Narxi kiritilmagan qoldiqlar','Остатки без цены'),'as_of':('Qoldiq olingan vaqt','Время снимка остатков'),'stock_status':('Qoldiq holati','Статус остатка'),'kind':('Harakat turi','Тип движения'),'action':('Amal','Действие'),
@@ -26,6 +47,7 @@ COLUMNS={
 'fulfillment':('Shartlar','Условия'),'lang':('Til','Язык'),'terms':('Avvalgi izoh','Прежнее примечание'),'role':('Lavozim','Роль'),
 }
 SECTIONS={
+'debts':('Davrdagi sotuvlar qarzi','Долги по продажам периода'),
 'movements':('Ombor harakatlari','Движения склада'),'product_events':('Mahsulot qo‘shish tarixi','История товаров'),'warehouses':('Omborlar hozirgi qoldiq','Склады текущие остатки'),
 'refunds':('Pul qaytarishlar','Возвраты денег'),
 'sales':('Sotuvlar','Продажи'),'sale_items':('Sotilgan mahsulotlar','Проданные товары'),

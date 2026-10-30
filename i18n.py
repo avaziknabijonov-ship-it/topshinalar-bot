@@ -150,3 +150,5 @@ TEXT['exchange_rate']=('KP uchun kursni kiriting: 1 USD = necha so‘m?','Вве
 ERRORS['exchange_rate']=('USD kursini musbat son bilan kiriting (masalan: 12800).','Введите положительный курс USD (например: 12800).')
 
 ERRORS['currency_reload']=('Valyuta sozlamasi yangilandi. Ilovani yopib, botda /app yuboring.','Настройки валюты изменены. Закройте приложение и отправьте /app в боте.')
+
+ERRORS['report_section']=('Hisobot bo‘limini tanlang.','Выберите раздел отчёта.')
