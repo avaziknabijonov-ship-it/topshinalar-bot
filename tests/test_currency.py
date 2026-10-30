@@ -53,6 +53,39 @@ class CurrencyTests(unittest.TestCase):
         self.assertEqual(summary['received'],100000000)
         self.assertGreater(summary['legacy_count'],0)
 
+class QuotationPresentationTests(unittest.TestCase):
+    setUp=fixtures.MiniAppTests.setUp
+    tearDown=fixtures.MiniAppTests.tearDown
+
+    def test_selected_photo_snapshot_and_missing_photo(self):
+        from quotation import product_image
+        reference='catalog:haida-hd183-b6119c.jpg'
+        with self.s.db:self.s.db.execute('UPDATE products SET photo=? WHERE id=?',(reference,self.product))
+        ref=self.service.write(20,'photo-snapshot-0001','quote',{'client':self.client,'items':[{'product':self.product,'qty':1,'price':'380'}],'payment':'naqd','fulfillment':'pickup','exchange_rate':'12000'})['id']
+        with self.s.db:self.s.db.execute('UPDATE products SET photo=NULL WHERE id=?',(self.product,))
+        saved=self.s.rows('SELECT photo FROM quote_items WHERE quote=?',(ref,))[0]['photo']
+        self.assertEqual(saved,reference)
+        self.assertIsNotNone(product_image(saved))
+        self.assertIsNone(product_image('catalog:missing-model.jpg'))
+        self.assertIsNone(product_image(''))
+
+    def test_pdf_presentation_in_both_languages(self):
+        from unittest.mock import patch
+        from reportlab.platypus import Image, PageBreak, Table
+        ref=self.service.write(20,'presentation-0001','quote',{'client':self.client,'items':[{'product':self.product,'qty':1,'price':'380'}],'payment':'naqd','fulfillment':'pickup','exchange_rate':'12000'})['id']
+        for lang in ('uz','ru'):
+            with self.s.db:self.s.db.execute('UPDATE quotes SET lang=? WHERE id=?',(lang,ref))
+            with patch('quotation.SimpleDocTemplate.build') as build:quotation_pdf(self.s,20,ref)
+            story=build.call_args.args[0]
+            text=' '.join(x.getPlainText() for x in story if hasattr(x,'getPlainText'))
+            for forbidden in ('Customer','+998901234567','USD','UZS','Kurs:','Курс:','Mijoz:','Клиент:'):
+                self.assertNotIn(forbidden,text)
+            self.assertIn('Istalgan to‘lov usuli' if lang=='uz' else 'Любая форма оплаты',text)
+            self.assertIn('Kelishuv asosida' if lang=='uz' else 'По договорённости',text)
+            self.assertEqual(sum(isinstance(x,PageBreak) for x in story),2)
+            self.assertEqual(sum(isinstance(x,Image) for x in story),3)
+            self.assertEqual(len(next(x for x in story if isinstance(x,Table))._colWidths),5)
+
 class CurrencyMigrationTests(unittest.TestCase):
     def test_old_amount_and_quote_retained_prices_require_usd_entry(self):
         with tempfile.TemporaryDirectory() as temp:

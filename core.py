@@ -135,6 +135,10 @@ class Store:
                     self.db.execute("UPDATE products SET price_pending=1")
                     self.db.execute('DELETE FROM sessions')
                     self.db.execute('DELETE FROM ui_views')
+        image_columns = {r[1] for r in self.db.execute('PRAGMA table_info(quote_items)')}
+        if 'photo' not in image_columns:
+            self.db.execute("ALTER TABLE quote_items ADD COLUMN photo TEXT NOT NULL DEFAULT ''")
+            self.db.execute("UPDATE quote_items SET photo=COALESCE((SELECT photo FROM products WHERE products.id=quote_items.product),'')")
         columns = {r[1] for r in self.db.execute('PRAGMA table_info(quotes)')}
         if 'exchange_rate' not in columns:
             self.db.execute("ALTER TABLE quotes ADD COLUMN exchange_rate TEXT NOT NULL DEFAULT ''")
@@ -327,7 +331,7 @@ class Store:
             fulfillment=normalize_fulfillment(fulfillment) if fulfillment else ''
             ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment,currency='UZS',exchange_rate=str(rate) if rate is not None else '',source_total_usd=source_total)
             for item in lines:
-                self.add('quote_items',quote=ref,**{k:v for k,v in item.items() if k!='total'})
+                self.add('quote_items',quote=ref,photo=self.one('products',item['product'])['photo'] or '',**{k:v for k,v in item.items() if k!='total'})
             self.log(uid,'quote',ref)
             return ref
         self.one('points',point)
