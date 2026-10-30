@@ -10,6 +10,20 @@ for file in core.py excel_import.py staff.py bot.py miniapp.py i18n.py reports.p
 done
 [[ "$source_dir" != "$target" ]] || { echo 'Arxivni alohida papkaga oching.'; exit 1; }
 [[ -f /etc/topshinalar.env && -f /var/lib/topshinalar/topshinalar.sqlite3 && -x "$target/.venv/bin/python" ]] || { echo 'Mavjud bot o‘rnatilishi topilmadi.'; exit 1; }
+# Prepare the local PDF/photo reader while the running bot remains online.
+ocr_missing=false
+for executable in pdfinfo pdftotext pdftoppm tesseract; do
+  command -v "$executable" >/dev/null || ocr_missing=true
+done
+if command -v tesseract >/dev/null; then
+  tesseract --list-langs 2>/dev/null | grep -qx rus || ocr_missing=true
+  tesseract --list-langs 2>/dev/null | grep -qx uzb || ocr_missing=true
+fi
+if "$ocr_missing"; then
+  echo 'PDF va rasm o‘qish dasturlari o‘rnatilmoqda...'
+  apt-get update -qq
+  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-rus tesseract-ocr-uzb
+fi
 install -d -o topshinalar -g topshinalar -m 700 "$backup_dir"
 echo 'Baza zaxirasi tekshirilmoqda...'
 runuser -u topshinalar -- "$target/.venv/bin/python" "$target/backup.py" --source /var/lib/topshinalar/topshinalar.sqlite3 --directory "$backup_dir" --verify-restore

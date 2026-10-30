@@ -19,6 +19,7 @@ from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
 from staff import StaffAccess, permissions, require_command
 from excel_import import InventoryExcel, ExcelError
+import document_import
 
 ROOT=Path(__file__).resolve().parent
 
@@ -115,6 +116,19 @@ class MiniService:
         if not re.fullmatch(r'[A-Za-z0-9_-]{16,100}',key or ''):raise ValueError('request_key')
         if not isinstance(data,dict):raise ValueError('text')
         digest=hashlib.sha256(json.dumps([cmd,data],sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        if cmd=='document_extract':
+            self.s.director(uid)
+            self.s.one('points',integer(data.get('point')))
+            result=document_import.extract(data.get('file'))
+            import difflib
+            from excel_import import normalized
+            products=self.s.rows('SELECT id,name FROM products WHERE active=1')
+            for row in result['rows']:
+                exact=[p for p in products if normalized(p['name'])==normalized(row['name'])]
+                row['id']=exact[0]['id'] if len(exact)==1 else ''
+                ranked=sorted(products,key=lambda p:difflib.SequenceMatcher(None,normalized(row['name']),normalized(p['name'])).ratio(),reverse=True)
+                row['matches']=[p for p in ranked[:3] if difflib.SequenceMatcher(None,normalized(row['name']),normalized(p['name'])).ratio()>=0.45]
+            return {'ok':True,'id':result}
         uploaded=None
         if cmd=='product_photo':
             self.s.director(uid);self.s.one('products',integer(data.get('product')))
@@ -150,6 +164,8 @@ class MiniService:
 
     def action(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
+        if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
         if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching. / Закройте приложение и откройте заново через /app.')
         if cmd=='excel_preview':return InventoryExcel(self.s).preview(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100))
         if cmd=='excel_import':return InventoryExcel(self.s).apply(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100),d.get('fingerprint'))
@@ -263,7 +279,7 @@ class MiniHandler(BaseHTTPRequestHandler):
 
     def handle_request(self,write):
         target=urlsplit(self.path);path=target.path
-        static={'/':('web/index.html','text/html; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         store=None;user=None
@@ -284,7 +300,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
-                if body.get('cmd') in {'sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import'} and body.get('money_version')!=2:
+                if body.get('cmd') in {'sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
