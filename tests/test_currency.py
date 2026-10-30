@@ -69,6 +69,18 @@ class QuotationPresentationTests(unittest.TestCase):
         self.assertIsNone(product_image('catalog:missing-model.jpg'))
         self.assertIsNone(product_image(''))
 
+    def test_contact_qr_has_approved_website_phone_and_address(self):
+        from quotation import company_contact_payload, company_contact_qr, COMPANY_ADDRESS
+        from reportlab.graphics.shapes import Drawing
+        payload=company_contact_payload()
+        self.assertTrue(payload.startswith('BEGIN:VCARD\r\nVERSION:3.0'))
+        self.assertIn('URL:https://topshinalar.uz',payload)
+        self.assertIn('TEL;TYPE=WORK,VOICE:+998974788606',payload)
+        self.assertIn("54A",payload)
+        self.assertIn("Tariq-Teshar",payload)
+        self.assertTrue(payload.endswith('END:VCARD'))
+        self.assertIsInstance(company_contact_qr(),Drawing)
+
     def test_pdf_presentation_in_both_languages(self):
         from unittest.mock import patch
         from reportlab.platypus import Image, PageBreak, Table
@@ -82,8 +94,8 @@ class QuotationPresentationTests(unittest.TestCase):
                 self.assertNotIn(forbidden,text)
             self.assertIn('Istalgan to‘lov usuli' if lang=='uz' else 'Любая форма оплаты',text)
             self.assertIn('Kelishuv asosida' if lang=='uz' else 'По договорённости',text)
-            self.assertEqual(sum(isinstance(x,PageBreak) for x in story),2)
-            self.assertEqual(sum(isinstance(x,Image) for x in story),3)
+            self.assertEqual(sum(isinstance(x,PageBreak) for x in story),0)
+            self.assertEqual(sum(isinstance(x,Image) for x in story),1)
             self.assertEqual(len(next(x for x in story if isinstance(x,Table))._colWidths),5)
 
 class CurrencyMigrationTests(unittest.TestCase):

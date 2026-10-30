@@ -8,9 +8,36 @@ from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, PageBreak
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, KeepTogether
 from core import fmt
-from payments import payment_label, fulfillment_label
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing, Rect
+
+
+COMPANY_WEBSITE='https://topshinalar.uz'
+COMPANY_PHONE='+998974788606'
+COMPANY_ADDRESS="Toshkent viloyati, Zangiota tumani, Erkin, Tariq-Teshar MFY, M39 yo'li, 54A"
+
+def company_contact_payload():
+    # A contact card works offline and exposes tappable phone and website fields.
+    return '\r\n'.join([
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        'FN:TOPSHINALAR',
+        'ORG:TOPSHINALAR',
+        'TEL;TYPE=WORK,VOICE:'+COMPANY_PHONE,
+        'URL:'+COMPANY_WEBSITE,
+        'ADR;TYPE=WORK:;;'+COMPANY_ADDRESS.replace(',',r'\,')+';;;;Uzbekistan',
+        'END:VCARD',
+    ])
+
+def company_contact_qr(size=116):
+    widget=QrCodeWidget(company_contact_payload(),barBorder=4,barLevel='M')
+    x0,y0,x1,y1=widget.getBounds()
+    drawing=Drawing(size,size,transform=[size/(x1-x0),0,0,size/(y1-y0),-x0*size/(x1-x0),-y0*size/(y1-y0)])
+    drawing.add(Rect(0,0,size,size,fillColor=colors.white,strokeColor=None))
+    drawing.add(widget)
+    return drawing
 
 
 def product_image(reference):
@@ -81,15 +108,22 @@ def quotation_pdf(store,uid,ref):
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment='По договорённости' if ru else 'Kelishuv asosida'
     body += [table,Paragraph(('Итого: ' if ru else 'Jami: ')+fmt(q['total']),styles['TotalUnicode']),Spacer(1,20),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,10),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
-    # Keep the supplied certificates unchanged in appearance and append them
-    # after all commercial-proposal pages. No external downloads at runtime.
-    attachment_root=Path(__file__).resolve().parent/'assets'/'quotation-attachments'
-    for name in ('company-registration','vat-registration'):
-        image=Image(str(attachment_root/(name+'.png')))
-        scale=min(doc.width/image.imageWidth,(doc.height-12)/image.imageHeight)
-        image.drawWidth=image.imageWidth*scale
-        image.drawHeight=image.imageHeight*scale
-        body += [PageBreak(),image]
+    contact_text=[
+        p('Контакты TOPSHINALAR' if ru else 'TOPSHINALAR kontaktlari'),
+        p('Сканируйте QR-код: сайт, адрес и call-центр.' if ru else 'QR-kodni skanerlang: sayt, manzil va call-markaz.'),
+        p(COMPANY_WEBSITE),
+        p('+998 97 478 86 06'),
+        p(COMPANY_ADDRESS),
+    ]
+    contact=Table([[company_contact_qr(),contact_text]],colWidths=[136,doc.width-136])
+    contact.setStyle(TableStyle([
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f7f7f7')),
+        ('BOX',(0,0),(-1,-1),0.4,colors.HexColor('#dedede')),
+        ('LEFTPADDING',(0,0),(-1,-1),8),('RIGHTPADDING',(0,0),(-1,-1),8),
+        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
+    ]))
+    body += [Spacer(1,18),KeepTogether([contact])]
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))
