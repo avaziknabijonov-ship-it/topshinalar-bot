@@ -64,7 +64,7 @@ class Usability:
         from bot import FORMS
         from i18n import DIRECTOR_ONLY
         if cmd in DIRECTOR_ONLY:self.s.director(uid)
-        state={'cmd':cmd,'step':step,'data':data or {},'version':2,**extras}
+        state={'cmd':cmd,'step':step,'data':data or {},'version':3,**extras}
         if cmd not in FORMS:raise ValueError('command')
         self.set_session(uid,state);self.prompt(uid,state)
 
@@ -135,7 +135,7 @@ class Usability:
             p=stock[0];parts=size_parts(p['name'])
             size=p.get('size') or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else '-')
             brand=p.get('brand') or p['name'].split()[0]
-            lines=[p['name'],f"ID: {p['id']}",self.words(uid,'Brend','Бренд')+': '+brand,self.words(uid,'Razmer','Размер')+': '+size,self.words(uid,'Narx','Цена')+': '+(self.words(uid,'Kiritilmagan','Не указана') if p.get('price_pending') else f"{fmt(p['price'])} UZS")]
+            lines=[p['name'],f"ID: {p['id']}",self.words(uid,'Brend','Бренд')+': '+brand,self.words(uid,'Razmer','Размер')+': '+size,self.words(uid,'Narx','Цена')+': '+(self.words(uid,'Kiritilmagan','Не указана') if p.get('price_pending') else f"{fmt(p['price'])} USD")]
             pending=p.get('catalog_sku') and not any(r.get('stock_set') for r in stock)
             if pending:lines.append(self.words(uid,'Qoldiq kiritilmagan','Остаток не указан'))
             for r in ([] if pending else stock):
@@ -172,7 +172,7 @@ class Usability:
             else:
                 self.s.director(uid) if cmd=='cancel_sale' else self.s.user(uid)
                 rows=self.s.rows("SELECT s.id,c.name,s.total,s.paid FROM sales s JOIN clients c ON c.id=s.client WHERE s.status='active' ORDER BY s.id DESC")
-            rows=[dict(r,name=f"#{r['id']} {r.get('client_name',r.get('name',''))} | {fmt(r['total']-r['paid'])} UZS") for r in rows]
+            rows=[dict(r,name=f"#{r['id']} {r.get('client_name',r.get('name',''))} | {fmt(r['total']-r['paid'])} {r.get('currency','USD')}") for r in rows]
         elif key=='ref' and cmd in {'done','pdf','quote_status','quote_options','delivery_status'}:
             table='tasks' if cmd=='done' else 'deliveries' if cmd=='delivery_status' else 'quotes'
             scope='' if self.s.user(uid)['role']=='director' else ' WHERE r.actor=?'
@@ -206,11 +206,11 @@ class Usability:
             self.queue(uid,tr('choose_items',self.lang(uid)),keyboard=self.inline(uid,[[(tr('choose_items',self.lang(uid)),{'op':'cart_begin'})]],True))
         if state['cmd']=='editproduct' and 'product' in state['data']:
             product=self.s.one('products',state['data']['product'])
-            val=fmt(product[key]) if key=='price' else product.get(key)
+            val=(None if product['currency']!='USD' else fmt(product[key])) if key=='price' else product.get(key)
             if val:self.queue(uid,self.words(uid,'Hozirgi qiymat: ','Сейчас: ')+str(val)+'\n'+self.words(uid,'O‘zgarmasa - yozing.','Для сохранения значения введите -.'))
         if key=='settlement':
             sale=self.s.one('sales',state['data']['sale'])
-            self.queue(uid,tr('cancel_preview',self.lang(uid),amount=fmt(sale['paid'])))
+            self.queue(uid,tr('cancel_preview',self.lang(uid),amount=fmt(sale['paid'])).replace('USD',sale['currency']))
 
     def go_back(self,uid):
         from bot import FORMS
@@ -251,12 +251,12 @@ class Usability:
             p=self.s.one('products',state['selected_product'])
             value=fmt(p['price']).replace(' ','')
             if not p.get('price_pending'):controls['keyboard'].insert(0,[{'text':value}])
-            shown=self.words(uid,'Kiritilmagan','Не указана') if p.get('price_pending') else fmt(p['price'])+' UZS'
+            shown=self.words(uid,'Kiritilmagan','Не указана') if p.get('price_pending') else fmt(p['price'])+' USD'
             self.queue(uid,tr('price',lang)+'\n'+self.words(uid,'Katalogdagi narx: ','Цена в каталоге: ')+shown,keyboard=controls)
         else:
             lines=self.s.items(state['cart'])
-            body='\n'.join(f"{p['name']} × {p['qty']} = {fmt(p['total'])} UZS" for p in lines)
-            body+='\n'+self.words(uid,'Jami: ','Итого: ')+fmt(sum(p['total'] for p in lines))+' UZS'
+            body='\n'.join(f"{p['name']} × {p['qty']} = {fmt(p['total'])} USD" for p in lines)
+            body+='\n'+self.words(uid,'Jami: ','Итого: ')+fmt(sum(p['total'] for p in lines))+' USD'
             self.queue(uid,body,keyboard=self.inline(uid,[[(tr('add_item',lang),{'op':'cart_add'}),(tr('finish_items',lang),{'op':'cart_finish'})]],True))
 
     def cart_input(self,uid,state,text):
@@ -289,7 +289,7 @@ class Usability:
         for row in selected:
             if kind=='clients':self.queue(uid,f"#{row['id']} {row['name']}\n{row['phone']}")
             else:
-                body=f"#{row['id']} {row['client_name']}\n{row['phone']}\n"+self.words(uid,'Qarz: ','Долг: ')+fmt(row['debt'])+' UZS\n'+self.words(uid,'Muddat: ','Срок: ')+(row['debt_due'] or tr('no_due',lang))
+                body=f"#{row['id']} {row['client_name']}\n{row['phone']}\n"+self.words(uid,'Qarz: ','Долг: ')+fmt(row['debt'])+' '+row.get('currency','USD')+'\n'+self.words(uid,'Muddat: ','Срок: ')+(row['debt_due'] or tr('no_due',lang))
                 actions=[[(self.words(uid,'💳 To‘lov','💳 Оплата'),{'op':'pay','id':row['id']})]]
                 if self.s.user(uid)['role']=='director' or row['actor']==uid:actions.append([(self.words(uid,'📅 Muddat','📅 Срок'),{'op':'due','id':row['id']})])
                 self.queue(uid,body,keyboard=self.inline(uid,actions))
@@ -327,10 +327,10 @@ class Usability:
 
     def daily_summary(self,uid,date):
         self.s.director(uid);data=self.s.report(uid,date,date)
-        sales=[r for r in data['sales'] if r['status']=='active']
-        received=sum(r['amount'] for r in data['payments']);refunds=sum(r['amount'] for r in data['refunds'])
-        debts=self.s.debts(uid)
-        return self.words(uid,'KUNLIK XULOSA','ИТОГИ ДНЯ')+f' · {date}\n'+self.words(uid,'Sotuvlar','Продажи')+f": {len(sales)}\n"+self.words(uid,'Sotilgan summa','Сумма продаж')+f": {fmt(sum(r['total'] for r in sales))} UZS\n"+self.words(uid,'Pul tushumi','Поступления')+f': {fmt(received)} UZS\n'+tr('refund_summary',self.lang(uid),refunds=fmt(refunds),net=fmt(received-refunds))+'\n'+self.words(uid,'Jami qarz','Общая задолженность')+f": {fmt(sum(r['debt'] for r in debts))} UZS\n"+self.words(uid,'Qo‘ng‘iroqlar','Звонки')+f": {len(data['calls'])}\n"+self.words(uid,'Ochiq vazifalar','Открытые задачи')+f": {len(data['tasks'])}"
+        sales=[r for r in data['sales'] if r['status']=='active' and r['currency']=='USD']
+        received=sum(r['amount'] for r in data['payments'] if r['currency']=='USD');refunds=sum(r['amount'] for r in data['refunds'] if r['currency']=='USD')
+        debts=[r for r in self.s.debts(uid) if r['currency']=='USD']
+        return self.words(uid,'KUNLIK XULOSA','ИТОГИ ДНЯ')+f' · {date}\n'+self.words(uid,'Sotuvlar','Продажи')+f": {len(sales)}\n"+self.words(uid,'Sotilgan summa','Сумма продаж')+f": {fmt(sum(r['total'] for r in sales))} USD\n"+self.words(uid,'Pul tushumi','Поступления')+f': {fmt(received)} USD\n'+tr('refund_summary',self.lang(uid),refunds=fmt(refunds),net=fmt(received-refunds))+'\n'+self.words(uid,'Jami qarz','Общая задолженность')+f": {fmt(sum(r['debt'] for r in debts))} USD\n"+self.words(uid,'Qo‘ng‘iroqlar','Звонки')+f": {len(data['calls'])}\n"+self.words(uid,'Ochiq vazifalar','Открытые задачи')+f": {len(data['tasks'])}"
 
     def ux_listing(self,uid,command):
         require_command(self.s,uid,command)
@@ -360,7 +360,7 @@ class Usability:
                 if self.s.one('users',row['actor'])['active']:targets.add(row['actor'])
                 for target in targets:
                     if self.once(f'debt-reminder:{today}:{row["id"]}:{target}'):
-                        self.queue(target,self.words(target,'TO‘LOV ESLATMASI','НАПОМИНАНИЕ ОБ ОПЛАТЕ')+f"\n#{row['id']} {row['client_name']}\n{row['phone']}\n{row['debt_due']}\n{fmt(row['total']-row['paid'])} UZS")
+                        self.queue(target,self.words(target,'TO‘LOV ESLATMASI','НАПОМИНАНИЕ ОБ ОПЛАТЕ')+f"\n#{row['id']} {row['client_name']}\n{row['phone']}\n{row['debt_due']}\n{fmt(row['total']-row['paid'])} {row.get('currency','USD')}")
         # Report the completed previous day, including when a server missed midnight.
         yesterday=(datetime.fromisoformat(stamp).date()-timedelta(days=1)).isoformat()
         for d in directors:

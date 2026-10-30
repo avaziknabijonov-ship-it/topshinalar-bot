@@ -139,7 +139,7 @@ class MiniAppTests(unittest.TestCase):
         finally:other.db.close()
 
     def test_quote_queues_pdf_without_stock_change(self):
-        result=self.service.write(20,'quote-request-0001','quote',{'client':self.client,'items':self.sale_data['items'],'payment':'karta','fulfillment':'delivery'})
+        result=self.service.write(20,'quote-request-0001','quote',{'client':self.client,'items':self.sale_data['items'],'payment':'karta','fulfillment':'delivery','exchange_rate':'1'})
         self.assertEqual(result['id'],1);self.assertEqual(self.s.stock(20)[0]['qty'],10)
         self.assertIn('document',json.loads(self.s.rows('SELECT * FROM outbox')[0]['payload']))
 
@@ -169,7 +169,7 @@ class MiniAppTests(unittest.TestCase):
             self.assertFalse(any('web_app' in b for row in self.service.b.keyboard(20)['keyboard'] for b in row))
 
     def test_http_auth_origin_static_and_quote_ownership(self):
-        self.service.write(20,'quote-http-000001','quote',{'client':self.client,'items':self.sale_data['items'],'payment':'naqd','fulfillment':'pickup'})
+        self.service.write(20,'quote-http-000001','quote',{'client':self.client,'items':self.sale_data['items'],'payment':'naqd','fulfillment':'pickup','exchange_rate':'1'})
         server=MiniServer(('127.0.0.1',0),self.path,TOKEN,'https://bot.example.uz')
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         base=f'http://127.0.0.1:{server.server_port}'
@@ -194,7 +194,9 @@ class MiniAppTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as error:request('/api/quote/1.pdf',21)
             self.assertEqual(error.exception.code,403)
             with request('/api/quote/1.pdf',20) as response:self.assertTrue(response.read().startswith(b'%PDF'))
-            body={'cmd':'sell','data':self.sale_data}
+            with self.assertRaises(HTTPError) as error:request('/api/action',20,data={'cmd':'sell','data':self.sale_data})
+            self.assertEqual(error.exception.code,400)
+            body={'cmd':'sell','data':self.sale_data,'money_version':2}
             with request('/api/action',20,data=body) as response:self.assertTrue(json.load(response)['ok'])
             with request('/api/action',20,data=body) as response:self.assertTrue(json.load(response)['ok'])
             self.assertEqual(self.s.stock(20)[0]['qty'],8)

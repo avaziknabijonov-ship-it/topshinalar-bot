@@ -13,7 +13,7 @@ TEXT = {
 'photo': ('Mahsulot rasmini yuboring yoki rasm kerak bo‘lmasa - yozing.', 'Отправьте фото товара или - без фото.'),
 'name': ('Nomi / ismni kiriting.', 'Введите название / имя.'),
 'product_name': ('Shina nomi, brendi, o‘lchami va turini kiriting. Masalan: Linglong 315/80 R22.5 TBR, yetakchi o‘q.', 'Введите название, бренд, размер и тип шины. Например: Linglong 315/80 R22.5 TBR, ведущая ось.'),
-'price': ('Bir dona narxi, so‘mda. Masalan: 2500000', 'Цена за штуку в сумах. Например: 2500000'),
+'price': ('Bir dona narxi, USD. Masalan: 125.50', 'Цена за штуку в USD. Например: 125.50'),
 'phone': ('Mijoz telefoni, +998 bilan.', 'Телефон клиента с +998.'),
 'address': ('Manzilni kiriting.', 'Введите адрес.'),
 'note': ('Izohni kiriting. Izoh bo‘lmasa - yozing.', 'Введите примечание или - без примечания.'),
@@ -21,8 +21,8 @@ TEXT = {
 'point': ('Savdo nuqtasi ID raqamini kiriting. Ro‘yxat: /points', 'Введите ID торговой точки. Список: /points'),
 'product': ('Mahsulot ID raqamini kiriting. Ro‘yxat: /stock', 'Введите ID товара. Список: /stock'),
 'qty': ('Dona soni: musbat butun son.', 'Количество: целое положительное число.'),
-'amount': ('Summani so‘mda kiriting.', 'Введите сумму в сумах.'),
-'paid': ('Hozir to‘langan summa, so‘mda. To‘lanmagan bo‘lsa 0.', 'Оплаченная сумма в сумах. Если не оплачено: 0.'),
+'amount': ('Summani USD’da kiriting.', 'Введите сумму в USD.'),
+'paid': ('Hozir to‘langan summa, USD. To‘lanmagan bo‘lsa 0.', 'Оплаченная сумма в USD. Если не оплачено: 0.'),
 'payment': ('To‘lov turini tugmalardan tanlang: NAQD, PERECHISLENIYA yoki KARTA ORQALI TO‘LOV.', 'Выберите способ оплаты кнопкой: НАЛИЧНЫЕ, ПЕРЕЧИСЛЕНИЕ или ОПЛАТА КАРТОЙ.'),
 'items': ('Har bir mahsulotni yangi qatorda kiriting. Tartib: ID, dona, bir dona narxi.\nUchala format qabul qilinadi:\n1|4|2400000\n1-4-2400000\n1 4 2400000\nBir dona narxini yozing. Bo‘shliq bilan ajratganda narx ichida bo‘shliq bo‘lmasin.\nRo‘yxat: /stock', 'Каждый товар с новой строки. Порядок: ID, количество, цена за штуку.\nПринимаются все три формата:\n1|4|2400000\n1-4-2400000\n1 4 2400000\nУказывайте цену за штуку. При разделении пробелами не ставьте пробелы внутри цены.\nСписок: /stock'),
 'sale': ('Sotuv ID raqamini kiriting.', 'Введите ID продажи.'),
@@ -31,7 +31,7 @@ TEXT = {
 'due': ('Eslatma vaqti: YYYY-MM-DD HH:MM. Toshkent vaqti.', 'Время напоминания: YYYY-MM-DD HH:MM. Ташкентское время.'),
 'result': ('Qo‘ng‘iroq natijasi: javob bermadi, qiziqdi, rad etdi yoki kelishildi.', 'Результат звонка: нет ответа, заинтересован, отказ или договорились.'),
 'driver': ('Labo haydovchisining ismi va telefonini kiriting.', 'Введите имя и телефон водителя Labo.'),
-'fee': ('Yetkazib berish narxi, so‘mda. Mahsulot summasidan alohida.', 'Стоимость доставки в сумах, отдельно от стоимости товара.'),
+'fee': ('Yetkazib berish narxi, USD. Mahsulot summasidan alohida.', 'Стоимость доставки в USD, отдельно от стоимости товара.'),
 'shift_report': ('Kun yakuni hisoboti: bajarilgan ishlar, natijalar va izoh.', 'Отчет за день: выполненные работы, результаты и примечания.'),
 'employee': ('Xodimning Telegram ID raqamini kiriting.', 'Введите Telegram ID сотрудника.'),
 'reason': ('Jarima sababini kiriting. Faqat direktor tasdiqlagan jarima saqlanadi.', 'Введите причину штрафа. Сохраняется штраф, утвержденный директором.'),
@@ -116,9 +116,9 @@ TEXT.update({
 'cancel_reason':('Sotuvni bekor qilish sababini yozing. Tovar omborga qaytariladi.','Укажите причину отмены продажи. Товар вернётся на склад.'),
 'settlement':('To‘lov olingan bo‘lsa uni to‘liq mijozga qaytarganingizni tasdiqlang. Bu bank orqali pul o‘tkazmaydi.','Если оплата получена, подтвердите её полный возврат клиенту. Бот не переводит деньги через банк.'),
 'refund_yes':('Pul qaytarildi / to‘lov olinmagan','Деньги возвращены / оплаты не было'),
-'cancel_preview':('BEKOR QILISH: qoldiq tiklanadi, qarz yopiladi. Qaytarilgan pul: {amount} UZS. Dastlabki yozuvlar tarixda qoladi.','ОТМЕНА: остаток восстановится, долг закроется. Возврат денег: {amount} UZS. Исходные записи сохранятся в истории.'),
-'payment_summary':('Jami: {total} UZS\nTo‘langan: {paid} UZS\nQolgan qarz: {debt} UZS','Итого: {total} UZS\nОплачено: {paid} UZS\nОстаток долга: {debt} UZS'),
-'refund_summary':('Davrdagi qaytarilgan pul: {refunds} UZS\nSof pul tushumi: {net} UZS','Возвраты за период: {refunds} UZS\nЧистые поступления: {net} UZS'),
+'cancel_preview':('BEKOR QILISH: qoldiq tiklanadi, qarz yopiladi. Qaytarilgan pul: {amount} USD. Dastlabki yozuvlar tarixda qoladi.','ОТМЕНА: остаток восстановится, долг закроется. Возврат денег: {amount} USD. Исходные записи сохранятся в истории.'),
+'payment_summary':('Jami: {total} USD\nTo‘langan: {paid} USD\nQolgan qarz: {debt} USD','Итого: {total} USD\nОплачено: {paid} USD\nОстаток долга: {debt} USD'),
+'refund_summary':('Davrdagi qaytarilgan pul: {refunds} USD\nSof pul tushumi: {net} USD','Возвраты за период: {refunds} USD\nЧистые поступления: {net} USD'),
 'pick':('Tugmadan tanlang yoki nomini yozib qidiring. ID ham qabul qilinadi.','Выберите кнопкой или введите название для поиска. ID также принимается.'),
 'stale':('Bu tugma eskirgan. Joriy qadamdagi yangi tugmalardan foydalaning.','Эта кнопка устарела. Используйте новые кнопки текущего шага.'),
 'add_item':('➕ Yana mahsulot','➕ Ещё товар'),
@@ -145,3 +145,8 @@ def label(key,lang='uz'):
     return MENU[key][lang=='ru']
 
 ERRORS.update({'staff_self':('O‘z rolingizni yoki kirishingizni bu yerdan o‘zgartirib bo‘lmaydi.','Здесь нельзя изменить свою роль или отключить собственный доступ.'),'director_limit':('Ko‘pi bilan 3 faol direktor yoki direktor taklifi bo‘lishi mumkin.','Допускается до 3 активных директоров с учётом приглашений.')})
+
+TEXT['exchange_rate']=('KP uchun kursni kiriting: 1 USD = necha so‘m?','Введите курс для КП: сколько сум за 1 USD?')
+ERRORS['exchange_rate']=('USD kursini musbat son bilan kiriting (masalan: 12800).','Введите положительный курс USD (например: 12800).')
+
+ERRORS['currency_reload']=('Valyuta sozlamasi yangilandi. Ilovani yopib, botda /app yuboring.','Настройки валюты изменены. Закройте приложение и отправьте /app в боте.')

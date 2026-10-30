@@ -25,7 +25,7 @@ FORMS = {
 'writeoff': [('product','product'),('point','point'),('qty','qty'),('note','note')],
 'sell': [('client','client'),('point','point'),('items','items'),('paid','paid'),('payment','payment')],
 'pay': [('sale','sale'),('amount','amount'),('payment','payment')],
-'quote': [('client','client'),('items','items'),('payment','payment'),('fulfillment','fulfillment')],
+'quote': [('client','client'),('items','items'),('payment','payment'),('fulfillment','fulfillment'),('exchange_rate','exchange_rate')],
 'quote_options': [('ref','ref'),('payment','payment'),('fulfillment','fulfillment')],
 'call': [('client','client'),('result','result'),('note','note')],
 'task': [('client','client'),('assignee','assignee'),('due','due'),('note','note')],
@@ -229,7 +229,7 @@ class Bot(Usability):
                 self.s.start(uid);self.queue(uid,tr('started',lang))
                 self.notify_shift(uid,'start');return
             if command in FORMS:
-                state={'cmd':command,'step':0,'data':{},'version':2}
+                state={'cmd':command,'step':0,'data':{},'version':3}
                 self.set_session(uid,state);self.prompt(uid,state);return
             self.queue(uid,tr('choose',lang));return
         if not state:
@@ -242,10 +242,10 @@ class Bot(Usability):
             self.set_session(uid,None)
             self.queue(uid,tr('discount_removed',lang),keyboard=self.keyboard(uid))
             return
-        if state['cmd']=='quote' and state.get('version')!=2:
+        if state['cmd']=='quote' and state.get('version')!=3:
             data={k:v for k,v in state['data'].items() if k in {'client','items'}}
             step=0 if 'client' not in data else (1 if 'items' not in data else 2)
-            state={'cmd':'quote','step':step,'data':data,'version':2}
+            state={'cmd':'quote','step':step,'data':data,'version':3}
             self.set_session(uid,state);self.prompt(uid,state);return
         fields=FORMS[state['cmd']]
         if state['step']>=len(fields):
@@ -275,7 +275,10 @@ class Bot(Usability):
                 buttons=[[{'text':name}] for name in fulfillment_labels(lang)]+buttons
             if fields[state['step']][0]=='settlement':
                 buttons=[[{'text':tr('refund_yes',lang)}]]+buttons
-            self.queue(uid,tr(fields[state['step']][1],lang),keyboard={'keyboard':buttons,'resize_keyboard':True})
+            prompt_text=tr(fields[state['step']][1],lang)
+            if state['cmd']=='pay' and fields[state['step']][0]=='amount':
+                prompt_text=prompt_text.replace('USD',self.s.one('sales',state['data']['sale'])['currency'])
+            self.queue(uid,prompt_text,keyboard={'keyboard':buttons,'resize_keyboard':True})
             self.prompt_extras(uid,state)
         else:
             # Human-readable preview contains names as well as internal IDs.
@@ -283,8 +286,14 @@ class Bot(Usability):
             for key,val in state['data'].items():
                 if key=='items':
                     for row in self.s.items(val):
-                        lines.append(f"{row['name']} × {row['qty']} | {fmt(row['price'])} UZS | {fmt(row['total'])} UZS")
-                    lines.append(('Jami: ' if lang=='uz' else 'Итого: ')+fmt(sum(x['total'] for x in self.s.items(val)))+' UZS')
+                        lines.append(f"{row['name']} × {row['qty']} | {fmt(row['price'])} USD | {fmt(row['total'])} USD")
+                    lines.append(('Jami: ' if lang=='uz' else 'Итого: ')+fmt(sum(x['total'] for x in self.s.items(val)))+' USD')
+                    if state['cmd']=='quote' and state['data'].get('exchange_rate'):
+                        from core import exchange_rate
+                        from decimal import Decimal, ROUND_HALF_UP
+                        rate=exchange_rate(state['data']['exchange_rate'])
+                        total=sum(int((Decimal(x['price'])*rate).quantize(Decimal('1'),rounding=ROUND_HALF_UP))*x['qty'] for x in self.s.items(val))
+                        lines.append('1 USD = '+str(rate)+' UZS | '+fmt(total)+' UZS')
                 elif key=='photo':
                     pass
                 else:
@@ -304,7 +313,7 @@ class Bot(Usability):
             if state['cmd']=='cancel_sale':
                 row=self.s.one('sales',state['data']['sale'])
                 state['data']['_expected_paid']=row['paid'];self.set_session(uid,state)
-                lines.append(tr('cancel_preview',lang,amount=fmt(row['paid'])))
+                lines.append(tr('cancel_preview',lang,amount=fmt(row['paid'])).replace('USD',row['currency']))
             self.queue(uid,'\n\n'.join(lines)+'\n\n'+tr('check',lang),keyboard={'keyboard':[[{'text':tr('confirm',lang)}],[{'text':tr('back',lang)},{'text':tr('cancel',lang)}]],'resize_keyboard':True})
 
     def validate(self,uid,cmd,key,text,message):
@@ -314,7 +323,11 @@ class Bot(Usability):
             if text=='-':return None
             raise ValueError('photo')
         if cmd=='editproduct' and key in {'name','brand','size','price'} and text=='-':
-            state=self.session(uid);return self.s.one('products',state['data']['product'])[key]
+            state=self.session(uid);product=self.s.one('products',state['data']['product'])
+            if key=='price':
+                if product['currency']!='USD':raise ValueError('amount')
+                return fmt(product['price']).replace(' ','')
+            return product[key]
         if not text or len(text)>3000:
             raise ValueError('text')
         if key=='items':
@@ -339,6 +352,9 @@ class Bot(Usability):
             if text!=tr('refund_yes',self.lang(uid)):raise ValueError('refund_required')
             return True
         if key=='reason' and cmd=='cancel_sale' and text=='-':raise ValueError('reason')
+        if key=='exchange_rate':
+            from core import exchange_rate
+            return str(exchange_rate(text))
         if key in {'price','amount','paid','fee'}:
             money(text,key=='amount');return text
         if key=='payment':return normalize_payment(text)
@@ -434,7 +450,7 @@ class Bot(Usability):
 
     def pretty_row(self,row,lang):
         from reports import COLUMNS, localized
-        return ' | '.join(f'{COLUMNS.get(k,(k,k))[lang=="ru"]}: {fmt(v)+" UZS" if k=="total" else localized(k,v,lang)}' for k,v in row.items())
+        return ' | '.join(f'{COLUMNS.get(k,(k,k))[lang=="ru"]}: {fmt(v)+" "+row.get("currency","USD") if k=="total" else localized(k,v,lang)}' for k,v in row.items())
 
     def pdf(self,uid,ref):
         from quotation import quotation_pdf
@@ -467,13 +483,15 @@ class Bot(Usability):
     def make_report(self,uid,start,end):
         require_command(self.s,uid,'report')
         data=self.s.report(uid,start,end)
-        active=[s for s in data['sales'] if s.get('status')!='cancelled']
+        active=[s for s in data['sales'] if s.get('status')!='cancelled' and s['currency']=='USD']
         total=sum(s['total'] for s in active); paid=sum(s['paid'] for s in active)
-        received=sum(p['amount'] for p in data['payments'])
+        received=sum(p['amount'] for p in data['payments'] if p['currency']=='USD')
         lang=self.lang(uid)
-        title=(f'Hisobot: {start} — {end}\nSotuvlar: {len(data["sales"])}\nSotilgan summa: {fmt(total)} UZS\nShu sotuvlardan to‘langan: {fmt(paid)} UZS\nShu sotuvlardan qolgan qarz: {fmt(total-paid)} UZS\nDavrda kelib tushgan to‘lovlar: {fmt(received)} UZS\nQo‘ng‘iroqlar: {len(data["calls"])}' if lang=='uz' else f'Отчет: {start} — {end}\nПродажи: {len(data["sales"])}\nСумма продаж: {fmt(total)} UZS\nОплачено по этим продажам: {fmt(paid)} UZS\nОстаток долга по этим продажам: {fmt(total-paid)} UZS\nПоступления за период: {fmt(received)} UZS\nЗвонки: {len(data["calls"])}')
+        title=(f'Hisobot: {start} — {end}\nSotuvlar: {len(data["sales"])}\nSotilgan summa: {fmt(total)} USD\nShu sotuvlardan to‘langan: {fmt(paid)} USD\nShu sotuvlardan qolgan qarz: {fmt(total-paid)} USD\nDavrda kelib tushgan to‘lovlar: {fmt(received)} USD\nQo‘ng‘iroqlar: {len(data["calls"])}' if lang=='uz' else f'Отчет: {start} — {end}\nПродажи: {len(data["sales"])}\nСумма продаж: {fmt(total)} USD\nОплачено по этим продажам: {fmt(paid)} USD\nОстаток долга по этим продажам: {fmt(total-paid)} USD\nПоступления за период: {fmt(received)} USD\nЗвонки: {len(data["calls"])}')
+        if any(s['currency']=='UZS' for s in data['sales']):
+            title+='\n'+('Oldingi so‘m yozuvlari jamiga kiritilmadi; Excelda valyutasi bilan saqlangan.' if lang=='uz' else 'Прежние записи в сумах не включены в итоги USD; валюта сохранена в Excel.')
         self.queue(uid,title)
-        refunds=sum(p['amount'] for p in data['refunds'])
+        refunds=sum(p['amount'] for p in data['refunds'] if p['currency']=='USD')
         self.queue(uid,tr('refund_summary',lang,refunds=fmt(refunds),net=fmt(received-refunds)))
         data.update(self.s.inventory_report(uid))
         self.xlsx(uid,data,f'TOPSHINALAR-{start}-{end}.xlsx')

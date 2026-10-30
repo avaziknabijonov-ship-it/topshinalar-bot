@@ -48,6 +48,7 @@ class TestCRM(unittest.TestCase):
     def dialog(self,cmd,values,uid=20):
         self.msg('/'+cmd,uid)
         for v in values:self.msg(str(v),uid)
+        if cmd=='quote':self.msg('1',uid)
         self.msg(tr('confirm',self.s.user(uid)['lang']),uid)
 
     def test_sale_total_and_balance(self):
@@ -68,7 +69,7 @@ class TestCRM(unittest.TestCase):
 
     def test_quote_does_not_reserve_stock(self):
         with self.s.db:
-            ref=self.s.order(20,self.client,self.items,quote=True,terms='3 kun')
+            ref=self.s.order(20,self.client,self.items,quote=True,exchange_rate='1',terms='3 kun')
         self.assertEqual(self.stock(),10)
         self.assertEqual(self.s.one('quotes',ref)['total'],1000000000)
 
@@ -319,7 +320,7 @@ class TestCRM(unittest.TestCase):
                         if cmd=='sell':self.msg(str(self.point))
                         self.msg(sep.join([str(self.product),'1','2400000']))
                         if cmd=='sell':self.msg('0');self.msg('naqd')
-                        else:self.msg('NAQD');self.msg('Olib ketish')
+                        else:self.msg('NAQD');self.msg('Olib ketish');self.msg('1')
                         # Confirm preview uses the same totals before every save.
                         self.assertTrue(any('2 400 000.00' in p.get('text','') for p in self.outputs()))
                         self.msg(tr('confirm',lang))
@@ -377,7 +378,7 @@ class TestCRM(unittest.TestCase):
         lines=[dict(product=self.product,qty=1,price='2500000',discount=5)]
         for quote in [False,True]:
             with self.assertRaisesRegex(ValueError,'discount_removed'):
-                with self.s.db:self.s.order(20,self.client,lines,self.point,quote=quote,payment='naqd')
+                with self.s.db:self.s.order(20,self.client,lines,self.point,quote=quote,exchange_rate='1',payment='naqd')
         self.assertEqual(self.stock(),10)
         self.assertEqual(self.s.rows('SELECT * FROM sales'),[])
         self.assertEqual(self.s.rows('SELECT * FROM quotes'),[])
@@ -392,7 +393,7 @@ class TestCRM(unittest.TestCase):
     def test_historical_quote_pdf_keeps_stored_total(self):
         from quotation import quotation_pdf
         with self.s.db:
-            ref=self.s.order(20,self.client,self.items,quote=True,terms='Old quote')
+            ref=self.s.order(20,self.client,self.items,quote=True,exchange_rate='1',terms='Old quote')
             self.s.db.execute('UPDATE quotes SET total=950000000 WHERE id=?',(ref,))
             self.s.db.execute('UPDATE quote_items SET discount=5 WHERE quote=?',(ref,))
         pdf=quotation_pdf(self.s,20,ref)
@@ -456,7 +457,7 @@ class TestCRM(unittest.TestCase):
         self.assertEqual(self.stock(),10)
 
     def test_quote_options_updates_existing_quote_only(self):
-        with self.s.db:ref=self.s.order(20,self.client,self.items,quote=True,terms='10')
+        with self.s.db:ref=self.s.order(20,self.client,self.items,quote=True,exchange_rate='1',terms='10')
         self.dialog('quote_options',[ref,'KARTA ORQALI TO‘LOV','Olib ketish'])
         q=self.s.one('quotes',ref)
         self.assertEqual(q['payment'],'karta');self.assertEqual(q['fulfillment'],'pickup')
@@ -473,7 +474,7 @@ class TestCRM(unittest.TestCase):
         self.msg('10')
         self.assertEqual(self.b.session(20)['step'],3)
         self.assertEqual(self.s.rows('SELECT * FROM quotes'),[])
-        self.msg('Доставка');self.msg(tr('confirm','ru'))
+        self.msg('Доставка');self.msg('1');self.msg(tr('confirm','ru'))
         self.assertEqual(self.s.rows('SELECT * FROM quotes')[0]['fulfillment'],'delivery')
 
     def test_old_quote_session_reprompts_without_using_old_terms_as_payment(self):
@@ -481,7 +482,7 @@ class TestCRM(unittest.TestCase):
         self.msg(tr('confirm'))
         self.assertEqual(self.b.session(20)['step'],2)
         self.assertNotIn('terms',self.b.session(20)['data'])
-        self.msg('NAQD');self.msg('Olib ketish');self.msg(tr('confirm'))
+        self.msg('NAQD');self.msg('Olib ketish');self.msg('1');self.msg(tr('confirm'))
         self.assertEqual(self.s.rows('SELECT * FROM quotes')[0]['fulfillment'],'pickup')
 
     def test_quote_schema_upgrade_keeps_existing_history(self):

@@ -115,7 +115,7 @@ class UsabilityTests(unittest.TestCase):
         self.click(self.button('Yana mahsulot'))
         self.msg('315 80');self.click(self.button('Linglong'))
         self.msg('2');self.msg('2500000');self.click(self.button('Mahsulotlar tayyor'))
-        self.msg('KARTA ORQALI TO‘LOV');self.msg('Yetkazib berish');self.msg(tr('confirm'))
+        self.msg('KARTA ORQALI TO‘LOV');self.msg('Yetkazib berish');self.msg('1');self.msg(tr('confirm'))
         self.assertEqual(self.s.one('quotes',1)['total'],750000000)
         self.assertEqual(self.qty(),20)
         self.assertTrue(any('document' in p for p in self.outputs()))
@@ -225,7 +225,7 @@ class UsabilityTests(unittest.TestCase):
         wb=load_workbook(io.BytesIO(base64.b64decode(documents[0]['document'])))
         self.assertIn('Pul qaytarishlar',wb.sheetnames)
         sheet=wb['Sotuvlar'];headers=[c.value for c in sheet[1]]
-        self.assertEqual(sheet.cell(2,headers.index('Qarz, UZS')+1).value,0)
+        self.assertEqual(sheet.cell(2,headers.index('Qarz')+1).value,0)
         self.assertIn('Bekor qilgan direktor',headers)
         messages='\n'.join(p.get('text','') for p in self.outputs(10))
         self.assertIn('Sotilgan summa: 0.00',messages)

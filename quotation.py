@@ -33,6 +33,8 @@ def quotation_pdf(store,uid,ref):
     logo=Image(str(Path(__file__).resolve().parent/'assets'/'topshinalar-logo.png'),width=260,height=260*195/800,hAlign='LEFT')
     body=[logo,Spacer(1,14),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,18),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,10),p(('Клиент: ' if ru else 'Mijoz: ')+client['name']),p(client['phone']+' | '+client['address']),Spacer(1,14)]
     headers=['Товар','Шт.','Цена, UZS','Сумма, UZS'] if ru else ['Mahsulot','Dona','Narx, UZS','Jami, UZS']
+    if q.get('exchange_rate'):
+        body += [p(('Курс: ' if ru else 'Kurs: ')+'1 USD = '+q['exchange_rate']+' UZS')]
     data=[[p(h) for h in headers]]
     from decimal import Decimal
     for i in lines:

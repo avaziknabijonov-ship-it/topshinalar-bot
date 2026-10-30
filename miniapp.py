@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import parse_qsl,urlsplit
 import urllib.request
 from bot import Bot,API,ids
-from core import Store,integer as core_integer,money,now
+from core import Store,integer as core_integer,money,now,exchange_rate
 from i18n import ERRORS
 from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
@@ -83,7 +83,7 @@ class MiniService:
             if brand and row_brand.casefold()!=brand.casefold():continue
             if row['id'] not in groups:
                 parts=size_parts(row['name'])
-                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(row['photo']),'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
+                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(row['photo']),'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
             if row['stock_set']:groups[row['id']]['stock_pending']=False
             if row['point_id'] is not None:
                 groups[row['id']]['points'].append({'id':row['point_id'],'name':row['point'],'qty':row['qty'],'stock_pending':bool(row['catalog_sku'] and not row['stock_set'])})
@@ -96,7 +96,12 @@ class MiniService:
         today=now()[:10];start=start or today;end=end or today
         data=self.s.report(uid,start,end);sales=[r for r in data['sales'] if r['status']=='active']
         debt=self.s.debts(uid)
-        return {'date':today,'start':start,'end':end,'sales':len(sales),'total':sum(r['total'] for r in sales),'received':sum(r['amount'] for r in data['payments']),'refunds':sum(r['amount'] for r in data['refunds']),'debt':sum(r['debt'] for r in debt),'overdue':sum(r['debt'] for r in debt if r['debt_due'] and r['debt_due']<today),'calls':len(data['calls']),'tasks':len(data['tasks']),'shift_open':bool(self.s.db.execute('SELECT 1 FROM shifts WHERE actor=? AND ended IS NULL',(uid,)).fetchone()),'lowstock':[r for r in self.b.low_rows() if r['qty']<=r['minimum']] if self.s.user(uid)['role']=='director' else []}
+        legacy_count=sum(r.get('currency')=='UZS' for rows in (sales,data['payments'],debt) for r in rows)
+        sales=[r for r in sales if r['currency']=='USD']
+        debt=[r for r in debt if r['currency']=='USD']
+        data['payments']=[r for r in data['payments'] if r['currency']=='USD']
+        data['refunds']=[r for r in data['refunds'] if r['currency']=='USD']
+        return {'currency':'USD','legacy_count':legacy_count,'date':today,'start':start,'end':end,'sales':len(sales),'total':sum(r['total'] for r in sales),'received':sum(r['amount'] for r in data['payments']),'refunds':sum(r['amount'] for r in data['refunds']),'debt':sum(r['debt'] for r in debt),'overdue':sum(r['debt'] for r in debt if r['debt_due'] and r['debt_due']<today),'calls':len(data['calls']),'tasks':len(data['tasks']),'shift_open':bool(self.s.db.execute('SELECT 1 FROM shifts WHERE actor=? AND ended IS NULL',(uid,)).fetchone()),'lowstock':[r for r in self.b.low_rows() if r['qty']<=r['minimum']] if self.s.user(uid)['role']=='director' else []}
 
     def history(self,uid,kind):
         if kind not in {'sales','quotes','tasks'}:raise ValueError('table')
@@ -166,7 +171,7 @@ class MiniService:
             if len(clean)!=len(items):raise ValueError('items')
             payload={'client':client,'items':clean,'payment':text(d.get('payment',''))}
             if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
-            else:payload['fulfillment']=text(d.get('fulfillment',''))
+            else:payload.update(fulfillment=text(d.get('fulfillment','')),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
             ref=self.b.execute(uid,cmd,payload)
             if cmd=='sell' and d.get('debt_due'):
                 self.s.set_debt_due(uid,ref,text(d['debt_due']))
@@ -279,6 +284,8 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
+                if body.get('cmd') in {'sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import'} and body.get('money_version')!=2:
+                    raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))

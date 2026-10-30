@@ -5,7 +5,7 @@ import json
 import re
 import sqlite3
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 from payments import normalize_payment, normalize_fulfillment
 
@@ -22,6 +22,17 @@ def money(value, positive=False):
         return int(d * 100)
     except (InvalidOperation, ValueError):
         raise ValueError('amount') from None
+
+def exchange_rate(value):
+    try:
+        rate = Decimal(str(value).replace(' ', '').replace(',', '.'))
+        if not rate.is_finite() or rate <= 0 or rate > 1000000 or rate.as_tuple().exponent < -2:
+            raise ValueError()
+        return rate
+    except (InvalidOperation, ValueError):
+        raise ValueError('exchange_rate') from None
+
+parse_exchange_rate = exchange_rate
 
 def fmt(value):
     return f'{Decimal(value) / 100:,.2f}'.replace(',', ' ')
@@ -116,8 +127,23 @@ class Store:
             existing={r[1] for r in self.db.execute(f'PRAGMA table_info({table})')}
             for name,definition in fields.items():
                 if name not in existing:self.db.execute(f'ALTER TABLE {table} ADD COLUMN {name} {definition}')
+        for table in ('products','sales','payments','refunds','fines','deliveries','quotes'):
+            columns = {r[1] for r in self.db.execute(f'PRAGMA table_info({table})')}
+            if 'currency' not in columns:
+                self.db.execute(f"ALTER TABLE {table} ADD COLUMN currency TEXT NOT NULL DEFAULT 'UZS'")
+                if table == 'products':
+                    self.db.execute("UPDATE products SET price_pending=1")
+                    self.db.execute('DELETE FROM sessions')
+                    self.db.execute('DELETE FROM ui_views')
+        columns = {r[1] for r in self.db.execute('PRAGMA table_info(quotes)')}
+        if 'exchange_rate' not in columns:
+            self.db.execute("ALTER TABLE quotes ADD COLUMN exchange_rate TEXT NOT NULL DEFAULT ''")
+        if 'source_total_usd' not in columns:
+            self.db.execute('ALTER TABLE quotes ADD COLUMN source_total_usd INTEGER')
         self.db.execute('CREATE UNIQUE INDEX IF NOT EXISTS products_catalog_sku ON products(catalog_sku) WHERE catalog_sku IS NOT NULL')
-        self.db.execute('PRAGMA journal_mode=WAL')
+        self.db.commit()
+        if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
+            self.db.execute('PRAGMA journal_mode=WAL')
         self.db.commit()
 
     def rows(self, sql, params=()):
@@ -132,6 +158,8 @@ class Store:
         return dict(r)
 
     def add(self, table, **data):
+        if table in {'products','sales','payments','refunds','fines','deliveries'}:
+            data.setdefault('currency', self.one('sales',data['sale'])['currency'] if table in {'payments','refunds'} else 'USD')
         keys = ','.join(data)
         marks = ','.join('?' for _ in data)
         return self.db.execute(f'INSERT INTO {table} ({keys}) VALUES ({marks})', tuple(data.values())).lastrowid
@@ -173,7 +201,7 @@ class Store:
 
     def edit_product(self,uid,product,name,brand,size,price,photo=None):
         self.director(uid);old=self.one('products',product)
-        self.db.execute('UPDATE products SET name=?,brand=?,size=?,price=?,photo=?,price_pending=0 WHERE id=?',
+        self.db.execute("UPDATE products SET name=?,brand=?,size=?,price=?,photo=?,price_pending=0,currency='USD' WHERE id=?",
             (name or old['name'],brand,size,money(price),photo if photo is not None else old['photo'],product))
         self.log(uid,'product_edit',product)
         return product
@@ -281,15 +309,23 @@ class Store:
             raise ValueError('items')
         return result
 
-    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment=''):
+    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None):
         self.user(uid); self.one('clients',client)
         lines=self.items(items); total=sum(i['total'] for i in lines)
         if total > 10**16:
             raise ValueError('amount')
         if quote:
+            rate = parse_exchange_rate(exchange_rate)
+            source_total = total if rate is not None else None
+            if rate is not None:
+                for item in lines:
+                    item['price'] = int((Decimal(item['price'])*rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+                    item['total'] = item['price']*item['qty']
+                total = sum(i['total'] for i in lines)
+                if total > 10**16: raise ValueError('amount')
             payment=normalize_payment(payment) if payment else ''
             fulfillment=normalize_fulfillment(fulfillment) if fulfillment else ''
-            ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment)
+            ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment,currency='UZS',exchange_rate=str(rate) if rate is not None else '',source_total_usd=source_total)
             for item in lines:
                 self.add('quote_items',quote=ref,**{k:v for k,v in item.items() if k!='total'})
             self.log(uid,'quote',ref)
@@ -399,7 +435,7 @@ class Store:
 
     def stock(self,uid):
         self.user(uid)
-        return self.rows('SELECT p.id,p.name,p.brand,p.size,p.price,p.price_pending,p.catalog_sku,p.photo,t.id point_id,t.name point,COALESCE(s.qty,0) qty,s.qty IS NOT NULL stock_set FROM products p LEFT JOIN points t ON 1=1 LEFT JOIN stock s ON s.product=p.id AND s.point=t.id WHERE p.active=1 ORDER BY t.id,p.id')
+        return self.rows('SELECT p.id,p.name,p.brand,p.size,p.price,p.price_pending,p.currency,p.catalog_sku,p.photo,t.id point_id,t.name point,COALESCE(s.qty,0) qty,s.qty IS NOT NULL stock_set FROM products p LEFT JOIN points t ON 1=1 LEFT JOIN stock s ON s.product=p.id AND s.point=t.id WHERE p.active=1 ORDER BY t.id,p.id')
 
     def report(self,uid,start,end):
         self.user(uid)
@@ -413,7 +449,7 @@ class Store:
         result={}
         for table,field in [('sales','created'),('payments','created'),('refunds','created'),('calls','created'),('deliveries','created'),('shifts','started'),('fines','created'),('quotes','created')]:
             result[table]=self.rows(f'SELECT * FROM {table} WHERE substr({field},1,10) BETWEEN ? AND ?'+scope+' ORDER BY id',params)
-        result['sale_items']=self.rows('SELECT i.*,s.actor,s.client,s.point,s.created,s.status FROM sale_items i JOIN sales s ON i.sale=s.id WHERE substr(s.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND s.actor=?')+' ORDER BY i.sale,i.id',params)
+        result['sale_items']=self.rows('SELECT i.*,s.actor,s.client,s.point,s.created,s.status,s.currency FROM sale_items i JOIN sales s ON i.sale=s.id WHERE substr(s.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND s.actor=?')+' ORDER BY i.sale,i.id',params)
         result['tasks']=self.rows("SELECT * FROM tasks WHERE status='open'"+('' if not scope else ' AND actor=?'),() if not scope else (uid,))
         result['movements']=self.rows('SELECT m.id,m.created,p.name,p.brand,p.size,t.name warehouse_name,m.qty,m.kind,m.actor,m.note FROM movements m JOIN products p ON p.id=m.product JOIN points t ON t.id=m.point WHERE substr(m.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND m.actor=?')+' ORDER BY m.id',params)
         result['product_events']=self.rows("SELECT a.created,p.name,p.brand,p.size,a.action,a.actor FROM audit a JOIN products p ON p.id=a.ref WHERE a.action IN ('product','product_edit') AND substr(a.created,1,10) BETWEEN ? AND ?"+('' if not scope else ' AND a.actor=?')+' ORDER BY a.id',params)
@@ -425,10 +461,10 @@ class Store:
             if r['point_id'] is None:continue
             unknown=bool(r['catalog_sku'] and not r['stock_set'])
             row={k:r[k] for k in ('id','name','brand','size','point')}
-            row.update(qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
+            row.update(currency=r['currency'],qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
             row['stock_value']=None if unknown or r['price_pending'] else r['qty']*r['price']
             rows.append(row)
-            w=warehouses.setdefault(r['point_id'],{'warehouse_name':r['point'],'qty':0,'stock_value':0,'unknown_stock':0,'unknown_price':0,'as_of':stamp})
+            w=warehouses.setdefault((r['point_id'],r['currency']),{'warehouse_name':r['point'],'currency':r['currency'],'qty':0,'stock_value':0,'unknown_stock':0,'unknown_price':0,'as_of':stamp})
             if unknown:w['unknown_stock']+=1
             else:w['qty']+=r['qty']
             if not unknown and r['price_pending'] and r['qty']:w['unknown_price']+=1

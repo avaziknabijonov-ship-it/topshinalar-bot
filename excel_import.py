@@ -24,7 +24,7 @@ ALIASES={
  'name':['name','nom','nomi','mahsulot','mahsulot nomi','tovar','tovar nomi','название','название товара','наименование','наименование товара','модель','model'],
  'brand':['brand','brend','бренд','марка'],
  'size':['size','razmer','размер'],
- 'price':['price','narx','narxi','цена','цена uzs','narx uzs','цена продажи'],
+ 'price':['price','narx','narxi','цена','цена usd','narx usd','price usd','цена продажи'],
  'qty':['kelgan dona','kelgan soni','kirim','приход','поступило','qty','quantity','qoldiq','ostatok','dona','soni','остаток','количество','колво','остаток шт','остаток на складе','остаток на точке','остатки'],
 }
 HEADERS={normalized(alias):key for key,aliases in ALIASES.items() for alias in aliases}
@@ -116,7 +116,7 @@ class InventoryExcel:
                 ref=self.s.add('products',name=row['name'],brand=row['brand'],size=row['size'],price=row['price'],catalog_sku=row['sku'] or None,price_pending=0)
                 self.s.log(uid,'product',ref)
             else:
-                self.s.db.execute('UPDATE products SET price=?,price_pending=0 WHERE id=?',(row['price'],ref))
+                self.s.db.execute("UPDATE products SET price=?,price_pending=0,currency='USD' WHERE id=?",(row['price'],ref))
                 self.s.log(uid,'product_edit',ref)
             self.s.db.execute('INSERT INTO stock(product,point,qty) VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=excluded.qty',(ref,point,row['new_qty']))
             self.s.add('movements',product=ref,point=point,qty=row['qty'],kind='excel_income',actor=uid,note=f"Excel {preview['sheet']} row {row['row']}: {row['old_qty'] or 0} + {row['qty']} = {row['new_qty']}",created=now())
