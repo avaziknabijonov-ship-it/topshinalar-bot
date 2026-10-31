@@ -31,6 +31,7 @@ class MiniAppTests(unittest.TestCase):
         self.s=Store(str(self.path));self.s.configure([10],[20,21]);initialize(self.path)
         self.service=MiniService(self.s,TOKEN)
         with self.s.db:
+            for person in (10,20,21):self.s.set_contact_phone(person,'+9989055500'+str(person))
             self.point=self.s.add('points',name='Main')
             self.client=self.s.client(20,'Customer','+998901234567','','')
             self.product=self.s.product(10,'Linglong 315/80 R22.5','2500000')

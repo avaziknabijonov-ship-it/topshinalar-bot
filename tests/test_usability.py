@@ -21,6 +21,7 @@ class UsabilityTests(unittest.TestCase):
         self.s=Store(str(self.path));self.s.configure([10,11],[20,21])
         self.b=Bot(self.s);self.update=0
         with self.s.db:
+            self.s.set_contact_phone(20,'+998905550020')
             self.s.db.execute("UPDATE users SET name='Direktor' WHERE id=10")
             self.client=self.s.client(20,'Transport','+998901234567','Toshkent','')
             self.point=self.s.add('points',name='Asosiy ombor')

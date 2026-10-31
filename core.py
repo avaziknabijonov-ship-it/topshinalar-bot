@@ -34,6 +34,16 @@ def exchange_rate(value):
 
 parse_exchange_rate = exchange_rate
 
+def normalize_contact_phone(value):
+    value=re.sub(r'[\s()-]','',str(value or ''))
+    if re.fullmatch(r'\d{9}',value):
+        value='+998'+value
+    elif re.fullmatch(r'998\d{9}',value):
+        value='+'+value
+    if not re.fullmatch(r'\+[1-9]\d{8,14}',value):
+        raise ValueError('contact_phone')
+    return value
+
 def fmt(value):
     return f'{Decimal(value) / 100:,.2f}'.replace(',', ' ')
 
@@ -140,6 +150,9 @@ class Store:
             self.db.execute("ALTER TABLE quote_items ADD COLUMN photo TEXT NOT NULL DEFAULT ''")
             self.db.execute("UPDATE quote_items SET photo=COALESCE((SELECT photo FROM products WHERE products.id=quote_items.product),'')")
         columns = {r[1] for r in self.db.execute('PRAGMA table_info(quotes)')}
+        for name in ('creator_name','creator_phone'):
+            if name not in columns:
+                self.db.execute(f"ALTER TABLE quotes ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
         if 'exchange_rate' not in columns:
             self.db.execute("ALTER TABLE quotes ADD COLUMN exchange_rate TEXT NOT NULL DEFAULT ''")
         if 'source_total_usd' not in columns:
@@ -173,6 +186,16 @@ class Store:
         if not u['active']:
             raise PermissionError()
         return u
+
+    def contact_phone(self,uid):
+        row=self.db.execute('SELECT value FROM meta WHERE key=?',('contact_phone:'+str(uid),)).fetchone()
+        return row['value'] if row else ''
+
+    def set_contact_phone(self,uid,value):
+        self.user(uid)
+        value=normalize_contact_phone(value)
+        self.db.execute('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',('contact_phone:'+str(uid),value))
+        return value
 
     def director(self, uid):
         if self.user(uid)['role'] != 'director':
@@ -313,13 +336,15 @@ class Store:
             raise ValueError('items')
         return result
 
-    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None):
+    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None, contact_phone=None):
         self.user(uid); self.one('clients',client)
         lines=self.items(items); total=sum(i['total'] for i in lines)
         if total > 10**16:
             raise ValueError('amount')
         if quote:
             rate = parse_exchange_rate(exchange_rate)
+            creator_phone=normalize_contact_phone(self.contact_phone(uid) if contact_phone is None else contact_phone)
+            creator_name=self.user(uid)['name']
             source_total = total if rate is not None else None
             if rate is not None:
                 for item in lines:
@@ -329,7 +354,8 @@ class Store:
                 if total > 10**16: raise ValueError('amount')
             payment=normalize_payment(payment) if payment else ''
             fulfillment=normalize_fulfillment(fulfillment) if fulfillment else ''
-            ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment,currency='UZS',exchange_rate=str(rate) if rate is not None else '',source_total_usd=source_total)
+            ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment,currency='UZS',exchange_rate=str(rate) if rate is not None else '',source_total_usd=source_total,creator_name=creator_name,creator_phone=creator_phone)
+            self.set_contact_phone(uid,creator_phone)
             for item in lines:
                 self.add('quote_items',quote=ref,photo=self.one('products',item['product'])['photo'] or '',**{k:v for k,v in item.items() if k!='total'})
             self.log(uid,'quote',ref)

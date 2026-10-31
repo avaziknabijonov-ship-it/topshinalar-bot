@@ -7,3 +7,7 @@ Savatga mahsulotlarni tanlang, dona va dollar narxini tekshiring, **KP tayyorlas
 KP savdo yoki qarz yaratmaydi va qoldiqni kamaytirmaydi. Mini App savati KP tayyorlangandan keyin saqlanadi.
 
 Eski so‘m yozuvlari o‘z summasi va UZS valyutasi bilan qoladi. USD’ga avtomatik aylantirilmaydi. Eski mahsulotning so‘m narxi dollar deb olinmaydi: direktor USD narxni qayta kiritadi yoki USD narxli Excel kirim yuklaydi. Tarixiy qarz shu yozuvning valyutasida to‘lanadi. Ish maydoni jami faqat USD yozuvlarini hisoblaydi; eski so‘m yozuvlari tarix va Excelda valyuta ustuni bilan qoladi.
+
+## KP tuzuvchining kontakti
+
+KPda tuzgan xodimning Telegramdagi ismi va shaxsiy aloqa raqami chiqadi. Birinchi KP tayyorlashda o‘z raqamini kiritadi. Raqam shu xodim uchun alohida saqlanadi va keyingi KP formasiga tayyor qo‘yiladi; xodim uni o‘zgartirishi mumkin. Ism va telefon yangi KP bilan birga saqlanadi, keyingi profil o‘zgarishi oldingi KPni o‘zgartirmaydi. Shaxsiy raqam yo‘q bo‘lsa yangi KP uni kiritishni talab qiladi. Kompaniya QR-kodidagi call-markaz raqami alohida qoladi.

@@ -20,6 +20,7 @@ class TestCRM(unittest.TestCase):
         self.s.configure([10,11],[20,21,22,23])
         self.b=Bot(self.s);self.update=0
         with self.s.db:
+            for person in (10,20,21):self.s.set_contact_phone(person,'+9989055500'+str(person))
             self.point=self.s.add('points',name='Ombor 1')
             self.product=self.s.product(10,'Linglong 315/80 R22.5 TBR','2500000')
             self.client=self.s.client(20,'Transport MChJ','+998901234567','Toshkent','')

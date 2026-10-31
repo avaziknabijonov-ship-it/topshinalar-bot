@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.parse import parse_qsl,urlsplit
 import urllib.request
 from bot import Bot,API,ids
-from core import Store,integer as core_integer,money,now,exchange_rate
+from core import Store,integer as core_integer,money,now,exchange_rate,normalize_contact_phone
 from i18n import ERRORS
 from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
@@ -188,6 +188,7 @@ class MiniService:
             payload={'client':client,'items':clean,'payment':text(d.get('payment',''))}
             if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
             else:payload.update(fulfillment=text(d.get('fulfillment','')),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
+            if cmd=='quote' and 'contact_phone' in d:payload['contact_phone']=normalize_contact_phone(d['contact_phone'])
             ref=self.b.execute(uid,cmd,payload)
             if cmd=='sell' and d.get('debt_due'):
                 self.s.set_debt_due(uid,ref,text(d['debt_due']))
@@ -307,7 +308,7 @@ class MiniHandler(BaseHTTPRequestHandler):
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))
             read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report'}
             require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
-            if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid)}
+            if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
             elif path=='/api/points':result=store.rows('SELECT id,name FROM points ORDER BY name,id')
             elif path=='/api/brands':

@@ -25,7 +25,7 @@ FORMS = {
 'writeoff': [('product','product'),('point','point'),('qty','qty'),('note','note')],
 'sell': [('client','client'),('point','point'),('items','items'),('paid','paid'),('payment','payment')],
 'pay': [('sale','sale'),('amount','amount'),('payment','payment')],
-'quote': [('client','client'),('items','items'),('payment','payment'),('fulfillment','fulfillment'),('exchange_rate','exchange_rate')],
+'quote': [('client','client'),('items','items'),('payment','payment'),('fulfillment','fulfillment'),('exchange_rate','exchange_rate'),('contact_phone','contact_phone')],
 'quote_options': [('ref','ref'),('payment','payment'),('fulfillment','fulfillment')],
 'call': [('client','client'),('result','result'),('note','note')],
 'task': [('client','client'),('assignee','assignee'),('due','due'),('note','note')],
@@ -262,6 +262,11 @@ class Bot(Usability):
 
     def prompt(self,uid,state):
         lang=self.lang(uid);fields=FORMS[state['cmd']]
+        if state['step']<len(fields) and fields[state['step']][0]=='contact_phone' and self.s.contact_phone(uid):
+            state['data']['contact_phone']=self.s.contact_phone(uid)
+            state['step']+=1
+            self.set_session(uid,state)
+            return self.prompt(uid,state)
         if state['step']<len(fields):
             if state.get('item_stage'):
                 self.cart_prompt(uid,state);return
@@ -352,6 +357,9 @@ class Bot(Usability):
             if text!=tr('refund_yes',self.lang(uid)):raise ValueError('refund_required')
             return True
         if key=='reason' and cmd=='cancel_sale' and text=='-':raise ValueError('reason')
+        if key=='contact_phone':
+            from core import normalize_contact_phone
+            return normalize_contact_phone(text)
         if key=='exchange_rate':
             from core import exchange_rate
             return str(exchange_rate(text))

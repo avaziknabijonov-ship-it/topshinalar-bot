@@ -152,3 +152,6 @@ ERRORS['exchange_rate']=('USD kursini musbat son bilan kiriting (masalan: 12800)
 ERRORS['currency_reload']=('Valyuta sozlamasi yangilandi. Ilovani yopib, botda /app yuboring.','Настройки валюты изменены. Закройте приложение и отправьте /app в боте.')
 
 ERRORS['report_section']=('Hisobot bo‘limini tanlang.','Выберите раздел отчёта.')
+
+TEXT['contact_phone']=('KPda ko‘rinadigan o‘z telefon raqamingizni kiriting. Masalan: +998 90 123 45 67.','Введите свой номер для связи в КП. Например: +998 90 123 45 67.')
+ERRORS['contact_phone']=('KP tuzuvchining shaxsiy aloqa raqamini kiriting.','Укажите личный контактный номер составителя КП.')

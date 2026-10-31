@@ -92,6 +92,14 @@ def quotation_pdf(store,uid,ref):
     doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=42,bottomMargin=40,title=f'TOPSHINALAR - KP #{ref}')
     logo=Image(str(Path(__file__).resolve().parent/'assets'/'topshinalar-logo.png'),width=260,height=260*195/800,hAlign='LEFT')
     body=[logo,Spacer(1,14),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,18),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,10),Spacer(1,14)]
+    creator=store.one('users',q['actor'])
+    creator_name=q.get('creator_name') or creator['name']
+    creator_phone=q.get('creator_phone') or store.contact_phone(q['actor'])
+    if creator_phone.startswith('+998') and len(creator_phone)==13:
+        creator_phone=creator_phone[:4]+' '+creator_phone[4:6]+' '+creator_phone[6:9]+' '+creator_phone[9:11]+' '+creator_phone[11:]
+    body += [p(('Составил: ' if ru else 'Tuzdi: ')+creator_name)]
+    body += [p(('Для связи: ' if ru else 'Aloqa uchun: ')+creator_phone)] if creator_phone else [p('Личный номер не указан' if ru else 'Shaxsiy raqam kiritilmagan')]
+    body += [Spacer(1,8)]
     headers=['Фото','Товар','Шт.','Цена','Сумма'] if ru else ['Rasm','Mahsulot','Dona','Narx','Jami']
     data=[[p(h) for h in headers]]
     from decimal import Decimal

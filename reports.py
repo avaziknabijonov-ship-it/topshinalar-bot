@@ -27,6 +27,7 @@ def report_group(section):
 
 
 COLUMNS={
+'creator_name':('KP tuzuvchi','Составитель КП'),'creator_phone':('Tuzuvchi telefoni','Телефон составителя'),
 'currency':('Valyuta','Валюта'),'exchange_rate':('USD kursi, so‘m','Курс USD, сум'),'source_total_usd':('Asl jami, USD','Исходная сумма, USD'),
 'warehouse_name':('Ombor','Склад'),'stock_value':('Narxi ma’lum qoldiq qiymati','Стоимость остатков с ценой'),'unknown_stock':('Qoldig‘i kiritilmagan mahsulotlar','Товары без остатка'),'unknown_price':('Narxi kiritilmagan qoldiqlar','Остатки без цены'),'as_of':('Qoldiq olingan vaqt','Время снимка остатков'),'stock_status':('Qoldiq holati','Статус остатка'),'kind':('Harakat turi','Тип движения'),'action':('Amal','Действие'),
 'brand':('Brend','Бренд'),'size':('Razmer','Размер'),'debt_due':('To‘lov muddati','Срок оплаты'),
