@@ -34,6 +34,35 @@ class CurrencyTests(unittest.TestCase):
         self.assertEqual(self.s.one('quotes',ref)['total'],47387451)
         self.assertEqual(self.s.one('quotes',ref)['exchange_rate'],'12800.50')
 
+    def test_pdf_shows_unit_price_without_quantity_or_totals(self):
+        from unittest.mock import patch
+        from reportlab.platypus import Table
+        from core import fmt
+        ref=self.quote()
+        for lang in ('uz','ru'):
+            with self.s.db:self.s.db.execute('UPDATE quotes SET lang=? WHERE id=?',(lang,ref))
+            with patch('quotation.SimpleDocTemplate.build') as build:quotation_pdf(self.s,20,ref)
+            story=build.call_args.args[0]
+            table=next(x for x in story if isinstance(x,Table))
+            cells=[[c.getPlainText() if hasattr(c,'getPlainText') else '' for c in row] for row in table._cellvalues]
+            self.assertEqual(len(cells[0]),3)
+            self.assertEqual(cells[0][-1],'1 dona narxi' if lang=='uz' else 'Цена за 1 шт.')
+            self.assertEqual(cells[1][-1],fmt(15795817))
+            text=' '.join(c for row in cells for c in row)+' '.join(x.getPlainText() for x in story if hasattr(x,'getPlainText'))
+            self.assertNotIn(fmt(47387451),text)
+            for label in ('Итого:','Jami:','Сумма','Шт.'):
+                self.assertNotIn(label,text)
+        self.assertEqual(self.s.one('quotes',ref)['total'],47387451)
+
+    def test_quote_product_photo_is_larger_and_preserves_proportions(self):
+        from quotation import product_image
+        picture=product_image('catalog:haida-hd183-b6119c.jpg')
+        self.assertIsNotNone(picture)
+        self.assertGreater(picture.drawHeight,62)
+        self.assertLessEqual(picture.drawHeight,120)
+        self.assertLessEqual(picture.drawWidth,100)
+        self.assertAlmostEqual(picture.drawWidth/picture.drawHeight,picture.imageWidth/picture.imageHeight)
+
     def test_manual_rate_required_and_validated_without_writes(self):
         for i,rate in enumerate([None,'',0,-1,'NaN','Infinity','0.001','1000001','abc']):
             with self.subTest(rate=rate),self.assertRaisesRegex(ValueError,'exchange_rate'):
@@ -93,10 +122,10 @@ class QuotationPresentationTests(unittest.TestCase):
             for forbidden in ('Customer','+998901234567','USD','UZS','Kurs:','Курс:','Mijoz:','Клиент:'):
                 self.assertNotIn(forbidden,text)
             self.assertIn('Istalgan to‘lov usuli' if lang=='uz' else 'Любая форма оплаты',text)
-            self.assertIn('Kelishuv asosida' if lang=='uz' else 'По договорённости',text)
+            self.assertIn('Yetkazib berish kelishilgan holda' if lang=='uz' else 'Доставка по согласованию',text)
             self.assertEqual(sum(isinstance(x,PageBreak) for x in story),0)
             self.assertEqual(sum(isinstance(x,Image) for x in story),1)
-            self.assertEqual(len(next(x for x in story if isinstance(x,Table))._colWidths),5)
+            self.assertEqual(len(next(x for x in story if isinstance(x,Table))._colWidths),3)
 
 class CurrencyMigrationTests(unittest.TestCase):
     def test_old_amount_and_quote_retained_prices_require_usd_entry(self):

@@ -2,7 +2,7 @@
 
 Yangi narxlar, sotuv, qarz, to‘lov, yetkazish va jarimalar USD’da. Summa ikki kasr xonasigacha qabul qilinadi. Excel kirim narxi ham USD’da: `Narx`, `Narx USD` yoki `Цена USD` ustuni.
 
-Savatga mahsulotlarni tanlang, dona va dollar narxini tekshiring, **KP tayyorlash** tugmasini bosing. Mijoz, **1 USD uchun so‘m kursi**, to‘lov va olish shartini tanlang. Tasdiqda USD jami va so‘mdagi KP jami ko‘rsatiladi. PDF so‘mda chiqadi, kurs KP bilan saqlanadi. Bir dona narxi so‘mning ikki kasrigacha yaxlitlanadi, qator jami shu narx × dona bo‘ladi. Eski KP qayta yuklanganda joriy kursdan qayta hisoblanmaydi.
+Savatga mahsulotlarni tanlang, dona va dollar narxini tekshiring, **KP tayyorlash** tugmasini bosing. Mijoz, **1 USD uchun so‘m kursi**, to‘lov va olish shartini tanlang. Tasdiqda USD jami va so‘mdagi KP jami ko‘rsatiladi. PDF so‘mda chiqadi: kattaroq rasm, mahsulot nomi va faqat 1 dona narxi ko‘rsatiladi. Dona soni, qator jami va umumiy summa PDFga chiqarilmaydi; ular ichki hisobda saqlanadi. Kurs KP bilan saqlanadi. Bir dona narxi so‘mning ikki kasrigacha yaxlitlanadi, qator jami shu narx × dona bo‘ladi. Eski KP qayta yuklanganda joriy kursdan qayta hisoblanmaydi.
 
 KP savdo yoki qarz yaratmaydi va qoldiqni kamaytirmaydi. Mini App savati KP tayyorlangandan keyin saqlanadi.
 

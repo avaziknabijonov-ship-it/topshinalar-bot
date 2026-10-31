@@ -4,7 +4,6 @@ from pathlib import Path
 from html import escape
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -65,7 +64,7 @@ def product_image(reference):
                 payload=response.read(8*1024*1024+1)
         if len(payload)>8*1024*1024:return None
         image=Image(io.BytesIO(payload))
-        scale=min(52/image.imageWidth,62/image.imageHeight)
+        scale=min(100/image.imageWidth,120/image.imageHeight)
         image.drawWidth=image.imageWidth*scale
         image.drawHeight=image.imageHeight*scale
         return image
@@ -86,7 +85,6 @@ def quotation_pdf(store,uid,ref):
     styles=getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BodyUnicode',fontName='Unicode',fontSize=9,leading=14,spaceAfter=8))
     styles.add(ParagraphStyle(name='TitleUnicode',fontName='Unicode',fontSize=20,leading=26,textColor=colors.HexColor('#0B0B0A'),spaceAfter=10))
-    styles.add(ParagraphStyle(name='TotalUnicode',fontName='Unicode',fontSize=13,leading=20,alignment=TA_RIGHT,spaceBefore=12))
     p=lambda text: Paragraph(escape(str(text)).replace('\n','<br/>'),styles['BodyUnicode'])
     out=io.BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=42,bottomMargin=40,title=f'TOPSHINALAR - KP #{ref}')
@@ -100,22 +98,22 @@ def quotation_pdf(store,uid,ref):
     body += [p(('Составил: ' if ru else 'Tuzdi: ')+creator_name)]
     body += [p(('Для связи: ' if ru else 'Aloqa uchun: ')+creator_phone)] if creator_phone else [p('Личный номер не указан' if ru else 'Shaxsiy raqam kiritilmagan')]
     body += [Spacer(1,8)]
-    headers=['Фото','Товар','Шт.','Цена','Сумма'] if ru else ['Rasm','Mahsulot','Dona','Narx','Jami']
+    headers=['Фото','Товар','Цена за 1 шт.'] if ru else ['Rasm','Mahsulot','1 dona narxi']
     data=[[p(h) for h in headers]]
-    from decimal import Decimal
+    from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
     for i in lines:
-        total=int((Decimal(i['price'])*i['qty']*(100-i['discount'])/100).quantize(Decimal('1')))
+        unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
         if reference not in image_cache:image_cache[reference]=product_image(reference)
         picture=image_cache[reference] or p('Нет фото' if ru else 'Rasm mavjud emas')
-        data.append([picture,p(i['name']),p(i['qty']),p(fmt(Decimal(total)/i['qty'])),p(fmt(total))])
-    table=Table(data,colWidths=[68,192,35,102,122.28],repeatRows=1,hAlign='LEFT')
+        data.append([picture,p(i['name']),p(fmt(unit_price))])
+    table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
     # Available A4 width is about 519 points.
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),8)]))
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
-    fulfillment='По договорённости' if ru else 'Kelishuv asosida'
-    body += [table,Paragraph(('Итого: ' if ru else 'Jami: ')+fmt(q['total']),styles['TotalUnicode']),Spacer(1,20),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,10),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
+    fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
+    body += [table,Spacer(1,20),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,10),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
     contact_text=[
         p('Контакты TOPSHINALAR' if ru else 'TOPSHINALAR kontaktlari'),
         p('Сканируйте QR-код: сайт, адрес и call-центр.' if ru else 'QR-kodni skanerlang: sayt, manzil va call-markaz.'),
