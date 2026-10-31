@@ -98,6 +98,28 @@ class QuotationPresentationTests(unittest.TestCase):
         self.assertIsNone(product_image('catalog:missing-model.jpg'))
         self.assertIsNone(product_image(''))
 
+    def test_four_large_product_photos_and_terms_fit_one_page_in_both_languages(self):
+        from unittest.mock import patch
+        from reportlab.pdfgen.canvas import Canvas
+        from reportlab.platypus import SimpleDocTemplate
+        photos=['catalog:haida-hd183-b6119c.jpg','catalog:haida-hd776-2ecaf7.jpg','catalog:haida-hd168-948d35.jpg','catalog:haida-hd269-48619e.jpg']
+        with self.s.db:
+            products=[]
+            for index,photo in enumerate(photos):
+                product=self.s.product(10,'Haida HD'+str(index)+' 315/80R22.5 22PR','380')
+                self.s.db.execute('UPDATE products SET photo=? WHERE id=?',(photo,product));products.append(product)
+        ref=self.service.write(20,'four-photo-layout','quote',{'client':self.client,'items':[{'product':product,'qty':1,'price':'380'} for product in products],'payment':'naqd','fulfillment':'pickup','exchange_rate':'12000'})['id']
+        original_build=SimpleDocTemplate.build
+        for lang in ('uz','ru'):
+            pages=[]
+            class PageCounter(Canvas):
+                def showPage(self):pages.append(self.getPageNumber());super().showPage()
+            def build(doc,story,**kwargs):return original_build(doc,story,canvasmaker=PageCounter,**kwargs)
+            with self.s.db:self.s.db.execute('UPDATE quotes SET lang=? WHERE id=?',(lang,ref))
+            with patch('quotation.SimpleDocTemplate.build',new=build):
+                self.assertTrue(quotation_pdf(self.s,20,ref).startswith(b'%PDF'))
+            self.assertEqual(pages,[1],lang)
+
     def test_contact_qr_has_approved_website_phone_and_address(self):
         from quotation import company_contact_payload, company_contact_qr, COMPANY_ADDRESS
         from reportlab.graphics.shapes import Drawing

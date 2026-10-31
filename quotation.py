@@ -44,7 +44,7 @@ def company_contact_qr(size=84):
     return drawing
 
 
-def product_image(reference):
+def product_image(reference,max_height=120):
     """Read the selected product's saved reference; never substitute another model."""
     from catalog import local_photo
     import json
@@ -69,7 +69,7 @@ def product_image(reference):
                 payload=response.read(8*1024*1024+1)
         if len(payload)>8*1024*1024:return None
         image=Image(io.BytesIO(payload))
-        scale=min(100/image.imageWidth,120/image.imageHeight)
+        scale=min(100/image.imageWidth,max_height/image.imageHeight)
         image.drawWidth=image.imageWidth*scale
         image.drawHeight=image.imageHeight*scale
         return image
@@ -88,15 +88,15 @@ def quotation_pdf(store,uid,ref):
         pdfmetrics.registerFont(TTFont('Unicode',font))
     ru=q['lang']=='ru'
     styles=getSampleStyleSheet()
-    styles.add(ParagraphStyle(name='BodyUnicode',fontName='Unicode',fontSize=9,leading=14,spaceAfter=8))
-    styles.add(ParagraphStyle(name='TitleUnicode',fontName='Unicode',fontSize=20,leading=26,textColor=colors.HexColor('#0B0B0A'),spaceAfter=10))
+    styles.add(ParagraphStyle(name='BodyUnicode',fontName='Unicode',fontSize=9,leading=13,spaceAfter=4))
+    styles.add(ParagraphStyle(name='TitleUnicode',fontName='Unicode',fontSize=20,leading=26,textColor=colors.HexColor('#0B0B0A'),spaceAfter=8))
     p=lambda text: Paragraph(escape(str(text)).replace('\n','<br/>'),styles['BodyUnicode'])
     out=io.BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=42,bottomMargin=40,title=f'TOPSHINALAR - KP #{ref}')
     logo=Image(str(Path(__file__).resolve().parent/'assets'/'topshinalar-logo.png'),width=260,height=260*195/800,hAlign='LEFT')
-    header=Table([[logo,company_contact_qr()]],colWidths=[doc.width-90,90])
+    header=Table([[logo,company_contact_qr(64)]],colWidths=[doc.width-70,70])
     header.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
-    body=[header,Spacer(1,14),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,18),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,10),Spacer(1,14)]
+    body=[header,Spacer(1,8),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,10),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,4)]
     creator=store.one('users',q['actor'])
     creator_name=q.get('creator_name') or creator['name']
     creator_phone=q.get('creator_phone') or store.contact_phone(q['actor'])
@@ -104,15 +104,17 @@ def quotation_pdf(store,uid,ref):
         creator_phone=creator_phone[:4]+' '+creator_phone[4:6]+' '+creator_phone[6:9]+' '+creator_phone[9:11]+' '+creator_phone[11:]
     body += [p(('Составил: ' if ru else 'Tuzdi: ')+creator_name)]
     body += [p(('Для связи: ' if ru else 'Aloqa uchun: ')+creator_phone)] if creator_phone else [p('Личный номер не указан' if ru else 'Shaxsiy raqam kiritilmagan')]
-    body += [Spacer(1,8)]
+    body += [Spacer(1,6)]
     headers=['Фото','Товар','Цена за 1 шт.'] if ru else ['Rasm','Mahsulot','1 dona narxi']
     data=[[p(h) for h in headers]]
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
+    # Reserve room for author and terms on a four/five-product A4 proposal.
+    photo_height=min(120, max(84, 464/len(lines)-12)) if lines and len(lines)<=5 else 120
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
-        if reference not in image_cache:image_cache[reference]=product_image(reference)
+        if reference not in image_cache:image_cache[reference]=product_image(reference,max_height=photo_height)
         picture=image_cache[reference] or p('Нет фото' if ru else 'Rasm mavjud emas')
         data.append([picture,p(i['name']),p(fmt(unit_price))])
     table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
@@ -120,7 +122,7 @@ def quotation_pdf(store,uid,ref):
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),8)]))
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
-    body += [table,Spacer(1,20),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,10),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
+    body += [table,Spacer(1,8),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,4),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))
