@@ -105,7 +105,7 @@ def quotation_pdf(store,uid,ref):
     body += [p(('Составил: ' if ru else 'Tuzdi: ')+creator_name)]
     body += [p(('Для связи: ' if ru else 'Aloqa uchun: ')+creator_phone)] if creator_phone else [p('Личный номер не указан' if ru else 'Shaxsiy raqam kiritilmagan')]
     body += [Spacer(1,6)]
-    headers=['Фото','Товар','Цена за 1 шт.'] if ru else ['Rasm','Mahsulot','1 dona narxi']
+    headers=['Фото','Товар','Цена за 1 шт. с НДС'] if ru else ['Rasm','Mahsulot','1 dona narxi (QQS bilan)']
     data=[[p(h) for h in headers]]
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}

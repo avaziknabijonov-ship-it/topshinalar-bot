@@ -46,7 +46,7 @@ class CurrencyTests(unittest.TestCase):
             table=next(x for x in story if isinstance(x,Table) and len(x._colWidths)==3)
             cells=[[c.getPlainText() if hasattr(c,'getPlainText') else '' for c in row] for row in table._cellvalues]
             self.assertEqual(len(cells[0]),3)
-            self.assertEqual(cells[0][-1],'1 dona narxi' if lang=='uz' else 'Цена за 1 шт.')
+            self.assertEqual(cells[0][-1],'1 dona narxi (QQS bilan)' if lang=='uz' else 'Цена за 1 шт. с НДС')
             self.assertEqual(cells[1][-1],fmt(15795817))
             text=' '.join(c for row in cells for c in row)+' '.join(x.getPlainText() for x in story if hasattr(x,'getPlainText'))
             self.assertNotIn(fmt(47387451),text)
