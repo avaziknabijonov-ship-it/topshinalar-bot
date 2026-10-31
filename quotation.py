@@ -7,7 +7,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, HRFlowable
 from core import fmt
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing, Rect
@@ -18,7 +18,12 @@ COMPANY_PHONE='+998974788606'
 COMPANY_ADDRESS="Toshkent viloyati, Zangiota tumani, Erkin, Tariq-Teshar MFY, M39 yo'li, 54A"
 
 def company_contact_payload():
-    # A contact card works offline and exposes tappable phone and website fields.
+    from urllib.parse import urlsplit
+    origin=os.environ.get('PUBLIC_APP_URL','').rstrip('/')
+    parsed=urlsplit(origin)
+    if parsed.scheme=='https' and parsed.netloc and not parsed.path and not parsed.query and not parsed.fragment:
+        return origin+'/company'
+    # CLI installations without a Mini App keep an offline contact card.
     return '\r\n'.join([
         'BEGIN:VCARD',
         'VERSION:3.0',
@@ -30,7 +35,7 @@ def company_contact_payload():
         'END:VCARD',
     ])
 
-def company_contact_qr(size=116):
+def company_contact_qr(size=84):
     widget=QrCodeWidget(company_contact_payload(),barBorder=4,barLevel='M')
     x0,y0,x1,y1=widget.getBounds()
     drawing=Drawing(size,size,transform=[size/(x1-x0),0,0,size/(y1-y0),-x0*size/(x1-x0),-y0*size/(y1-y0)])
@@ -89,7 +94,9 @@ def quotation_pdf(store,uid,ref):
     out=io.BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=42,bottomMargin=40,title=f'TOPSHINALAR - KP #{ref}')
     logo=Image(str(Path(__file__).resolve().parent/'assets'/'topshinalar-logo.png'),width=260,height=260*195/800,hAlign='LEFT')
-    body=[logo,Spacer(1,14),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,18),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,10),Spacer(1,14)]
+    header=Table([[logo,company_contact_qr()]],colWidths=[doc.width-90,90])
+    header.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
+    body=[header,Spacer(1,14),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,18),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,10),Spacer(1,14)]
     creator=store.one('users',q['actor'])
     creator_name=q.get('creator_name') or creator['name']
     creator_phone=q.get('creator_phone') or store.contact_phone(q['actor'])
@@ -114,22 +121,6 @@ def quotation_pdf(store,uid,ref):
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
     body += [table,Spacer(1,20),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,10),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
-    contact_text=[
-        p('Контакты TOPSHINALAR' if ru else 'TOPSHINALAR kontaktlari'),
-        p('Сканируйте QR-код: сайт, адрес и call-центр.' if ru else 'QR-kodni skanerlang: sayt, manzil va call-markaz.'),
-        p(COMPANY_WEBSITE),
-        p('+998 97 478 86 06'),
-        p(COMPANY_ADDRESS),
-    ]
-    contact=Table([[company_contact_qr(),contact_text]],colWidths=[136,doc.width-136])
-    contact.setStyle(TableStyle([
-        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
-        ('BACKGROUND',(0,0),(-1,-1),colors.HexColor('#f7f7f7')),
-        ('BOX',(0,0),(-1,-1),0.4,colors.HexColor('#dedede')),
-        ('LEFTPADDING',(0,0),(-1,-1),8),('RIGHTPADDING',(0,0),(-1,-1),8),
-        ('TOPPADDING',(0,0),(-1,-1),8),('BOTTOMPADDING',(0,0),(-1,-1),8),
-    ]))
-    body += [Spacer(1,18),KeepTogether([contact])]
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))

@@ -182,6 +182,12 @@ class MiniAppTests(unittest.TestCase):
             return urlopen(Request(base+path,headers=headers,data=json.dumps(data).encode() if data else None),timeout=5)
         try:
             with request('/') as response:self.assertIn(b'TOPSHINALAR',response.read())
+            with request('/company') as response:
+                page=response.read().decode();self.assertIn('/company/registration.pdf',page);self.assertIn('/company/vat.pdf',page);self.assertIn('+998 97 478 86 06',page)
+            for path,asset in [('/company/registration.pdf','company-registration.pdf'),('/company/vat.pdf','vat-registration.pdf')]:
+                with request(path) as response:
+                    self.assertEqual(response.headers['Content-Type'],'application/pdf')
+                    self.assertEqual(response.read(),(Path('assets/quotation-attachments')/asset).read_bytes())
             for uid,origin in [(None,None),(999,None),(20,'https://evil.example')]:
                 with self.assertRaises(HTTPError) as error:request('/api/catalog',uid,origin)
                 self.assertEqual(error.exception.code,403)

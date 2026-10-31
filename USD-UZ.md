@@ -11,3 +11,7 @@ Eski so‘m yozuvlari o‘z summasi va UZS valyutasi bilan qoladi. USD’ga avto
 ## KP tuzuvchining kontakti
 
 KPda tuzgan xodimning Telegramdagi ismi va shaxsiy aloqa raqami chiqadi. Birinchi KP tayyorlashda o‘z raqamini kiritadi. Raqam shu xodim uchun alohida saqlanadi va keyingi KP formasiga tayyor qo‘yiladi; xodim uni o‘zgartirishi mumkin. Ism va telefon yangi KP bilan birga saqlanadi, keyingi profil o‘zgarishi oldingi KPni o‘zgartirmaydi. Shaxsiy raqam yo‘q bo‘lsa yangi KP uni kiritishni talab qiladi. Kompaniya QR-kodidagi call-markaz raqami alohida qoladi.
+
+## Ixcham QR
+
+PDFda kompaniya sayti, manzili va call-markaz raqami yozilmaydi. Logo yonidagi QR `PUBLIC_APP_URL/company` sahifasini ochadi: kontaktlar va berilgan ikkita guvohnomaning asl PDF fayllari shu yerda. Sahifa Telegramga kirishni talab qilmaydi. KP tuzuvchining shaxsiy kontakti PDFda qoladi. Mini App URL sozlanmagan CLI o‘rnatishda QR faqat oldingi kontakt kartasini saqlaydi; hujjatli sahifa uchun barqaror HTTPS `PUBLIC_APP_URL` kerak.

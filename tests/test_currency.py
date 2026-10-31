@@ -43,7 +43,7 @@ class CurrencyTests(unittest.TestCase):
             with self.s.db:self.s.db.execute('UPDATE quotes SET lang=? WHERE id=?',(lang,ref))
             with patch('quotation.SimpleDocTemplate.build') as build:quotation_pdf(self.s,20,ref)
             story=build.call_args.args[0]
-            table=next(x for x in story if isinstance(x,Table))
+            table=next(x for x in story if isinstance(x,Table) and len(x._colWidths)==3)
             cells=[[c.getPlainText() if hasattr(c,'getPlainText') else '' for c in row] for row in table._cellvalues]
             self.assertEqual(len(cells[0]),3)
             self.assertEqual(cells[0][-1],'1 dona narxi' if lang=='uz' else 'Цена за 1 шт.')
@@ -110,6 +110,26 @@ class QuotationPresentationTests(unittest.TestCase):
         self.assertTrue(payload.endswith('END:VCARD'))
         self.assertIsInstance(company_contact_qr(),Drawing)
 
+    def test_qr_opens_company_page_and_company_details_are_scan_only(self):
+        from unittest.mock import patch
+        from quotation import company_contact_payload, COMPANY_PHONE, COMPANY_ADDRESS
+        with patch.dict('os.environ',{'PUBLIC_APP_URL':'https://bot.example.uz/'}):
+            self.assertEqual(company_contact_payload(),'https://bot.example.uz/company')
+        from reportlab.platypus import Table
+        ref=self.service.write(20,'qr-scan-only-0001','quote',{'client':self.client,'items':[{'product':self.product,'qty':1,'price':'380'}],'payment':'naqd','fulfillment':'pickup','exchange_rate':'12000'})['id']
+        with patch('quotation.SimpleDocTemplate.build') as build:quotation_pdf(self.s,20,ref)
+        def visible_text(items):
+            parts=[]
+            for item in items:
+                if isinstance(item,Table):
+                    for row in item._cellvalues:parts.extend(visible_text(row))
+                elif hasattr(item,'getPlainText'):parts.append(item.getPlainText())
+            return parts
+        text=' '.join(visible_text(build.call_args.args[0]))
+        for hidden in (COMPANY_ADDRESS,'+998 97 478 86 06','https://topshinalar.uz'):
+            self.assertNotIn(hidden,text)
+        self.assertIn('Aloqa uchun:',text)
+
     def test_pdf_presentation_in_both_languages(self):
         from unittest.mock import patch
         from reportlab.platypus import Image, PageBreak, Table
@@ -124,8 +144,8 @@ class QuotationPresentationTests(unittest.TestCase):
             self.assertIn('Istalgan to‘lov usuli' if lang=='uz' else 'Любая форма оплаты',text)
             self.assertIn('Yetkazib berish kelishilgan holda' if lang=='uz' else 'Доставка по согласованию',text)
             self.assertEqual(sum(isinstance(x,PageBreak) for x in story),0)
-            self.assertEqual(sum(isinstance(x,Image) for x in story),1)
-            self.assertEqual(len(next(x for x in story if isinstance(x,Table))._colWidths),3)
+            self.assertEqual(sum(isinstance(x,Image) for x in story),0)
+            self.assertEqual(len(next(x for x in story if isinstance(x,Table) and len(x._colWidths)==3)._colWidths),3)
 
 class CurrencyMigrationTests(unittest.TestCase):
     def test_old_amount_and_quote_retained_prices_require_usd_entry(self):
