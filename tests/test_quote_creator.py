@@ -71,6 +71,39 @@ class QuoteCreatorTests(unittest.TestCase):
         self.assertEqual(quote['creator_phone'],'+998770690007')
         self.assertEqual(len(self.s.rows('SELECT * FROM quote_items')),4)
 
+    def test_pdf_resend_queues_latest_file_to_requesting_chat_once_per_request(self):
+        import base64,json
+        ref=self.quote(20,'resend-source-0001')
+        with self.s.db:self.s.db.execute('DELETE FROM outbox')
+        first=self.service.write(20,'resend-request-0001','pdf',{'ref':ref,'chat_id':21})
+        repeat=self.service.write(20,'resend-request-0001','pdf',{'ref':ref,'chat_id':21})
+        self.assertEqual(first,repeat)
+        rows=self.s.rows('SELECT * FROM outbox');self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]['chat'],20)
+        payload=json.loads(rows[0]['payload'])
+        self.assertEqual(payload['filename'],f'TOPSHINALAR-KP-{ref}.pdf')
+        self.assertTrue(base64.b64decode(payload['document']).startswith(b'%PDF'))
+        self.service.write(20,'resend-request-0002','pdf',{'ref':ref})
+        self.assertEqual(len(self.s.rows('SELECT * FROM outbox')),2)
+        self.assertEqual(len(self.s.rows('SELECT * FROM quotes')),1)
+        from unittest.mock import Mock
+        telegram=Mock()
+        self.service.b.drain(telegram)
+        self.assertEqual(telegram.document.call_count,2)
+        for sent in telegram.document.call_args_list:
+            self.assertEqual(sent.args[0],20)
+            self.assertTrue(sent.args[1].startswith(b'%PDF'))
+            self.assertEqual(sent.args[2],f'TOPSHINALAR-KP-{ref}.pdf')
+        self.assertTrue(all(row['sent'] for row in self.s.rows('SELECT sent FROM outbox')))
+
+    def test_pdf_resend_checks_ownership_and_director_receives_own_copy(self):
+        ref=self.quote(20,'resend-access-0001')
+        with self.s.db:self.s.db.execute('DELETE FROM outbox')
+        with self.assertRaises(PermissionError):self.service.write(21,'resend-forbidden01','pdf',{'ref':ref})
+        self.assertEqual(self.s.rows('SELECT * FROM outbox'),[])
+        self.service.write(10,'resend-director001','pdf',{'ref':ref})
+        self.assertEqual(self.s.rows('SELECT chat FROM outbox'),[{'chat':10}])
+
     def test_phone_normalization(self):
         self.assertEqual(normalize_contact_phone('974788606'),'+998974788606')
         self.assertEqual(normalize_contact_phone('998974788606'),'+998974788606')

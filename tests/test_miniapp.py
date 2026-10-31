@@ -204,6 +204,12 @@ class MiniAppTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as error:request('/api/quote/1.pdf',21)
             self.assertEqual(error.exception.code,403)
             with request('/api/quote/1.pdf',20) as response:self.assertTrue(response.read().startswith(b'%PDF'))
+            before=len(self.s.rows('SELECT * FROM outbox'))
+            for _ in range(2):
+                with request('/api/action',20,data={'cmd':'pdf','data':{'ref':1}},key='http-pdf-send-0001') as response:self.assertTrue(json.load(response)['ok'])
+            self.assertEqual(len(self.s.rows('SELECT * FROM outbox')),before+1)
+            with self.assertRaises(HTTPError) as error:request('/api/action',21,data={'cmd':'pdf','data':{'ref':1}},key='http-pdf-forbid001')
+            self.assertEqual(error.exception.code,403)
             with self.assertRaises(HTTPError) as error:request('/api/action',20,data={'cmd':'sell','data':self.sale_data})
             self.assertEqual(error.exception.code,400)
             body={'cmd':'sell','data':self.sale_data,'money_version':2}
