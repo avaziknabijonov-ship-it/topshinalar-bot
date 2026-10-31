@@ -3,6 +3,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -352,7 +353,9 @@ class MiniHandler(BaseHTTPRequestHandler):
             lang=user['lang'] if user else 'uz';message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
             if isinstance(exc,ExcelError):message=str(exc)
             self.send(400,{'error':message})
-        except Exception:self.send(503,{'error':'Vaqtincha ulanish yo‘q / Временно недоступно'})
+        except Exception:
+            logging.exception('Mini App request failed: %s %s','POST' if write else 'GET',path)
+            self.send(503,{'error':'Vaqtincha ulanish yo‘q / Временно недоступно'})
         finally:
             if store:store.db.close()
 

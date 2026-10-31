@@ -1,0 +1,30 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const source=fs.readFileSync('web/app.js','utf8');
+const apiSource=source.slice(source.indexOf('async function api('),source.indexOf('\nconst photoCache'));
+async function check(){
+ let replies=[],calls=[];
+ const response=(status,body,json=true)=>({ok:status===200,status,headers:{get:()=>json?'application/json':'text/html'},json:async()=>{if(!json)throw Error('HTML');return body}});
+ const context={T:(_,ru)=>ru,tg:{initData:'signed-test'},setTimeout:callback=>callback(),fetch:async(path,request)=>{calls.push({path,request});const value=replies.shift();if(value instanceof Error)throw value;return value}};
+ vm.createContext(context);vm.runInContext(apiSource,context);
+ const options={method:'POST',headers:{'Idempotency-Key':'same-quote-key'},body:{cmd:'quote',data:{contact_phone:'+998770690007'}}};
+ replies=[response(502,null,false),response(200,{ok:true,id:7})];
+ assert.equal((await context.api('/api/action',options)).id,7);
+ assert.equal(calls.length,2);assert.equal(calls[0].request.body,calls[1].request.body);
+ assert.equal(calls[0].request.headers['Idempotency-Key'],calls[1].request.headers['Idempotency-Key']);
+ assert.equal(JSON.parse(calls[0].request.body).money_version,2);assert.equal(options.body.money_version,undefined);
+ calls=[];replies=[new TypeError('lost response after server commit'),response(200,{ok:true,id:7})];
+ assert.equal((await context.api('/api/action',options)).id,7);assert.equal(calls.length,2);
+ calls=[];replies=[response(400,{error:'Проверьте номер'})];
+ await assert.rejects(context.api('/api/action',options),/Проверьте номер.*HTTP 400/);assert.equal(calls.length,1);
+ calls=[];replies=[response(403,{error:'Telegram'})];
+ await assert.rejects(context.api('/api/action',options),/Telegram.*HTTP 403/);assert.equal(calls.length,1);
+ calls=[];replies=[response(502,null,false),response(502,null,false),response(502,null,false)];
+ await assert.rejects(context.api('/api/action',options),/HTTP 502/);assert.equal(calls.length,3);
+ calls=[];replies=[new TypeError('offline')];
+ await assert.rejects(context.api('/other',{method:'POST',body:{}}),/Связь/);assert.equal(calls.length,1);
+ console.log('API retry checks passed (6 scenarios)');
+}
+check().catch(error=>{console.error(error);process.exitCode=1});

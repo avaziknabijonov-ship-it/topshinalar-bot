@@ -58,6 +58,19 @@ class QuoteCreatorTests(unittest.TestCase):
             self.assertIn('Tuzdi:' if lang=='uz' else 'Составил:',text)
             self.assertNotIn(COMPANY_PHONE,text)
 
+    def test_four_tyre_quote_matches_reported_confirmation_and_retry_is_idempotent(self):
+        with self.s.db:
+            products=[self.s.product(10,'Haida '+name,price) for name,price in [('HD183','380'),('HD776','350'),('HD168','380'),('HD269','350')]]
+        payload={'client':self.client,'items':[{'product':product,'qty':1,'price':price} for product,price in zip(products,['380','350','380','350'])],'payment':'naqd','fulfillment':'pickup','exchange_rate':'12000','contact_phone':'+998770690007'}
+        first=self.service.write(20,'reported-four-tyres','quote',payload)
+        second=self.service.write(20,'reported-four-tyres','quote',payload)
+        self.assertEqual(first,second)
+        self.assertEqual(len(self.s.rows('SELECT * FROM quotes')),1)
+        quote=self.s.one('quotes',first['id'])
+        self.assertEqual(quote['total'],1752000000)
+        self.assertEqual(quote['creator_phone'],'+998770690007')
+        self.assertEqual(len(self.s.rows('SELECT * FROM quote_items')),4)
+
     def test_phone_normalization(self):
         self.assertEqual(normalize_contact_phone('974788606'),'+998974788606')
         self.assertEqual(normalize_contact_phone('998974788606'),'+998974788606')
