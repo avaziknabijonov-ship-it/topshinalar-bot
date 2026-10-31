@@ -181,7 +181,10 @@ class MiniAppTests(unittest.TestCase):
             if data:headers.update({'Content-Type':'application/json','Idempotency-Key':key})
             return urlopen(Request(base+path,headers=headers,data=json.dumps(data).encode() if data else None),timeout=5)
         try:
-            with request('/') as response:self.assertIn(b'TOPSHINALAR',response.read())
+            with request('/') as response:
+                html=response.read();self.assertIn(b'TOPSHINALAR',html);self.assertIn(b'/mobile.js',html)
+            with request('/mobile.js') as response:
+                self.assertIn('javascript',response.headers['Content-Type']);self.assertIn(b'keyboard-toolbar',response.read())
             with request('/company') as response:
                 page=response.read().decode();self.assertIn('/company/registration.pdf',page);self.assertIn('/company/vat.pdf',page);self.assertIn('+998 97 478 86 06',page)
             for path,asset in [('/company/registration.pdf','company-registration.pdf'),('/company/vat.pdf','vat-registration.pdf')]:
