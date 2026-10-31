@@ -15,7 +15,7 @@ async function api(path,options={}){
  if(options.body){headers['Content-Type']='application/json';request.body=JSON.stringify({...options.body,...(path==='/api/action'?{money_version:2}:{})})}
  const method=(options.method||'GET').toUpperCase();
  const retryable=method==='GET'||(path==='/api/action'&&method==='POST'&&Boolean(headers['Idempotency-Key']));
- const connectionError=status=>T('Server bilan aloqa uzildi','Связь с сервером прервана')+(status?` (HTTP ${status}). `:'. ')+T('Bir ozdan so‘ng qayta tasdiqlang. Takroriy KP yaratilmaydi.','Повторите подтверждение чуть позже. Повторное КП не создастся.');
+ const connectionError=status=>T('Server bilan aloqa uzildi','Связь с сервером прервана')+(status?` (HTTP ${status}). `:'. ')+(method==='POST'&&headers['Idempotency-Key']?T('Birozdan so‘ng qayta urinib ko‘ring. Bir xil so‘rov takroran saqlanmaydi.','Повторите попытку чуть позже. Один запрос не сохранится повторно.'):T('Birozdan so‘ng «Qayta urinish»ni bosing.','Чуть позже нажмите «Повторить».'));
  for(let attempt=0;attempt<3;attempt++){
   let response;
   try{response=await fetch(path,request)}catch(error){

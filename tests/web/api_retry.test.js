@@ -25,6 +25,8 @@ async function check(){
  await assert.rejects(context.api('/api/action',options),/HTTP 502/);assert.equal(calls.length,3);
  calls=[];replies=[new TypeError('offline')];
  await assert.rejects(context.api('/other',{method:'POST',body:{}}),/Связь/);assert.equal(calls.length,1);
- console.log('API retry checks passed (6 scenarios)');
+ calls=[];replies=[response(502,null,false),response(502,null,false),response(502,null,false)];
+ await assert.rejects(context.api('/api/dashboard'),error=>/HTTP 502/.test(error.message)&&!error.message.includes('КП'));assert.equal(calls.length,3);
+ console.log('API retry checks passed (7 scenarios)');
 }
 check().catch(error=>{console.error(error);process.exitCode=1});

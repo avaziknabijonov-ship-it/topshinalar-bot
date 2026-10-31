@@ -123,7 +123,8 @@ class QuotationPresentationTests(unittest.TestCase):
     def test_contact_qr_has_approved_website_phone_and_address(self):
         from quotation import company_contact_payload, company_contact_qr, COMPANY_ADDRESS
         from reportlab.graphics.shapes import Drawing
-        payload=company_contact_payload()
+        from unittest.mock import patch
+        with patch.dict('os.environ',{'PUBLIC_APP_URL':''}):payload=company_contact_payload()
         self.assertTrue(payload.startswith('BEGIN:VCARD\r\nVERSION:3.0'))
         self.assertIn('URL:https://topshinalar.uz',payload)
         self.assertIn('TEL;TYPE=WORK,VOICE:+998974788606',payload)
