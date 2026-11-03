@@ -365,8 +365,8 @@ class Bot(Usability):
             return str(exchange_rate(text))
         if key in {'price','amount','paid','fee'}:
             money(text,key=='amount');return text
-        if key=='payment':return normalize_payment(text)
-        if key=='fulfillment':return normalize_fulfillment(text)
+        if key=='payment':return normalize_payment(text) if text or cmd!='quote' else ''
+        if key=='fulfillment':return normalize_fulfillment(text) if text or cmd!='quote' else ''
         if key=='phone':
             phone=re.sub(r'[\s()-]','',text)
             if not re.fullmatch(r'\+?\d{9,15}',phone):raise ValueError('phone')
