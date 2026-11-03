@@ -134,7 +134,8 @@ class MiniService:
             return {'ok':True,'id':result}
         uploaded=None
         if cmd=='product_photo':
-            require_command(self.s,uid,cmd);self.s.one('products',integer(data.get('product')))
+            require_command(self.s,uid,cmd)
+            self.s.one('products',integer(data.get('product')))
             if self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(integer(data.get('product')),)).fetchone()[0]>=5:
                 raise ValueError('photo_limit')
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()

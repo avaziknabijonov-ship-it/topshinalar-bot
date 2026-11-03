@@ -151,7 +151,10 @@ class QuotationPresentationTests(unittest.TestCase):
         text=' '.join(visible_text(build.call_args.args[0]))
         for hidden in (COMPANY_ADDRESS,'+998 97 478 86 06','https://topshinalar.uz'):
             self.assertNotIn(hidden,text)
-        self.assertIn('Aloqa uchun:',text)
+        self.assertIn('+998 90 555 00 20',text)
+        self.assertNotIn('Aloqa uchun:',text)
+        self.assertNotIn('Tuzdi:',text)
+        self.assertNotIn('Составил:',text)
 
     def test_pdf_presentation_in_both_languages(self):
         from unittest.mock import patch

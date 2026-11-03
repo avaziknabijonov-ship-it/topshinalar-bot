@@ -55,7 +55,9 @@ class QuoteCreatorTests(unittest.TestCase):
             text=' '.join(x.getPlainText() for x in story if hasattr(x,'getPlainText'))
             self.assertIn('Salesperson',text)
             self.assertIn('+998 93 555 11 22',text)
-            self.assertIn('Tuzdi:' if lang=='uz' else 'Составил:',text)
+            self.assertNotIn('Tuzdi:',text)
+            self.assertNotIn('Составил:',text)
+            self.assertIn('Menejer' if lang=='uz' else 'Менеджер',text)
             self.assertNotIn(COMPANY_PHONE,text)
 
     def test_four_tyre_quote_matches_reported_confirmation_and_retry_is_idempotent(self):
