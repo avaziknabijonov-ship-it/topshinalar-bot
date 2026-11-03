@@ -17,6 +17,17 @@ from staff import require_command, permissions
 
 # Each dialog collects fields, previews the result, then saves only after confirmation.
 FORMS = {
+'supplier_new': [('name','name'),('phone','supplier_phone'),('note','note')],
+'supplier_edit': [('supplier','supplier'),('name','name'),('phone','supplier_phone'),('note','note')],
+'prixod': [('product','product'),('supplier','supplier'),('cost','receipt_cost'),('allocations','allocations'),('currency','account_currency'),('date','account_date'),('note','note')],
+'supplier_payment': [('supplier','supplier'),('amount','account_amount'),('manager','payment_manager'),('currency','account_currency'),('date','account_date'),('note','note')],
+'supplier_return': [('lot','supplier_lot'),('qty','qty'),('date','account_date'),('note','note')],
+'supplier_report': [('supplier','supplier_filter'),('from','from'),('until','until')],
+'manager_fund': [('manager','manager'),('amount','account_amount'),('currency','account_currency'),('date','account_date'),('note','note')],
+'manager_expense': [('manager','manager'),('amount','account_amount'),('currency','account_currency'),('date','account_date'),('note','note')],
+'manager_return': [('manager','manager'),('amount','account_amount'),('currency','account_currency'),('date','account_date'),('note','note')],
+'point_kind': [('point','point'),('kind','point_kind')],
+'transfer': [('product','product'),('source','transfer_source'),('destination','transfer_destination'),('qty','qty'),('note','note')],
 'newclient': [('name','name'),('phone','phone'),('address','address'),('note','note')],
 'newpoint': [('name','name')],
 'newproduct': [('name','product_name'),('price','price'),('photo','photo')],
@@ -217,6 +228,19 @@ class Bot(Usability):
         # Lookup commands remain usable during a dialog.
         if command:require_command(self.s,uid,command)
         if state:require_command(self.s,uid,state['cmd'])
+        if command=='suppliers':
+            result=self.s.suppliers(uid)
+            for row in result['suppliers']:
+                balances='\n'.join(fmt(b['balance'])+' '+b['currency'] for b in result['balances'] if b['supplier']==row['id'])
+                self.queue(uid,f"#{row['id']} {row['name']}\n{row['phone']}\n{row['note']}\n{balances}")
+            if not result['suppliers']:self.queue(uid,tr('empty',lang))
+            return
+        if command=='manager_account':
+            report=self.s.manager_account(uid)
+            for row in report['balances']:
+                self.queue(uid,f"{row['manager_name']}: {fmt(row['given'])} − {fmt(row['expenses'])} − {fmt(row['returned'])} = {fmt(row['balance'])} {row['currency']}")
+            self.xlsx(uid,{'manager_entries':report['entries'],'manager_balances':report['balances']},'manager-account.xlsx')
+            return
         if command in {'clients','stock','points','staff','tasks','quotes'}:
             self.listing(uid,command,text.partition(' ')[2] if text.startswith('/') else '')
             return
@@ -290,8 +314,10 @@ class Bot(Usability):
             lines=[]
             for key,val in state['data'].items():
                 if key=='items':
-                    for row in self.s.items(val):
-                        lines.append(f"{row['name']} × {row['qty']} | {fmt(row['price'])} USD | {fmt(row['total'])} USD")
+                    for row,raw in zip(self.s.items(val),val):
+                        point=raw.get('point',state['data'].get('point')) if state['cmd']=='sell' else None
+                        place=' | '+self.s.one('points',point)['name'] if point else ''
+                        lines.append(f"{row['name']} × {row['qty']} | {fmt(row['price'])} USD | {fmt(row['total'])} USD"+place)
                     lines.append(('Jami: ' if lang=='uz' else 'Итого: ')+fmt(sum(x['total'] for x in self.s.items(val)))+' USD')
                     if state['cmd']=='quote' and state['data'].get('exchange_rate'):
                         from core import exchange_rate
@@ -301,6 +327,10 @@ class Bot(Usability):
                         lines.append('1 USD = '+str(rate)+' UZS | '+fmt(total)+' UZS')
                 elif key=='photo':
                     pass
+                elif key=='allocations':
+                    for allocation in val:
+                        place=self.s.one('points',allocation['point'])
+                        lines.append(f"{place['name']}: {allocation['qty']}")
                 else:
                     if key=='payment':val=payment_label(val,lang)
                     if key=='fulfillment':val=fulfillment_label(val,lang)
@@ -310,7 +340,17 @@ class Bot(Usability):
                     if key in {'client','point','product'}:
                         table={'client':'clients','point':'points','product':'products'}[key]
                         val=f"#{val} {self.s.one(table,val)['name']}"
+                    if key=='supplier' and val is not None:
+                        val=f"#{val} {self.s.supplier_row(val)['name']}"
+                    if key=='manager' and val is not None:
+                        val=f"#{val} {self.s.one('users',val)['name']}"
                     lines.append(f'{title}\n{val}')
+            if state['cmd']=='prixod':
+                qty=sum(r['qty'] for r in state['data']['allocations'])
+                lines.append(self.words(uid,'Yetkazib beruvchi saldosiga: ','К сальдо поставщика: ')+fmt(money(state['data']['cost'])*qty)+' '+state['data']['currency'])
+            if state['cmd']=='supplier_return':
+                lot=self.s.rows('SELECT p.name,t.name point_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.id=?',(state['data']['lot'],))[0]
+                lines.append(lot['name']+' · '+lot['point_name']+' · '+fmt(lot['cost']*state['data']['qty'])+' '+lot['currency'])
             if state['cmd']=='sell':
                 total=sum(x['total'] for x in self.s.items(state['data']['items']));paid=money(state['data']['paid'])
                 if paid>total:raise ValueError('paid')
@@ -322,6 +362,40 @@ class Bot(Usability):
             self.queue(uid,'\n\n'.join(lines)+'\n\n'+tr('check',lang),keyboard={'keyboard':[[{'text':tr('confirm',lang)}],[{'text':tr('back',lang)},{'text':tr('cancel',lang)}]],'resize_keyboard':True})
 
     def validate(self,uid,cmd,key,text,message):
+        if key=='phone' and cmd in {'supplier_new','supplier_edit'} and text=='-':return ''
+        if key=='supplier':
+            if cmd=='supplier_report' and text=='0':return None
+            return self.s.supplier_row(text)['id']
+        if key=='cost':money(text);return text
+        if key=='currency':
+            from accounting import valid_currency
+            return valid_currency(text.upper())
+        if key=='date':
+            from accounting import accounting_date
+            return accounting_date(text)
+        if key=='manager':
+            if cmd=='supplier_payment' and text=='0':
+                self.s.director(uid);return None
+            manager=uid if text=='0' else int(text)
+            self.s._manager_access(uid,manager)
+            return manager
+        if key in {'source','destination'}:
+            value=integer(text);self.s.one('points',value);return value
+        if key=='kind' and cmd=='point_kind':
+            if text not in {'sklad','vitrina'}:raise ValueError('point_kind')
+            return text
+        if key=='lot':
+            value=integer(text)
+            if not self.s.db.execute('SELECT 1 FROM inventory_lots WHERE id=? AND receipt IS NOT NULL AND qty>0',(value,)).fetchone():raise ValueError('supplier_lot')
+            return value
+        if key=='allocations':
+            allocations=[]
+            for line in text.splitlines():
+                if not re.fullmatch(r'\d+\s*\|\s*\d+',line.strip()):raise ValueError('allocations')
+                point,qty=map(int,line.split('|'));self.s.one('points',point)
+                allocations.append({'point':integer(point),'qty':integer(qty)})
+            if not 1<=len(allocations)<=2:raise ValueError('allocations')
+            return allocations
         if key=='photo':
             if message.get('photo'):
                 return message['photo'][-1]['file_id']
@@ -403,6 +477,18 @@ class Bot(Usability):
 
     def execute(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd in {'supplier_new','supplier_edit'}:return self.s.supplier_save(uid,**d)
+        if cmd=='prixod':return self.s.receive(uid,**d)
+        if cmd=='supplier_payment':return self.s.supplier_pay(uid,**d)
+        if cmd=='supplier_return':return self.s.supplier_return(uid,**d)
+        if cmd=='point_kind':return self.s.point_kind(uid,**d)
+        if cmd=='transfer':return self.s.transfer(uid,**d)
+        if cmd in {'manager_fund','manager_expense','manager_return'}:
+            return self.s.manager_record(uid,kind={'manager_fund':'fund','manager_expense':'expense','manager_return':'return'}[cmd],**d)
+        if cmd=='supplier_report':
+            report=self.s.supplier_report(uid,d['from'],d['until'],d['supplier'])
+            self.xlsx(uid,{'supplier_stock':report['stock'],'supplier_sold':report['sold'],'supplier_entries':report['entries'],'supplier_balances':report['balances'],'supplier_lots':report['lots']},'supplier-report.xlsx')
+            return
         if cmd=='editproduct':return self.s.edit_product(uid,**d)
         if cmd=='minimum':return self.s.set_minimum(uid,**d)
         if cmd=='debt_due':return self.s.set_debt_due(uid,**d)
@@ -624,3 +710,4 @@ def main():
         run_bot()
 
 if __name__=='__main__':main()
+

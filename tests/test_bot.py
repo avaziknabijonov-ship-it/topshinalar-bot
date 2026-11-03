@@ -306,7 +306,7 @@ class TestCRM(unittest.TestCase):
     def test_invalid_items_cannot_turn_into_valid_sales(self):
         for line in ['-1-4-2400000','1--4-2400000','1-4--2400000',
                      '1 4 -2400000','1|4|-2400000','1 4',
-                     '1 4 2400000 0','1|4|2400000|4','1-4-2400000-0',
+                     '1 4 2400000 0','1|4|2400000|0','1-4-2400000-0',
                      '1 4 2 400 000','1 0 2400000','']:
             with self.subTest(line=line):
                 with self.assertRaises(ValueError):parse_item_lines(line)
@@ -416,6 +416,7 @@ class TestCRM(unittest.TestCase):
         with self.s.db:
             self.s.db.execute('DELETE FROM movements')
             self.s.db.execute('DELETE FROM stock')
+            self.s.db.execute('DELETE FROM inventory_lots')
             self.s.db.execute('DELETE FROM points')
         rows=self.s.stock(20)
         self.assertEqual(len(rows),1)
@@ -550,3 +551,4 @@ class TestCRM(unittest.TestCase):
         self.assertEqual(ws.cell(2,heads.index('Xodim')+1).value,'User 20')
 
 if __name__=='__main__':unittest.main()
+

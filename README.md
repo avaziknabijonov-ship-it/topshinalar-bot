@@ -214,3 +214,6 @@ Bazadagi IDlar, ruxsatlar, sotuv va to‘lov summalari o‘zgarmaydi. Oldin yukl
 ## Assortimentda rasmlar
 
 Razmer yoki nom bo‘yicha `/stock` qidirilganda qoldiqlar ro‘yxati va har bir mos mahsulotning yuklangan rasmi alohida Telegram foto sifatida yuboriladi. Bir mahsulot bir nechta nuqtada bo‘lsa ham rasmi bir marta yuboriladi. Rasm ostida nom, ID va narx bor. Surat qo‘shishda Telegramdagi eng katta mavjud variant saqlanadi; manba xira bo‘lsa uning sifatini bot avtomatik yaxshilamaydi. Rasm yuklanmagan mahsulot matnli ro‘yxatda qoladi. 76 ta test o‘tdi.
+
+
+Hisob va omborning yangi funksiyalari: [Yetkazib beruvchilar, Sklad / Vitrina va menejer puli](ACCOUNTING-UZ.md).
