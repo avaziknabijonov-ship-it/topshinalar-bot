@@ -155,7 +155,9 @@ class MiniAppTests(unittest.TestCase):
             self.service.write(20,'photo-request-0001','product_photo',{'product':self.product,'image':'test'})
             self.service.write(20,'photo-request-0001','product_photo',{'product':self.product,'image':'test'})
             self.assertEqual(upload.call_count,1)
-        self.assertEqual(self.s.one('products',self.product)['photo'],'verified-file-id')
+        photos=self.s.rows('SELECT * FROM product_photos WHERE product=?',(self.product,))
+        self.assertEqual(len(photos),1)
+        self.assertEqual(photos[0]['file_id'],'verified-file-id')
 
     def test_launcher_button_only_with_configured_https_url(self):
         with patch.dict('os.environ',{'PUBLIC_APP_URL':'https://bot.example.uz'}):
