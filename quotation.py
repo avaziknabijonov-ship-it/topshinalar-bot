@@ -109,7 +109,13 @@ def quotation_pdf(store,uid,ref):
     company_table.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
     intro=('Уважаемые партнеры! Выражаем Вам огромное уважение и имеем честь предложить наше коммерческое предложение по ниже показанным актуальным ценам:' if ru else 'Hurmatli hamkorlar! Sizlarga chuqur hurmatimizni bildiramiz va quyida ko‘rsatilgan amaldagi narxlar bo‘yicha tijorat taklifimizni taqdim etamiz:')
     body=[header,Spacer(1,6),company_table,Spacer(1,6),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,7),Paragraph('Коммерческое предложение.' if ru else 'Tijorat taklifi.',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Paragraph(escape(intro),styles['IntroUnicode']),Spacer(1,2)]
-    body += [p('С уважением, Менеджер ХУДОЙБЕРДИ' if ru else 'Hurmat bilan, menejer XUDOYBERDI')]
+    creator=store.one('users',q['actor'])
+    creator_name=q.get('creator_name') or creator['name']
+    creator_phone=q.get('creator_phone') or store.contact_phone(q['actor'])
+    if creator_phone.startswith('+998') and len(creator_phone)==13:
+        creator_phone=creator_phone[:4]+' '+creator_phone[4:6]+' '+creator_phone[6:9]+' '+creator_phone[9:11]+' '+creator_phone[11:]
+    body += [p(('Составил: ' if ru else 'Tuzdi: ')+creator_name)]
+    body += [p(('Для связи: ' if ru else 'Aloqa uchun: ')+creator_phone)] if creator_phone else [p('Личный номер не указан' if ru else 'Shaxsiy raqam kiritilmagan')]
     body += [Spacer(1,6)]
     headers=['Фото','Товар','Цена за 1 шт. с НДС'] if ru else ['Rasm','Mahsulot','1 dona narxi (QQS bilan)']
     data=[[p(h) for h in headers]]
