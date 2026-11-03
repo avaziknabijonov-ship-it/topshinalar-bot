@@ -71,6 +71,7 @@ ERRORS = {
 'phone': ('telefon formati noto‘g‘ri', 'неверный формат телефона'),
 'client': ('yetkazib berish va sotuv mijozi bir xil bo‘lishi kerak', 'клиент доставки должен совпадать с клиентом продажи'),
 'status': ('holat ro‘yxatdan tanlanishi kerak', 'выберите статус из списка'),
+'photo_limit': ('Bitta mahsulotga ko‘pi bilan 5 ta rasm qo‘shish mumkin', 'Для одного товара можно добавить не более 5 фото'),
 }
 # Keys are stable internal commands; labels are localized UI text.
 MENU = {

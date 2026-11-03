@@ -22,7 +22,7 @@ Bu alohida ichki bot. MasterCoffee sayti, bazasi va Telegram botiga ulanmaydi. T
 - O‘zbekcha va ruscha menyu, dialog, eslatma, PDF va Excel hisobotlari.
 - Ish kunini boshlash/tugatish va kunlik yozma hisobot. Direktorlarga boshlanish/tugash xabari, tugashda Excel hisoboti.
 - Mijozlar bazasi, qidirish, aloqa ma’lumotlari va mijozning qo‘ng‘iroq, sotuv, КП, vazifa va yetkazib berish tarixi.
-- Mahsulot va savdo nuqtalarini direktor kiritadi. Shina nomida brend, o‘lcham va o‘q turini yozish mumkin. Telegram orqali rasm qo‘shish va ko‘rish.
+- Mahsulot va savdo nuqtalarini direktor kiritadi. Shina nomida brend, o‘lcham va o‘q turini yozish mumkin. Katalog ruxsati bor xodimlar Mini Appda har bir mahsulotga 5 tagacha rasm qo‘sha oladi; mahsulot kartasida rasmlar galereya ko‘rinishida chiqadi. Telegram orqali rasm ko‘rish ham mavjud.
 - Nuqta bo‘yicha kirim, qaytarish, direktor uchun hisobdan chiqarish, mavjud qoldiq va assortiment qidiruvi.
 - Bir sotuvda bir nechta mahsulot, miqdor, narx, to‘lov turi va qisman to‘lov. Sotuv tasdiqlanganda qoldiq kamayadi; yetarli bo‘lmasa butun sotuv bekor qilinadi.
 - Qarzning keyingi to‘lovlari va barcha to‘lovlarning tarixi.

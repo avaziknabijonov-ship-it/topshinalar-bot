@@ -77,6 +77,7 @@ class MiniService:
 
     def catalog(self,uid,query='',point='',brand='',page=0):
         self.s.user(uid)
+        photo_counts={r['product']:r['n'] for r in self.s.rows('SELECT product,COUNT(*) n FROM product_photos GROUP BY product')}
         groups={}
         for row in self.s.stock(uid):
             if not matches_product(query,row):continue
@@ -85,7 +86,8 @@ class MiniService:
             if brand and row_brand.casefold()!=brand.casefold():continue
             if row['id'] not in groups:
                 parts=size_parts(row['name'])
-                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(row['photo']),'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
+                count=photo_counts.get(row['id'],0) or int(bool(row['photo']))
+                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(count),'photo_count':count,'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
             if row['stock_set']:groups[row['id']]['stock_pending']=False
             if row['point_id'] is not None:
                 groups[row['id']]['points'].append({'id':row['point_id'],'name':row['point'],'qty':row['qty'],'stock_pending':bool(row['catalog_sku'] and not row['stock_set'])})
@@ -132,7 +134,9 @@ class MiniService:
             return {'ok':True,'id':result}
         uploaded=None
         if cmd=='product_photo':
-            self.s.director(uid);self.s.one('products',integer(data.get('product')))
+            require_command(self.s,uid,cmd);self.s.one('products',integer(data.get('product')))
+            if self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(integer(data.get('product')),)).fetchone()[0]>=5:
+                raise ValueError('photo_limit')
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()
             if cached:
                 if cached['digest']!=digest:raise ValueError('request_changed')
@@ -145,8 +149,11 @@ class MiniService:
                 if cached['digest']!=digest:raise ValueError('request_changed')
                 return json.loads(cached['result'])
             if cmd=='product_photo':
-                self.s.director(uid);ref=integer(data['product'])
-                self.s.db.execute('UPDATE products SET photo=? WHERE id=?',(uploaded,ref));self.s.log(uid,'product_photo',ref)
+                require_command(self.s,uid,cmd);ref=integer(data['product'])
+                count=self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(ref,)).fetchone()[0]
+                if count>=5:raise ValueError('photo_limit')
+                self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(ref,count,uploaded))
+                self.s.log(uid,'product_photo',ref)
             else:ref=self.action(uid,cmd,data)
             result={'ok':True,'id':ref}
             self.s.add('mini_requests',actor=uid,request_key=key,digest=digest,result=json.dumps(result),created=now())
@@ -240,12 +247,14 @@ class MiniService:
             self.s.db.execute('UPDATE users SET lang=? WHERE id=?',(lang,uid));return uid
         raise ValueError('command')
 
-    def photo(self,uid,product):
+    def photo(self,uid,product,index=0):
         self.s.user(uid);p=self.s.one('products',product)
-        if not p['photo']:raise ValueError('photo')
-        path=local_photo(p['photo'])
+        row=self.s.db.execute('SELECT file_id FROM product_photos WHERE product=? ORDER BY position LIMIT 1 OFFSET ?',(product,index)).fetchone()
+        file_id=row['file_id'] if row else (p['photo'] if index==0 else None)
+        if not file_id:raise ValueError('photo')
+        path=local_photo(file_id)
         if path:return path.read_bytes()
-        info=API(self.token).call('getFile',{'file_id':p['photo']})
+        info=API(self.token).call('getFile',{'file_id':file_id})
         path=info.get('file_path','')
         if not re.fullmatch(r'[A-Za-z0-9_./-]+',path) or '..' in path:raise ValueError('photo')
         with urllib.request.urlopen('https://api.telegram.org/file/bot'+self.token+'/'+path,timeout=20) as response:
@@ -348,8 +357,9 @@ class MiniHandler(BaseHTTPRequestHandler):
                 from quotation import quotation_pdf
                 ref=int(path.rsplit('/',1)[-1][:-4]);store.own(uid,store.one('quotes',ref))
                 self.send(200,quotation_pdf(store,uid,ref),'application/pdf',f'TOPSHINALAR-KP-{ref}.pdf');return
-            elif re.fullmatch(r'/api/photo/\d+',path):
-                self.send(200,service.photo(uid,int(path.rsplit('/',1)[-1])),'image/jpeg');return
+            elif re.fullmatch(r'/api/photo/\d+(?:/\d+)?',path):
+                parts=path.strip('/').split('/')
+                self.send(200,service.photo(uid,int(parts[2]),int(parts[3]) if len(parts)>3 else 0),'image/jpeg');return
             else:self.send(404,{'error':'Not found'});return
             self.send(200,result)
         except (AuthError,PermissionError):self.send(403,{'error':'Telegram orqali kiring / Откройте через Telegram'})
