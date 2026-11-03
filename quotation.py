@@ -119,6 +119,9 @@ def quotation_pdf(store,uid,ref):
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
+        if not reference:
+            current=store.db.execute('SELECT file_id FROM product_photos WHERE product=? ORDER BY position LIMIT 1',(i['product'],)).fetchone()
+            reference=current['file_id'] if current else (store.one('products',i['product']) or {}).get('photo','')
         if reference not in image_cache:image_cache[reference]=product_image(reference,max_height=photo_height)
         picture=image_cache[reference] or p('Нет фото' if ru else 'Rasm mavjud emas')
         data.append([picture,p(i['name']),p(fmt(unit_price))])
@@ -160,6 +163,12 @@ def quotation_pdf(store,uid,ref):
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))
+        website='topshinalar.uz'
+        canvas.setFillColor(colors.HexColor('#E6332A'))
+        canvas.drawCentredString(A4[0]/2,23,website)
+        link_width=pdfmetrics.stringWidth(website,'Unicode',8)
+        canvas.linkURL('https://topshinalar.uz/',(A4[0]/2-link_width/2,21,A4[0]/2+link_width/2,32),relative=0,thickness=0)
+        canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawRightString(A4[0]-38,23,str(doc.page))
     doc.build(body,onFirstPage=footer,onLaterPages=footer)
     return out.getvalue()

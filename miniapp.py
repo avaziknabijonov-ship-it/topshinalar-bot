@@ -136,8 +136,6 @@ class MiniService:
         if cmd=='product_photo':
             require_command(self.s,uid,cmd)
             self.s.one('products',integer(data.get('product')))
-            if self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(integer(data.get('product')),)).fetchone()[0]>=5:
-                raise ValueError('photo_limit')
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()
             if cached:
                 if cached['digest']!=digest:raise ValueError('request_changed')
@@ -152,9 +150,23 @@ class MiniService:
             if cmd=='product_photo':
                 require_command(self.s,uid,cmd);ref=integer(data['product'])
                 count=self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(ref,)).fetchone()[0]
-                if count>=5:raise ValueError('photo_limit')
                 self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(ref,count,uploaded))
                 self.s.log(uid,'product_photo',ref)
+            elif cmd=='product_photo_delete':
+                ref=integer(data.get('product'));index=integer(data.get('index'))
+                self.s.one('products',ref)
+                rows=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(ref,))
+                if index>=len(rows):raise ValueError('photo')
+                self.s.db.execute('DELETE FROM product_photos WHERE product=? AND position=?',(ref,rows[index]['position']))
+                remaining=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(ref,))
+                # Shift through a temporary range so the unique position key stays valid.
+                offset=len(remaining)+len(rows)+1
+                for row in remaining:
+                    self.s.db.execute('UPDATE product_photos SET position=? WHERE product=? AND position=?',(row['position']+offset,ref,row['position']))
+                for position,row in enumerate(remaining):
+                    self.s.db.execute('UPDATE product_photos SET position=? WHERE product=? AND position=?',(position,ref,row['position']+offset))
+                self.s.db.execute('UPDATE products SET photo=? WHERE id=?',(remaining[0]['file_id'] if remaining else '',ref))
+                self.s.log(uid,'product_photo_delete',ref)
             else:ref=self.action(uid,cmd,data)
             result={'ok':True,'id':ref}
             self.s.add('mini_requests',actor=uid,request_key=key,digest=digest,result=json.dumps(result),created=now())
@@ -263,8 +275,10 @@ class MiniService:
 
     def photo(self,uid,product,index=0):
         self.s.user(uid);p=self.s.one('products',product)
+        if isinstance(index,bool) or not isinstance(index,int) or index<0:raise ValueError('photo')
         row=self.s.db.execute('SELECT file_id FROM product_photos WHERE product=? ORDER BY position LIMIT 1 OFFSET ?',(product,index)).fetchone()
-        file_id=row['file_id'] if row else (p['photo'] if index==0 else None)
+        has_gallery=self.s.db.execute('SELECT 1 FROM product_photos WHERE product=? LIMIT 1',(product,)).fetchone()
+        file_id=row['file_id'] if row else (p['photo'] if index==0 and not has_gallery else None)
         if not file_id:raise ValueError('photo')
         path=local_photo(file_id)
         if path:return path.read_bytes()

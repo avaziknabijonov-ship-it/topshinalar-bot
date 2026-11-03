@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS sessions(user_id INTEGER PRIMARY KEY REFERENCES users
 CREATE TABLE IF NOT EXISTS clients(id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, note TEXT NOT NULL, owner INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS points(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL);
 CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), photo TEXT, active INTEGER NOT NULL DEFAULT 1);
-CREATE TABLE IF NOT EXISTS product_photos(product INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position BETWEEN 0 AND 4), file_id TEXT NOT NULL, PRIMARY KEY(product,position), UNIQUE(product,file_id));
+CREATE TABLE IF NOT EXISTS product_photos(product INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position>=0), file_id TEXT NOT NULL, PRIMARY KEY(product,position), UNIQUE(product,file_id));
 CREATE TABLE IF NOT EXISTS stock(product INTEGER NOT NULL REFERENCES products(id), point INTEGER NOT NULL REFERENCES points(id), qty INTEGER NOT NULL CHECK(qty>=0), PRIMARY KEY(product,point));
 CREATE TABLE IF NOT EXISTS movements(id INTEGER PRIMARY KEY, product INTEGER NOT NULL REFERENCES products(id), point INTEGER NOT NULL REFERENCES points(id), qty INTEGER NOT NULL, kind TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), note TEXT NOT NULL, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sales(id INTEGER PRIMARY KEY, client INTEGER NOT NULL REFERENCES clients(id), point INTEGER NOT NULL REFERENCES points(id), actor INTEGER NOT NULL REFERENCES users(id), total INTEGER NOT NULL CHECK(total>=0), paid INTEGER NOT NULL CHECK(paid>=0 AND paid<=total), payment TEXT NOT NULL, created TEXT NOT NULL);
@@ -130,6 +130,18 @@ class Store(Accounting):
         self.db = sqlite3.connect(path, timeout=30)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        # Earlier releases capped galleries at five images in the SQLite schema.
+        # Rebuild that table once so product galleries can grow without a limit.
+        photo_schema=self.db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='product_photos'").fetchone()[0]
+        if 'BETWEEN 0 AND 4' in photo_schema:
+            self.db.execute('PRAGMA foreign_keys=OFF')
+            self.db.executescript('''BEGIN;
+                CREATE TABLE product_photos_unlimited(product INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position>=0), file_id TEXT NOT NULL, PRIMARY KEY(product,position), UNIQUE(product,file_id));
+                INSERT INTO product_photos_unlimited(product,position,file_id) SELECT product,position,file_id FROM product_photos ORDER BY product,position;
+                DROP TABLE product_photos;
+                ALTER TABLE product_photos_unlimited RENAME TO product_photos;
+                COMMIT;''')
+            self.db.execute('PRAGMA foreign_keys=ON')
         # Preserve the original single-photo field while migrating it into the
         # ordered gallery used by the Mini App. Catalog placeholders stay valid.
         self.db.execute("INSERT OR IGNORE INTO product_photos(product,position,file_id) SELECT id,0,photo FROM products WHERE photo IS NOT NULL AND TRIM(photo)<>''")
@@ -381,7 +393,9 @@ class Store(Accounting):
             ref=self.add('quotes',client=client,actor=uid,total=total,terms=terms,lang=self.user(uid)['lang'],created=now(),payment=payment,fulfillment=fulfillment,currency='UZS',exchange_rate=str(rate) if rate is not None else '',source_total_usd=source_total,creator_name=creator_name,creator_phone=creator_phone)
             self.set_contact_phone(uid,creator_phone)
             for item in lines:
-                self.add('quote_items',quote=ref,photo=self.one('products',item['product'])['photo'] or '',**{k:v for k,v in item.items() if k!='total'})
+                photo=self.db.execute('SELECT file_id FROM product_photos WHERE product=? ORDER BY position LIMIT 1',(item['product'],)).fetchone()
+                photo=photo['file_id'] if photo else (self.one('products',item['product'])['photo'] or '')
+                self.add('quote_items',quote=ref,photo=photo,**{k:v for k,v in item.items() if k!='total'})
             self.log(uid,'quote',ref)
             return ref
         self.one('points',point)

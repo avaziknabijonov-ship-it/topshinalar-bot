@@ -15,3 +15,5 @@ html{max-width:100%;overflow-x:clip}body{width:100%;overflow-x:clip}.shell,main,
 
 @media(max-width:699px){.cart-fields input,.filters select{font-size:16px}}
 .detail-gallery{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;margin-bottom:16px}.detail-gallery .detail-image{flex:0 0 100%;width:100%;max-height:280px;margin:0;scroll-snap-align:start}
+
+.detail-photo{position:relative;flex:0 0 100%;scroll-snap-align:start}.detail-photo .detail-image{width:100%}.photo-delete{position:absolute;top:8px;right:8px;width:36px;height:36px;border-radius:50%;background:#18212be8;color:#fff;font-size:25px;line-height:1}
