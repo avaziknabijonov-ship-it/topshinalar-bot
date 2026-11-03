@@ -333,7 +333,7 @@ class Bot(Usability):
                 if product['currency']!='USD':raise ValueError('amount')
                 return fmt(product['price']).replace(' ','')
             return product[key]
-        if not text or len(text)>3000:
+        if (not text and not (cmd=='quote' and key in {'payment','fulfillment'})) or len(text)>3000:
             raise ValueError('text')
         if key=='items':
             try:
