@@ -122,7 +122,7 @@ def quotation_pdf(store,uid,ref):
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
     # Reserve room for author and terms on a four/five-product A4 proposal.
-    photo_height=min(100, max(56, 360/len(lines)-10)) if lines and len(lines)<=8 else 72
+    photo_height=min(90, max(44, 260/len(lines)-10)) if lines and len(lines)<=8 else 64
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
@@ -158,7 +158,8 @@ def quotation_pdf(store,uid,ref):
         term('С уважением,' if ru else 'Hurmat bilan,'),
         term('Менеджер ХУДОЙБЕРДИ' if ru else 'Menejer XUDOYBERDI'),
     ]
-    body += [table,Spacer(1,5),p('Способ оплаты' if ru else 'To‘lov usuli'),term(payment),Spacer(1,3),*terms]
+    fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
+    body += [table,Spacer(1,5),p('Способ оплаты' if ru else 'To‘lov usuli'),term(payment),Spacer(1,3),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),term(fulfillment),Spacer(1,3),*terms]
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))
