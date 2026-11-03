@@ -145,9 +145,9 @@ def quotation_pdf(store,uid,ref):
         creator_phone=creator_phone[:4]+' '+creator_phone[4:6]+' '+creator_phone[6:9]+' '+creator_phone[9:11]+' '+creator_phone[11:]
     term=lambda text: Paragraph(escape(str(text)),styles['TermsUnicode'])
     terms=[
-        term('2. Срок действия цены — 3 дня со дня даты исходящего письма.' if ru else '2. Narx amal qilish muddati — xat sanasidan boshlab 3 kun.'),
-        term('3. Гарантия на товар — 1 месяц с даты счёта-фактуры при правильной эксплуатации товара.' if ru else '3. Tovar kafolati — to‘g‘ri ishlatilganda hisob-faktura sanasidan boshlab 1 oy.'),
-        term('4. Приложение к гарантии вручается при покупке товара и является официальным документом компании.' if ru else '4. Kafolat ilovasi tovar xarid qilinganda beriladi va kompaniyaning rasmiy hujjati hisoblanadi.'),
+        term('1. Срок действия цены — 3 дня со дня даты исходящего письма.' if ru else '1. Narx amal qilish muddati — xat sanasidan boshlab 3 kun.'),
+        term('2. Гарантия на товар — 1 месяц с даты счёта-фактуры при правильной эксплуатации товара.' if ru else '2. Tovar kafolati — to‘g‘ri ishlatilganda hisob-faktura sanasidan boshlab 1 oy.'),
+        term('3. Приложение к гарантии вручается при покупке товара и является официальным документом компании.' if ru else '3. Kafolat ilovasi tovar xarid qilinganda beriladi va kompaniyaning rasmiy hujjati hisoblanadi.'),
         term('Надеемся на долгосрочное и доверительное сотрудничество.' if ru else 'Uzoq muddatli va ishonchli hamkorlikka umid qilamiz.'),
         term('Для дополнительной информации обращайтесь по номеру:' if ru else 'Qo‘shimcha ma’lumot uchun quyidagi raqamga murojaat qiling:'),
         term(creator_phone if creator_phone else ('Номер не указан' if ru else 'Raqam kiritilmagan')),
