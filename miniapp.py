@@ -198,9 +198,9 @@ class MiniService:
             if not isinstance(items,list) or not 1<=len(items)<=50:raise ValueError('items')
             clean=[{'product':integer(i.get('product')),'qty':integer(i.get('qty')),'price':str(i.get('price',''))} for i in items if isinstance(i,dict)]
             if len(clean)!=len(items):raise ValueError('items')
-            payload={'client':client,'items':clean,'payment':text(d.get('payment',''))}
+            payload={'client':client,'items':clean,'payment':text(d.get('payment',''),required=cmd!='quote')}
             if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
-            else:payload.update(fulfillment=text(d.get('fulfillment','')),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
+            else:payload.update(fulfillment=text(d.get('fulfillment',''),required=False),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
             if cmd=='quote' and 'contact_phone' in d:payload['contact_phone']=normalize_contact_phone(d['contact_phone'])
             ref=self.b.execute(uid,cmd,payload)
             if cmd=='sell' and d.get('debt_due'):
