@@ -119,7 +119,7 @@ def quotation_pdf(store,uid,ref):
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
     # Reserve room for author and terms on a four/five-product A4 proposal.
-    photo_height=min(90, max(36, 260/len(lines)-16)) if lines and len(lines)<=8 else 64
+    photo_height=min(90, max(42, 260/len(lines)-12)) if lines and len(lines)<=8 else 64
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
@@ -128,7 +128,7 @@ def quotation_pdf(store,uid,ref):
         data.append([picture,p(i['name']),p(fmt(unit_price))])
     table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
     # Available A4 width is about 519 points.
-    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2)]))
     from payments import normalize_fulfillment
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment_value=q.get('fulfillment','')
