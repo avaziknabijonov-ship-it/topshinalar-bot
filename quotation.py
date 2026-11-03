@@ -90,13 +90,23 @@ def quotation_pdf(store,uid,ref):
     styles=getSampleStyleSheet()
     styles.add(ParagraphStyle(name='BodyUnicode',fontName='Unicode',fontSize=9,leading=13,spaceAfter=4))
     styles.add(ParagraphStyle(name='TitleUnicode',fontName='Unicode',fontSize=20,leading=26,textColor=colors.HexColor('#0B0B0A'),spaceAfter=8))
+    styles.add(ParagraphStyle(name='CompanyUnicode',fontName='Unicode',fontSize=9,leading=12,alignment=1,spaceAfter=1))
     p=lambda text: Paragraph(escape(str(text)).replace('\n','<br/>'),styles['BodyUnicode'])
     out=io.BytesIO()
     doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=38,leftMargin=38,topMargin=42,bottomMargin=40,title=f'TOPSHINALAR - KP #{ref}')
     logo=Image(str(Path(__file__).resolve().parent/'assets'/'topshinalar-logo.png'),width=260,height=260*195/800,hAlign='LEFT')
     header=Table([[logo,company_contact_qr(64)]],colWidths=[doc.width-70,70])
     header.setStyle(TableStyle([('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
-    body=[header,Spacer(1,8),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,10),Paragraph('Коммерческое предложение' if ru else 'Tijorat taklifi',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),Spacer(1,4)]
+    company_lines=[
+        Paragraph('«TOPSHINALAR» MAS\'ULIYATI CHEKLANGAN JAMIYAT',styles['CompanyUnicode']),
+        Paragraph('ТОШКЕНТ ВИЛОЯТИ, ЗАНГИОТА тумани',styles['CompanyUnicode']),
+        Paragraph('Тарик-Тешар МФЙ, М39 Автомагистрал йўли кўчаси, 54A-уй',styles['CompanyUnicode']),
+        Paragraph('ИНН: 310676411',styles['CompanyUnicode']),
+    ]
+    company_table=Table([[company_lines]],colWidths=[doc.width])
+    company_table.setStyle(TableStyle([('ALIGN',(0,0),(-1,-1),'CENTER'),('LEFTPADDING',(0,0),(-1,-1),0),('RIGHTPADDING',(0,0),(-1,-1),0),('TOPPADDING',(0,0),(-1,-1),0),('BOTTOMPADDING',(0,0),(-1,-1),0)]))
+    intro=('Уважаемые партнеры! Выражаем Вам огромное уважение и имеем честь предложить наше коммерческое предложение по ниже показанным актуальным ценам:' if ru else 'Hurmatli hamkorlar! Sizlarga chuqur hurmatimizni bildiramiz va quyida ko‘rsatilgan amaldagi narxlar bo‘yicha tijorat taklifimizni taqdim etamiz:')
+    body=[header,Spacer(1,8),company_table,Spacer(1,8),HRFlowable(width='100%',thickness=2,color=colors.HexColor('#E6332A')),Spacer(1,10),Paragraph('Коммерческое предложение.' if ru else 'Tijorat taklifi.',styles['TitleUnicode']),p(f'#{ref} | '+q['created'][:10]),p(intro),Spacer(1,4)]
     creator=store.one('users',q['actor'])
     creator_name=q.get('creator_name') or creator['name']
     creator_phone=q.get('creator_phone') or store.contact_phone(q['actor'])
@@ -120,9 +130,33 @@ def quotation_pdf(store,uid,ref):
     table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
     # Available A4 width is about 519 points.
     table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),8)]))
-    payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
-    fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
-    body += [table,Spacer(1,8),p('Способ оплаты' if ru else 'To‘lov usuli'),p(payment),Spacer(1,4),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),p(fulfillment)]
+    from payments import payment_label, normalize_fulfillment
+    payment_value=q.get('payment','')
+    payment=payment_label(payment_value,'ru' if ru else 'uz') if payment_value else ('Любая форма оплаты' if ru else 'Istalgan to‘lov usuli')
+    fulfillment_value=q.get('fulfillment','')
+    try:
+        fulfillment_key=normalize_fulfillment(fulfillment_value)
+    except ValueError:
+        fulfillment_key=''
+    if fulfillment_key=='pickup':
+        fulfillment='самовывоз со склада продавца' if ru else 'sotuvchi omboridan olib ketish'
+    elif fulfillment_key=='delivery':
+        fulfillment='доставка (условия согласуются отдельно)' if ru else 'yetkazib berish (shartlari alohida kelishiladi)'
+    else:
+        fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
+    terms=[
+        p(('1. Способ доставки — ' if ru else '1. Yetkazib berish usuli — ')+fulfillment),
+        p('2. Срок действия цены — 3 дня с даты исходящего письма.' if ru else '2. Narxning amal qilish muddati — taklif sanasidan boshlab 3 kun.'),
+        p('3. Гарантия на товар — 1 месяц со дня выставления счёта-фактуры при правильной эксплуатации товара.' if ru else '3. Tovar kafolati — to‘g‘ri foydalanilganda hisob-faktura sanasidan boshlab 1 oy.'),
+        p('4. Условия гарантии: приложение к гарантии вручается при покупке товара и является официальным документом компании.' if ru else '4. Kafolat shartlari: kafolat ilovasi tovar xarid qilinganda beriladi va kompaniyaning rasmiy hujjati hisoblanadi.'),
+        p('Надеемся на долгосрочное и доверительное сотрудничество.' if ru else 'Uzoq muddatli va ishonchli hamkorlikka umid qilamiz.'),
+        p('Для дополнительной информации обращайтесь по номерам:' if ru else 'Qo‘shimcha ma’lumot uchun quyidagi raqamlarga murojaat qiling:'),
+        p('Тел. 1: +99899-053-83-03' if ru else 'Tel. 1: +99899-053-83-03'),
+        p('Тел. 2: +99899-674-10-10' if ru else 'Tel. 2: +99899-674-10-10'),
+        p('С уважением,' if ru else 'Hurmat bilan,'),
+        p('Менеджер ХУДОЙБЕРДИ' if ru else 'Menejer XUDOYBERDI'),
+    ]
+    body += [table,Spacer(1,8),p(('Способ оплаты: ' if ru else 'To‘lov usuli: ')+payment),Spacer(1,4),*terms]
     def footer(canvas,doc):
         canvas.setFont('Unicode',8);canvas.setFillColor(colors.HexColor('#666666'))
         canvas.drawString(38,23,'TOPSHINALAR | '+('Коммерческое предложение' if ru else 'Tijorat taklifi'))
