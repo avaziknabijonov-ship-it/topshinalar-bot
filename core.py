@@ -8,6 +8,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 from payments import normalize_payment, normalize_fulfillment
+from accounting import Accounting, atomic, migrate as migrate_accounting, quantity
 
 TZ = ZoneInfo('Asia/Tashkent')
 
@@ -63,6 +64,10 @@ def parse_item_lines(text):
         line = line.strip()
         if not line:
             continue
+        item_point=None
+        if line.count('|')==3:
+            line,point_text=line.rsplit('|',1)
+            item_point=quantity(point_text.strip())
         if '|' in line:
             separator = r'[ \t]*\|[ \t]*'
             price = r'[0-9]+(?:[ \t\u00a0\u202f][0-9]{3})*(?:[.,][0-9]{1,2})?'
@@ -83,6 +88,7 @@ def parse_item_lines(text):
         money(price_text)
         rows.append(dict(product=integer(product), qty=integer(qty),
                          price=price_text, discount=0))
+        if item_point is not None:rows[-1]['point']=item_point
     if not rows or len(rows) > 50:
         raise ValueError('items')
     return rows
@@ -119,7 +125,7 @@ CREATE TABLE IF NOT EXISTS staff_access(user_id INTEGER PRIMARY KEY REFERENCES u
 CREATE TABLE IF NOT EXISTS staff_invites(id INTEGER PRIMARY KEY, token_hash TEXT UNIQUE NOT NULL, label TEXT NOT NULL, created_by INTEGER NOT NULL REFERENCES users(id), expires INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', joined_by INTEGER REFERENCES users(id));
 '''
 
-class Store:
+class Store(Accounting):
     def __init__(self, path):
         self.db = sqlite3.connect(path, timeout=30)
         self.db.row_factory = sqlite3.Row
@@ -163,6 +169,7 @@ class Store:
             self.db.execute('ALTER TABLE quotes ADD COLUMN source_total_usd INTEGER')
         self.db.execute('CREATE UNIQUE INDEX IF NOT EXISTS products_catalog_sku ON products(catalog_sku) WHERE catalog_sku IS NOT NULL')
         self.db.commit()
+        migrate_accounting(self)
         if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
             self.db.execute('PRAGMA journal_mode=WAL')
         self.db.commit()
@@ -268,6 +275,7 @@ class Store:
             date=" AND s.debt_due<>'' AND s.debt_due<?";params.append(now()[:10])
         return self.rows("SELECT s.*,c.name client_name,c.phone,u.name employee_name,s.total-s.paid debt FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor WHERE s.status='active' AND s.paid<s.total"+scope+date+' ORDER BY s.debt_due,s.id',params)
 
+    @atomic
     def cancel_sale(self,uid,sale,reason,refund_confirmed=False,expected_paid=None):
         self.director(uid);row=self.one('sales',sale)
         if row['status']!='active':raise ValueError('sale_cancelled')
@@ -276,16 +284,24 @@ class Store:
         if row['paid'] and not refund_confirmed:raise ValueError('refund_required')
         cur=self.db.execute("UPDATE sales SET status='cancelled',cancel_reason=?,cancelled_by=?,cancelled_at=? WHERE id=? AND status='active' AND paid=?",(reason,uid,now(),sale,row['paid']))
         if not cur.rowcount:raise ValueError('sale_changed')
-        for item in self.rows('SELECT product,SUM(qty) qty FROM sale_items WHERE sale=? GROUP BY product',(sale,)):
-            self.db.execute('INSERT INTO stock VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=qty+excluded.qty',(item['product'],row['point'],item['qty']))
-            self.add('movements',product=item['product'],point=row['point'],qty=item['qty'],kind='sale_cancel',actor=uid,note=f'#{sale}: {reason}',created=now())
-            self.rearm_stock(item['product'],row['point'])
+        for item in self.rows('SELECT * FROM sale_items WHERE sale=?',(sale,)):
+            point=item['point'] if item['point'] is not None else row['point']
+            self.db.execute('INSERT INTO stock VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=qty+excluded.qty',(item['product'],point,item['qty']))
+            allocations=self.rows('SELECT * FROM sale_allocations WHERE item=?',(item['id'],))
+            if allocations:
+                for allocation in allocations:
+                    self.db.execute('UPDATE inventory_lots SET qty=qty+? WHERE id=?',(allocation['qty'],allocation['lot']))
+            else:
+                self._unassigned_lot(item['product'],point,item['qty'])
+            self.add('movements',product=item['product'],point=point,qty=item['qty'],kind='sale_cancel',actor=uid,note=f'#{sale}: {reason}',created=now())
+            self.rearm_stock(item['product'],point)
         if row['paid']:
             # A separate reversal preserves every original receipt and its date.
             self.add('refunds',sale=sale,amount=row['paid'],method='refund',actor=uid,reason=reason,created=now())
         self.log(uid,'sale_cancel',sale)
         return sale
 
+    @atomic
     def move(self, uid, product, point, qty, kind, note):
         self.user(uid)
         self.one('products',product); self.one('points',point)
@@ -293,11 +309,13 @@ class Store:
             raise ValueError('kind')
         if kind == 'writeoff':
             self.director(uid)
-        qty=integer(qty) * (-1 if kind=='writeoff' else 1)
+        qty=quantity(qty) * (-1 if kind=='writeoff' else 1)
         self.db.execute('INSERT OR IGNORE INTO stock VALUES(?,?,0)',(product,point))
         cur=self.db.execute('UPDATE stock SET qty=qty+? WHERE product=? AND point=? AND qty+?>=0',(qty,product,point,qty))
         if not cur.rowcount:
             raise ValueError('stock')
+        if qty>0:self._unassigned_lot(product,point,qty)
+        else:self._consume_lots(product,point,-qty)
         self.rearm_stock(product,point)
         ref=self.add('movements',product=product,point=point,qty=qty,kind=kind,actor=uid,note=note,created=now())
         self.log(uid,kind,ref)
@@ -312,6 +330,7 @@ class Store:
         if self.db.execute('SELECT 1 FROM stock WHERE product=? AND point=?',(product,point)).fetchone():
             raise ValueError('stock_exists')
         self.db.execute('INSERT INTO stock VALUES(?,?,?)',(product,point,qty))
+        self._unassigned_lot(product,point,qty)
         ref=self.add('movements',product=product,point=point,qty=qty,kind='opening',actor=uid,note=note,created=now())
         self.log(uid,'opening_stock',ref)
         return ref
@@ -328,7 +347,7 @@ class Store:
             p=self.one('products',integer(i['product']))
             if not p['active']:
                 raise ValueError('missing')
-            qty=integer(i['qty']); price=money(i['price'])
+            qty=quantity(i['qty']); price=money(i['price'])
             discount=int(i.get('discount',0))
             if discount != 0:
                 raise ValueError('discount_removed')
@@ -340,6 +359,7 @@ class Store:
             raise ValueError('items')
         return result
 
+    @atomic
     def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None, contact_phone=None):
         self.user(uid); self.one('clients',client)
         lines=self.items(items); total=sum(i['total'] for i in lines)
@@ -365,6 +385,9 @@ class Store:
             self.log(uid,'quote',ref)
             return ref
         self.one('points',point)
+        for line,raw in zip(lines,items):
+            line['point']=quantity(raw.get('point',point))
+            line['location_kind']=self.one('points',line['point'])['kind']
         payment=normalize_payment(payment)
         paid=money(paid)
         if paid>total:
@@ -372,11 +395,13 @@ class Store:
         # All changes must run in the caller's transaction. Any failed line rolls everything back.
         ref=self.add('sales',client=client,point=point,actor=uid,total=total,paid=paid,payment=payment,created=now())
         for item in lines:
-            cur=self.db.execute('UPDATE stock SET qty=qty-? WHERE product=? AND point=? AND qty>=?',(item['qty'],item['product'],point,item['qty']))
+            item_point=item['point']
+            cur=self.db.execute('UPDATE stock SET qty=qty-? WHERE product=? AND point=? AND qty>=?',(item['qty'],item['product'],item_point,item['qty']))
             if not cur.rowcount:
                 raise ValueError('stock')
-            self.add('sale_items',sale=ref,**{k:v for k,v in item.items() if k!='total'})
-            self.add('movements',product=item['product'],point=point,qty=-item['qty'],kind='sale',actor=uid,note=f'#{ref}',created=now())
+            item_ref=self.add('sale_items',sale=ref,**{k:v for k,v in item.items() if k!='total'})
+            self._consume_lots(item['product'],item_point,item['qty'],item_ref)
+            self.add('movements',product=item['product'],point=item_point,qty=-item['qty'],kind='sale',actor=uid,note=f'#{ref}',created=now())
         if paid:
             self.add('payments',sale=ref,amount=paid,method=payment,actor=uid,created=now())
         self.log(uid,'sale',ref)
@@ -483,7 +508,7 @@ class Store:
         result={}
         for table,field in [('sales','created'),('payments','created'),('refunds','created'),('calls','created'),('deliveries','created'),('shifts','started'),('fines','created'),('quotes','created')]:
             result[table]=self.rows(f'SELECT * FROM {table} WHERE substr({field},1,10) BETWEEN ? AND ?'+scope+' ORDER BY id',params)
-        result['sale_items']=self.rows('SELECT i.*,s.actor,s.client,s.point,s.created,s.status,s.currency FROM sale_items i JOIN sales s ON i.sale=s.id WHERE substr(s.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND s.actor=?')+' ORDER BY i.sale,i.id',params)
+        result['sale_items']=self.rows('SELECT i.id,i.sale,i.product,i.name,i.qty,i.price,i.discount,s.actor,s.client,COALESCE(i.point,s.point) point,s.created,s.status,s.currency FROM sale_items i JOIN sales s ON i.sale=s.id WHERE substr(s.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND s.actor=?')+' ORDER BY i.sale,i.id',params)
         result['tasks']=self.rows("SELECT * FROM tasks WHERE status='open'"+('' if not scope else ' AND actor=?'),() if not scope else (uid,))
         result['movements']=self.rows('SELECT m.id,m.created,p.name,p.brand,p.size,t.name warehouse_name,m.qty,m.kind,m.actor,m.note FROM movements m JOIN products p ON p.id=m.product JOIN points t ON t.id=m.point WHERE substr(m.created,1,10) BETWEEN ? AND ?'+('' if not scope else ' AND m.actor=?')+' ORDER BY m.id',params)
         result['product_events']=self.rows("SELECT a.created,p.name,p.brand,p.size,a.action,a.actor FROM audit a JOIN products p ON p.id=a.ref WHERE a.action IN ('product','product_edit') AND substr(a.created,1,10) BETWEEN ? AND ?"+('' if not scope else ' AND a.actor=?')+' ORDER BY a.id',params)
@@ -532,3 +557,4 @@ def csv_report(sections):
                 w.writerow(values)
         w.writerow([])
     return out.getvalue().encode('utf-8-sig')
+

@@ -48,6 +48,13 @@ COLUMNS={
 'fulfillment':('Shartlar','Условия'),'lang':('Til','Язык'),'terms':('Avvalgi izoh','Прежнее примечание'),'role':('Lavozim','Роль'),
 }
 SECTIONS={
+'supplier_stock':('Yetkazib beruvchi vitrina','Витрина по поставщикам'),
+'supplier_sold':('Vitrinadan sotilgan','Продано с витрины'),
+'supplier_entries':('Yetkazib beruvchi hisob','Операции поставщиков'),
+'supplier_balances':('Yetkazib beruvchi saldo','Сальдо поставщиков'),
+'supplier_lots':('Kirim partiyalari','Партии прихода'),
+'manager_entries':('Menejer pul jurnali','Денежный журнал менеджера'),
+'manager_balances':('Menejer pul saldosi','Денежное сальдо менеджера'),
 'debts':('Davrdagi sotuvlar qarzi','Долги по продажам периода'),
 'movements':('Ombor harakatlari','Движения склада'),'product_events':('Mahsulot qo‘shish tarixi','История товаров'),'warehouses':('Omborlar hozirgi qoldiq','Склады текущие остатки'),
 'refunds':('Pul qaytarishlar','Возвраты денег'),
@@ -69,8 +76,17 @@ def localized(key,val,lang):
     if key in {'status','role'} and val in VALUES:return VALUES[val][lang=='ru']
     return val
 
-MONEY={'price','total','paid','amount','fee','debt','stock_value','source_total_usd'}
+MONEY={'price','total','paid','amount','fee','debt','stock_value','source_total_usd','cost','balance','given','expenses','returned'}
 PEOPLE={'actor':'employee_name','owner':'owner_name','approved_by':'approved_by_name','cancelled_by':'cancelled_by_name'}
+COLUMNS.update({
+'supplier':('Yetkazib beruvchi ID','ID поставщика'),'supplier_name':('Yetkazib beruvchi','Поставщик'),
+'manager':('Menejer ID','ID менеджера'),'manager_name':('Menejer','Менеджер'),
+'actor_name':('Yozuvni kiritgan','Кто записал'),'date':('Hisob sanasi','Дата операции'),
+'cost':('Bir dona kirim narxi','Закупочная цена за штуку'),'balance':('Saldo','Сальдо'),
+'given':('Berilgan pul','Выданные деньги'),'expenses':('Xarajatlar','Расходы'),'returned':('Qaytarilgan pul','Возвращённые деньги'),
+'receipt':('Kirim ID','ID прихода'),'lot':('Partiya ID','ID партии'),'point_name':('Saqlash joyi','Место хранения'),
+'product_name':('Mahsulot','Товар'),'manager_entry':('Menejer xarajat ID','ID расхода менеджера'),
+})
 
 def export_fields(rows):
     """Replace person identifiers in-place and omit duplicate name columns."""
@@ -113,3 +129,4 @@ def workbook(sections,lang='uz'):
         ws.sheet_view.showGridLines=False
     if not sections:wb.create_sheet('TOPSHINALAR')
     out=io.BytesIO();wb.save(out);return out.getvalue()
+

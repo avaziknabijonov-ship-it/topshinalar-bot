@@ -112,7 +112,7 @@ class MiniService:
         scope='' if self.s.user(uid)['role']=='director' else ' WHERE r.actor=?'
         rows=self.s.rows(f'SELECT r.*,c.name client_name FROM {kind} r JOIN clients c ON c.id=r.client'+scope+' ORDER BY r.id DESC LIMIT 100',() if not scope else (uid,))
         if kind=='sales':
-            for row in rows:row['items']=self.s.rows('SELECT name,qty,price FROM sale_items WHERE sale=?',(row['id'],))
+            for row in rows:row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
         return rows
 
     def write(self,uid,key,cmd,data):
@@ -173,6 +173,13 @@ class MiniService:
 
     def action(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd=='supplier_save':return self.s.supplier_save(uid,text(d.get('name','')),text(d.get('phone',''),False,100),text(d.get('note',''),False),integer(d['supplier']) if d.get('supplier') else None)
+        if cmd=='supplier_income':return self.s.receive(uid,integer(d.get('product')),integer(d.get('supplier')),d.get('cost'),d.get('allocations'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'))
+        if cmd=='supplier_payment':return self.s.supplier_pay(uid,integer(d.get('supplier')),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),telegram_id(d['manager']) if d.get('manager') else None)
+        if cmd=='supplier_return':return self.s.supplier_return(uid,integer(d.get('lot')),d.get('qty'),text(d.get('note',''),False),d.get('date'))
+        if cmd=='manager_record':return self.s.manager_record(uid,telegram_id(d.get('manager',uid)),d.get('kind'),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'))
+        if cmd=='point_kind':return self.s.point_kind(uid,integer(d.get('point')),d.get('kind'))
+        if cmd=='transfer':return self.s.transfer(uid,integer(d.get('product')),integer(d.get('source')),integer(d.get('destination')),d.get('qty'),text(d.get('note',''),False))
         if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
         if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
         if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching. / Закройте приложение и откройте заново через /app.')
@@ -198,6 +205,9 @@ class MiniService:
             if not isinstance(items,list) or not 1<=len(items)<=50:raise ValueError('items')
             clean=[{'product':integer(i.get('product')),'qty':integer(i.get('qty')),'price':str(i.get('price',''))} for i in items if isinstance(i,dict)]
             if len(clean)!=len(items):raise ValueError('items')
+            if cmd=='sell':
+                for line,raw in zip(clean,items):
+                    if 'point' in raw:line['point']=integer(raw['point'])
             payload={'client':client,'items':clean,'payment':text(d.get('payment',''),required=cmd!='quote')}
             if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
             else:payload.update(fulfillment=text(d.get('fulfillment',''),required=False),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
@@ -231,7 +241,10 @@ class MiniService:
         if cmd=='opening_stock':
             return self.s.opening_stock(uid,integer(d.get('product')),integer(d.get('point')),d.get('qty'),text(d.get('note',''),False))
         if cmd=='point':
-            self.s.director(uid);ref=self.s.add('points',name=text(d.get('name',''),limit=150));self.s.log(uid,'point',ref);return ref
+            self.s.director(uid)
+            kind=d.get('kind','sklad')
+            if kind not in ('sklad','vitrina'):raise ValueError('point_kind')
+            ref=self.s.add('points',name=text(d.get('name',''),limit=150),kind=kind);self.s.log(uid,'point',ref);return ref
         if cmd=='startwork':
             ref=self.s.start(uid);self.b.notify_shift(uid,'start');return ref
         if cmd=='endwork':return self.b.execute(uid,cmd,{'report':text(d.get('report',''))})
@@ -295,7 +308,7 @@ class MiniHandler(BaseHTTPRequestHandler):
 
     def handle_request(self,write):
         target=urlsplit(self.path);path=target.path
-        static={'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         store=None;user=None
@@ -316,7 +329,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
-                if body.get('cmd') in {'sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
+                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
@@ -325,7 +338,10 @@ class MiniHandler(BaseHTTPRequestHandler):
             require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
-            elif path=='/api/points':result=store.rows('SELECT id,name FROM points ORDER BY name,id')
+            elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points ORDER BY name,id')
+            elif path=='/api/suppliers':result=store.suppliers(uid,query.get('picker')=='1')
+            elif path=='/api/supplier-report':result=store.supplier_report(uid,query.get('start',now()[:10]),query.get('end',now()[:10]),integer(query['supplier']) if query.get('supplier') else None)
+            elif path=='/api/manager-account':result=store.manager_account(uid,telegram_id(query['manager']) if query.get('manager') else None)
             elif path=='/api/brands':
                 result=[];seen=set()
                 for row in store.rows("SELECT brand FROM products WHERE TRIM(brand)<>'' ORDER BY brand"):
@@ -393,3 +409,4 @@ def main():
 
 
 if __name__=='__main__':main()
+

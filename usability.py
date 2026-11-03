@@ -160,12 +160,17 @@ class Usability:
 
     def picker_rows(self,uid,state,key,query=''):
         cmd=state['cmd']
-        if key=='client' or (key=='ref' and cmd=='card'):
+        if key=='supplier':
+            rows=self.s.suppliers(uid,for_receipt=True)
+        elif key=='lot':
+            self.s.director(uid)
+            rows=self.s.rows('SELECT l.id,p.name||" · "||t.name||" · "||l.qty name FROM inventory_lots l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.receipt IS NOT NULL AND l.qty>0 ORDER BY l.id')
+        elif key=='client' or (key=='ref' and cmd=='card'):
             rows=self.s.rows('SELECT id,name,phone FROM clients ORDER BY name,id')
-        elif key=='point':rows=self.s.rows('SELECT id,name FROM points ORDER BY name,id')
+        elif key in {'point','source','destination'}:rows=self.s.rows('SELECT id,name FROM points ORDER BY name,id')
         elif key=='product' or (key=='ref' and cmd=='photo') or key=='cart_product':
             rows=self.s.rows('SELECT id,name,brand,size FROM products WHERE active=1 ORDER BY name,id')
-        elif key in {'employee','assignee'}:
+        elif key in {'employee','assignee','manager'}:
             rows=self.s.rows('SELECT id,name FROM users WHERE active=1'+('' if self.s.user(uid)['role']=='director' else ' AND id=?')+' ORDER BY name',() if self.s.user(uid)['role']=='director' else (uid,))
         elif key=='sale':
             if cmd in {'pay','debt_due'}:rows=self.s.debts(uid)
@@ -366,3 +371,4 @@ class Usability:
         for d in directors:
             if self.once(f'daily-summary:{yesterday}:{d["id"]}'):
                 self.queue(d['id'],self.daily_summary(d['id'],yesterday))
+

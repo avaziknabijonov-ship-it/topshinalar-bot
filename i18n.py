@@ -156,3 +156,45 @@ ERRORS['report_section']=('Hisobot bo‘limini tanlang.','Выберите ра�
 
 TEXT['contact_phone']=('KPda ko‘rinadigan o‘z telefon raqamingizni kiriting. Masalan: +998 90 123 45 67.','Введите свой номер для связи в КП. Например: +998 90 123 45 67.')
 ERRORS['contact_phone']=('KP tuzuvchining shaxsiy aloqa raqamini kiriting.','Укажите личный контактный номер составителя КП.')
+
+TEXT.update({
+'supplier':('Yetkazib beruvchi ID. Ro‘yxat: /suppliers','ID поставщика. Список: /suppliers'),
+'supplier_filter':('Yetkazib beruvchi ID yoki barchasi uchun 0.','ID поставщика или 0 для всех.'),
+'supplier_phone':('Yetkazib beruvchi telefoni yoki - yozing.','Телефон поставщика или -.'),
+'receipt_cost':('Bir dona kirim narxi (keyingi qadamda valyuta tanlanadi).','Закупочная цена за штуку (валюта выбирается далее).'),
+'allocations':('Har bir manzil alohida qatorda: joy ID|miqdor. Bir yoki ikki joy mumkin. Ro‘yxat: /points. Masalan: 1|10 va keyingi qatorda 2|5','Каждое место отдельной строкой: ID места|количество. Одно или два места. Список: /points. Например: 1|10 и следующей строкой 2|5'),
+'account_amount':('Summani kiriting (keyingi qadamda valyuta tanlanadi).','Введите сумму (валюта выбирается далее).'),
+'account_currency':('Valyuta: USD yoki UZS','Валюта: USD или UZS'),
+'account_date':('Hisob sanasi: YYYY-MM-DD','Дата операции: YYYY-MM-DD'),
+'manager':('Mas’ul menejer Telegram ID. O‘zingiz uchun 0.','Telegram ID ответственного менеджера. Для себя 0.'),
+'payment_manager':('Menejer Telegram ID. Direktor o‘z pulidan to‘lasa 0. Xodim o‘z ID sini yozadi.','Telegram ID менеджера. Директор платит своими деньгами: 0. Сотрудник вводит свой ID.'),
+'supplier_lot':('Qaytariladigan kirim partiyasi ID (/supplier_report faylidagi partiyalar bo‘limi).','ID партии к возврату (раздел партий в файле /supplier_report).'),
+'point_kind':('Joy turi: sklad yoki vitrina','Тип места: sklad или vitrina'),
+'transfer_source':('Qayerdan: joy ID. Ro‘yxat: /points','Откуда: ID места. Список: /points'),
+'transfer_destination':('Qayerga: joy ID. Ro‘yxat: /points','Куда: ID места. Список: /points'),
+})
+TEXT['items']=(TEXT['items'][0]+'\nHar bir mahsulot joyini alohida tanlash: ID|dona|narx|joy ID. 3 ustunda yuqorida tanlangan joy ishlatiladi.',TEXT['items'][1]+'\nМесто для каждой позиции: ID|количество|цена|ID места. В 3 столбцах используется выбранное выше место.')
+MENU.update({
+'prixod':('Yetkazib beruvchidan kirim','Приход от поставщика'),
+'suppliers':('Yetkazib beruvchilar','Поставщики'),
+'supplier_new':('Yetkazib beruvchi qo‘shish','Добавить поставщика'),
+'supplier_edit':('Yetkazib beruvchi tahriri','Изменить поставщика'),
+'supplier_payment':('Yetkazib beruvchiga to‘lov','Оплата поставщику'),
+'supplier_return':('Yetkazib beruvchiga qaytarish','Возврат поставщику'),
+'supplier_report':('Yetkazib beruvchi hisoboti','Отчёт по поставщикам'),
+'manager_account':('Menejer pul hisobi','Деньги менеджера'),
+'manager_fund':('Menejerga pul berish','Выдать деньги менеджеру'),
+'manager_expense':('Menejer xarajati','Расход менеджера'),
+'manager_return':('Menejer pul qaytarishi','Возврат денег менеджера'),
+'point_kind':('Sklad / Vitrina turi','Тип: склад / витрина'),
+'transfer':('Sklad ↔ Vitrina','Склад ↔ Витрина'),
+})
+ERRORS.update({
+'allocations':('Bir yoki ikki turli manzil va musbat butun miqdor kiriting.','Укажите одно или два разных места и целое положительное количество.'),
+'supplier_lot':('Yetkazib beruvchisi ma’lum, qoldig‘i bor partiyani tanlang.','Выберите партию с поставщиком и доступным остатком.'),
+'stock_provenance':('Partiyalar va qoldiq mos emas. Direktorga murojaat qiling.','Остатки партий не совпадают. Обратитесь к директору.'),
+'currency':('USD yoki UZS tanlang.','Выберите USD или UZS.'),
+'point_kind':('sklad yoki vitrina tanlang.','Выберите sklad или vitrina.'),
+'manager':('Mas’ul sifatida xodimni tanlang.','Выберите сотрудника в качестве ответственного.'),
+})
+

@@ -119,7 +119,9 @@ class InventoryExcel:
                 self.s.db.execute("UPDATE products SET price=?,price_pending=0,currency='USD' WHERE id=?",(row['price'],ref))
                 self.s.log(uid,'product_edit',ref)
             self.s.db.execute('INSERT INTO stock(product,point,qty) VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=excluded.qty',(ref,point,row['new_qty']))
+            self.s._unassigned_lot(ref,point,row['qty'])
             self.s.add('movements',product=ref,point=point,qty=row['qty'],kind='excel_income',actor=uid,note=f"Excel {preview['sheet']} row {row['row']}: {row['old_qty'] or 0} + {row['qty']} = {row['new_qty']}",created=now())
             self.s.rearm_stock(ref,point)
         self.s.log(uid,'excel_import',point)
         return {'count':preview['count'],'new_count':preview['new_count']}
+

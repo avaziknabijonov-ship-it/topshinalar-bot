@@ -1,0 +1,55 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+
+async function test(){
+ let captured,html;
+ const state={me:{id:20,role:'employee',lang:'uz'},points:[{id:1,name:'Sklad',kind:'sklad'},{id:2,name:'Vitrina',kind:'vitrina'}],cart:[{id:7,name:'Tyre A',qty:2,unit:'10'},{id:8,name:'Tyre B',qty:1,unit:'20'}],dashboard:{date:'2026-11-03'}};
+ const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const context={state,T:(uz,ru)=>state.me.lang==='ru'?ru:uz,E,Intl,Date,URLSearchParams,console,document:{addEventListener(){}},money:n=>String(n/100),empty:title=>title,toast:message=>{throw Error(message)},form:(...args)=>{captured=args},modal:(title,content)=>{html=content},prepareClients:async()=>{},clientField:()=>'<label>Client</label>',api:async path=>{
+  if(path==='/api/catalog')return {items:[{id:7,name:'Tyre A'}]};
+  if(path==='/api/staff')return [{id:10,name:'Director',role:'director'},{id:20,name:'Manager',role:'employee'}];
+  if(path==='/api/suppliers?picker=1')return [{id:3,name:'Factory'}];
+  if(path==='/api/suppliers')return {suppliers:[{id:3,name:'<script>alert(1)</script>',note:'<bad>',phone:'123'}],balances:[{supplier:3,currency:'USD',balance:2050}]};
+  if(path==='/api/manager-account')return {entries:[{kind:'expense',amount:500,currency:'USD',date:'2026-11-03',actor_name:'Manager',note:'<taxi>'}],balances:[{manager_name:'Manager',given:0,expenses:500,returned:0,balance:-500,currency:'USD'}]};
+  if(path.startsWith('/api/supplier-report'))return {stock:[{name:'Tyre A',qty:2,supplier_name:'Factory',point_name:'Vitrina'}],sold:[{name:'Tyre A',qty:1,supplier_name:'Factory',point_name:'Vitrina'}],entries:[],lots:[{id:11,receipt:4,product_name:'Tyre A',point_name:'Vitrina',qty:2,cost:1025,currency:'USD'}],start:'2026-11-01',end:'2026-11-03'};
+  throw Error('Unexpected endpoint '+path);
+ }};
+ vm.createContext(context);
+ const app=fs.readFileSync('web/app.js','utf8');
+ vm.runInContext(app.slice(app.indexOf('const field='),app.indexOf('const clientField=')),context);
+ vm.runInContext(app.slice(app.indexOf('async function checkout('),app.indexOf('function detail(')),context);
+ vm.runInContext(fs.readFileSync('web/accounting.js','utf8'),context);
+ const payload=context.accountingPayload('supplier_income',{product:'7',supplier:'3',cost:'10.25',first_point:'1',first_qty:'5',second_point:'2',second_qty:'3',currency:'USD'});
+ assert.deepEqual(JSON.parse(JSON.stringify(payload.allocations)),[{point:1,qty:5},{point:2,qty:3}]);
+ assert.equal(payload.first_qty,undefined);assert.equal(payload.cost,'10.25');
+ for(const qty of ['1.5','-1','NaN'])assert.throws(()=>context.accountingPayload('supplier_income',{first_point:'1',first_qty:qty,second_qty:'0'}));
+ assert.throws(()=>context.accountingPayload('supplier_income',{first_point:'1',first_qty:'0',second_qty:'0'}));
+ const one=context.accountingPayload('supplier_income',{first_point:'2',first_qty:'3',second_point:'',second_qty:'0'});
+ assert.equal(one.allocations.length,1);assert.equal(one.allocations[0].point,2);
+ await context.checkout();
+ assert.equal(captured[1],'sell');assert.match(captured[2],/name="item_point_0"/);assert.match(captured[2],/name="item_point_1"/);
+ const sale=context.accountingPayload('sell',{...captured[3],item_point_0:'1',item_point_1:'2'});
+ assert.equal(sale.point,1);assert.equal(sale.items[0].point,1);assert.equal(sale.items[1].point,2);assert.equal(sale.item_point_0,undefined);
+ await context.accountingOperations('income');
+ assert.equal(captured[1],'supplier_income');assert.match(captured[2],/name="supplier"/);assert.match(captured[2],/name="cost"/);assert.match(captured[2],/name="second_point"/);
+ await context.accountingOperations('manager-expense');
+ assert.equal(captured[1],'manager_record');assert.equal(captured[3].manager,20);assert.equal(captured[3].kind,'expense');assert.doesNotMatch(captured[2],/name="manager"/);
+ await context.accountingOperations('supplier-payment');
+ assert.equal(captured[3].manager,20);assert.doesNotMatch(captured[2],/name="manager"/);
+ state.me.role='director';
+ await context.accountingOperations('manager-fund');
+ assert.equal(captured[3].kind,'fund');assert.match(captured[2],/name="manager"/);assert.doesNotMatch(captured[2],/>Director</);
+ await context.accountingOperations('suppliers');
+ assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/<script>/);assert.match(html,/20.5 USD/);
+ await context.accountingOperations('supplier-return');
+ assert.equal(captured[1],'supplier_return');assert.match(captured[2],/value="11"/);assert.match(captured[2],/10.25 USD/);
+ await context.accountingOperations('manager-account');
+ assert.match(html,/-5 USD/);assert.match(html,/&lt;taxi&gt;/);
+ await context.supplierReport({start:'2026-11-01',end:'2026-11-03'});
+ assert.match(html,/Vitrinadagi joriy qoldiq/);assert.match(html,/Davrda vitrindan sotilgan/);
+ state.me.lang='ru';await context.accountingOperations('point-kind');assert.match(captured[2],/Витрина/);
+ console.log('Accounting UI: split receipts, per-line locations, manager scope, supplier returns, reports and escaping passed');
+}
+test().catch(error=>{console.error(error);process.exitCode=1});
