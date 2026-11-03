@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS sessions(user_id INTEGER PRIMARY KEY REFERENCES users
 CREATE TABLE IF NOT EXISTS clients(id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, note TEXT NOT NULL, owner INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS points(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL);
 CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY, name TEXT NOT NULL, price INTEGER NOT NULL CHECK(price>=0), photo TEXT, active INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS product_photos(product INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, position INTEGER NOT NULL CHECK(position BETWEEN 0 AND 4), file_id TEXT NOT NULL, PRIMARY KEY(product,position), UNIQUE(product,file_id));
 CREATE TABLE IF NOT EXISTS stock(product INTEGER NOT NULL REFERENCES products(id), point INTEGER NOT NULL REFERENCES points(id), qty INTEGER NOT NULL CHECK(qty>=0), PRIMARY KEY(product,point));
 CREATE TABLE IF NOT EXISTS movements(id INTEGER PRIMARY KEY, product INTEGER NOT NULL REFERENCES products(id), point INTEGER NOT NULL REFERENCES points(id), qty INTEGER NOT NULL, kind TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), note TEXT NOT NULL, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS sales(id INTEGER PRIMARY KEY, client INTEGER NOT NULL REFERENCES clients(id), point INTEGER NOT NULL REFERENCES points(id), actor INTEGER NOT NULL REFERENCES users(id), total INTEGER NOT NULL CHECK(total>=0), paid INTEGER NOT NULL CHECK(paid>=0 AND paid<=total), payment TEXT NOT NULL, created TEXT NOT NULL);
@@ -123,6 +124,9 @@ class Store:
         self.db = sqlite3.connect(path, timeout=30)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        # Preserve the original single-photo field while migrating it into the
+        # ordered gallery used by the Mini App. Catalog placeholders stay valid.
+        self.db.execute("INSERT OR IGNORE INTO product_photos(product,position,file_id) SELECT id,0,photo FROM products WHERE photo IS NOT NULL AND TRIM(photo)<>''")
         # Additive migration: old quotes retain their original items and totals.
         columns={r[1] for r in self.db.execute('PRAGMA table_info(quotes)')}
         for name in ('payment','fulfillment'):
