@@ -112,7 +112,7 @@ def quotation_pdf(store,uid,ref):
     body += [p('Тел. 1: +99899-053-83-03' if ru else 'Tel. 1: +99899-053-83-03')]
     body += [p('Тел. 2: +99899-674-10-10' if ru else 'Tel. 2: +99899-674-10-10')]
     body += [p('С уважением,' if ru else 'Hurmat bilan,')]
-    body += [p('Менеджер ХУДОЙБЕРДИ' if ru else 'Menejer XUDOYBERDI')]
+    body += [p('Менеджер' if ru else 'Menejer')]
     body += [Spacer(1,6)]
     headers=['Фото','Товар','Цена за 1 шт. с НДС'] if ru else ['Rasm','Mahsulot','1 dona narxi (QQS bilan)']
     data=[[p(h) for h in headers]]
@@ -153,7 +153,8 @@ def quotation_pdf(store,uid,ref):
         term('Тел. 1: +99899-053-83-03' if ru else 'Tel. 1: +99899-053-83-03'),
         term('Тел. 2: +99899-674-10-10' if ru else 'Tel. 2: +99899-674-10-10'),
         term('С уважением,' if ru else 'Hurmat bilan,'),
-        term('Менеджер ХУДОЙБЕРДИ' if ru else 'Menejer XUDOYBERDI'),
+        term('Менеджер' if ru else 'Menejer'),
+        term('A A'),
     ]
     fulfillment='Доставка по согласованию' if ru else 'Yetkazib berish kelishilgan holda'
     body += [table,Spacer(1,5),p('Способ оплаты' if ru else 'To‘lov usuli'),term(payment),Spacer(1,3),p('Условия доставки' if ru else 'Yetkazib berish shartlari'),term(fulfillment),Spacer(1,3),*terms]
