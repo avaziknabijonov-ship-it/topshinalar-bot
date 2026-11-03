@@ -135,7 +135,6 @@ class MiniService:
         uploaded=None
         if cmd=='product_photo':
             require_command(self.s,uid,cmd)
-            if self.s.user(uid)['role']!='employee':raise PermissionError()
             self.s.one('products',integer(data.get('product')))
             if self.s.db.execute('SELECT COUNT(*) FROM product_photos WHERE product=?',(integer(data.get('product')),)).fetchone()[0]>=5:
                 raise ValueError('photo_limit')
