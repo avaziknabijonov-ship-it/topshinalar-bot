@@ -197,3 +197,10 @@ ERRORS.update({
 'manager':('Mas’ul sifatida xodimni tanlang.','Выберите сотрудника в качестве ответственного.'),
 })
 
+
+ERRORS.update({
+'manager_cash_available':('Summa menejerning topshirilmagan pulidan oshdi. Holatni yangilang.','Сумма превышает несданный остаток. Обновите данные.'),
+'manager_handover_changed':('Bu topshirish allaqachon qabul qilingan yoki topilmadi.','Эта сдача уже принята или не найдена.'),
+'manager_day_unsettled':('Kun yopilmaydi: pul qoldig‘i, tasdiq kutilayotgan topshirish yoki tekshirilmagan refund bor.','День не закрыт: есть остаток, неподтверждённая сдача или непроверенный возврат.'),
+'manager_day_closed':('Bu kun allaqachon yopilgan.','Этот день уже закрыт.'),
+})

@@ -182,6 +182,8 @@ class Store(Accounting):
         self.db.execute('CREATE UNIQUE INDEX IF NOT EXISTS products_catalog_sku ON products(catalog_sku) WHERE catalog_sku IS NOT NULL')
         self.db.commit()
         migrate_accounting(self)
+        from manager_money import migrate as migrate_manager_money
+        migrate_manager_money(self)
         from catalog_sync import migrate as migrate_catalog
         migrate_catalog(self)
         from director_auth import migrate as migrate_director

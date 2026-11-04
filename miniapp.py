@@ -185,6 +185,10 @@ class MiniService:
 
     def action(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd in {'manager_reject_return','manager_received','manager_request_return','manager_accept_return','manager_accept_cash','manager_assign_refund','manager_close_day'}:
+            import manager_money
+            action={'manager_reject_return':'reject_return','manager_received':'receive','manager_request_return':'request_return','manager_accept_return':'accept_return','manager_accept_cash':'accept_cash','manager_assign_refund':'assign_refund','manager_close_day':'close_day'}[cmd]
+            return getattr(manager_money,action)(self.s,uid,d)
         if cmd in {'website_save','website_retry','stock_transfer','inventory_count'}:
             self.s.director(uid)
             if cmd=='website_save':return __import__('catalog_sync').save_settings(self.s,uid,d)

@@ -86,7 +86,11 @@ def read(service,uid,kind,q):
         if q.get('id'):return s.supplier_ledger(uid,quantity(q['id']))
         result=s.suppliers(uid);paged=page(result['suppliers'],q);result['suppliers']=paged.pop('items');result.update(paged);return result
     if kind=='managers':
-        result=s.manager_account(uid)
+        import manager_money
+        with manager_money.read_snapshot(s):
+            result=s.manager_account(uid)
+            result['days']=manager_money.days(s,uid,start,end)
+        result['pending_handovers']=[r for r in result['entries'] if r['kind']=='return' and r['receipt_status']=='pending']
         result['entries']=[r for r in result['entries'] if start<=r['date']<=end]
         paged=page(result['entries'],q);result['entries']=paged.pop('items');result.update(paged);return result
     if kind=='staff':
@@ -182,12 +186,16 @@ def handle_http(handler,path,write):
                 data['debts']=[row for row in s.debts(uid) if row['id'] in sale_ids]
                 if 'manager_entries' not in data:
                     manager=s.manager_account(uid);supplier=s.supplier_report(uid,start,end)
+                    data['manager_days']=__import__('manager_money').days(s,uid,start,end)
                     data.update(manager_entries=[r for r in manager['entries'] if start<=r['date']<=end],manager_balances=manager['balances'],supplier_stock=supplier['stock'],supplier_sold=supplier['sold'],supplier_entries=supplier['entries'],supplier_balances=supplier['balances'],supplier_lots=supplier['lots'])
                 handler.send(200,workbook(service.b.enrich(data),user['lang']),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-director.xlsx');return
             result=read(service,uid,kind,q)
         handler.send(200,result)
     except (PermissionError,AuthError):handler.send(403,{'error':'Kirish rad etildi / Доступ запрещён'})
-    except (ValueError,TypeError,KeyError,__import__('sqlite3').IntegrityError):handler.send(400,{'error':'Ma’lumotni tekshiring / Проверьте данные'})
+    except (ValueError,TypeError,KeyError,__import__('sqlite3').IntegrityError) as exc:
+        from i18n import ERRORS
+        messages=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))
+        handler.send(400,{'error':messages[0]+' / '+messages[1]})
     except Exception:
         __import__('logging').exception('Director request failed: %s',path)
         handler.send(503,{'error':'Vaqtincha mavjud emas / Временно недоступно'})

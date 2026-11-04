@@ -253,21 +253,18 @@ class Accounting:
         if kind == 'fund':
             self.director(uid)
             self.user(manager)
+        if kind=='return':
+            from manager_money import balance
+            b=balance(self,uid,manager,currency)
+            if money(amount,True)>b['balance']-b['pending_return']:raise ValueError('manager_cash_available')
         ref = self.add('manager_entries', manager=manager, kind=kind, amount=money(amount, True), currency=valid_currency(currency), actor=uid, note=clean_note(note), date=accounting_date(date), created=now())
+        if kind=='return':self.db.execute('INSERT INTO manager_return_receipts(entry) VALUES(?)',(ref,))
         self.log(uid, 'manager_' + kind, ref)
         return ref
 
     def manager_account(self, uid, manager=None):
-        user = self.user(uid)
-        if manager is not None:
-            self._manager_access(uid, manager)
-        elif user['role'] != 'director':
-            manager = uid
-        scope = ' WHERE e.manager=?' if manager is not None else ''
-        params = (manager,) if manager is not None else ()
-        entries = self.rows('SELECT e.*,u.name manager_name,a.name actor_name FROM manager_entries e JOIN users u ON u.id=e.manager JOIN users a ON a.id=e.actor'+scope+' ORDER BY e.id DESC', params)
-        balances = self.rows("SELECT e.manager,u.name manager_name,e.currency,SUM(CASE WHEN e.kind='fund' THEN e.amount ELSE 0 END) given,SUM(CASE WHEN e.kind='expense' THEN e.amount ELSE 0 END) expenses,SUM(CASE WHEN e.kind='return' THEN e.amount ELSE 0 END) returned,SUM(CASE WHEN e.kind='fund' THEN e.amount ELSE -e.amount END) balance FROM manager_entries e JOIN users u ON u.id=e.manager"+scope+' GROUP BY e.manager,e.currency', params)
-        return {'entries':entries, 'balances':balances}
+        from manager_money import account
+        return account(self,uid,manager)
 
     @atomic
     def supplier_pay(self, uid, supplier, amount, note='', date=None, currency='USD', manager=None, method=''):
