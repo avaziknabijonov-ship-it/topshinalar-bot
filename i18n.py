@@ -204,3 +204,5 @@ ERRORS.update({
 'manager_day_unsettled':('Kun yopilmaydi: pul qoldig‘i, tasdiq kutilayotgan topshirish yoki tekshirilmagan refund bor.','День не закрыт: есть остаток, неподтверждённая сдача или непроверенный возврат.'),
 'manager_day_closed':('Bu kun allaqachon yopilgan.','Этот день уже закрыт.'),
 })
+
+ERRORS['client_changed']=('Mijoz ma’lumoti o‘zgargan. Kartani qayta oching.','Данные клиента изменились. Откройте карточку заново.')

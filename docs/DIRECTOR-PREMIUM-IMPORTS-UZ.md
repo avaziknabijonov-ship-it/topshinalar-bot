@@ -90,3 +90,52 @@ empty template, tarixiy davr va joriy qarz ajratilishi, bounded chart va valyuta
 
 `docs/screenshots/premium-*` — faqat disposable lokal test yozuvlari.
 Production fayl importi yoki production UI yangilanishi bu ishda bajarilmadi.
+
+## Filtrlar, mijozlar va qarz tarixi
+
+- Ombor joyi, brend, razmer, mavjud/tugagan/noma’lum qoldiq va valyuta.
+- Savdoda mijoz, menejer, mahsulot, qarz/to‘langan, faol/bekor qilingan, valyuta.
+- Mijozlarda mas’ul, qarzli/qarzsiz/kechikkan va qarz valyutasi; ta’minotchida valyuta va qarz/avans.
+- Menejerda xodim, valyuta, operatsiya; xodimda rol/faollik; katalogda brend/sync.
+  Qidirish va filtrlar serverda sahifalashdan oldin ishlaydi, bo‘lim almashganda saqlanadi.
+- Mijoz qo‘shish/tahrirlash direktor huquqi bilan, o‘zgartirilgan yozuv reviziyasi tekshiriladi:
+  boshqa brauzerdagi yangi tahrirni eski forma bosib ketmaydi. Bog‘liq savdo/to‘lovlar saqlanadi.
+  Mas’ul xodim nom bilan tanlanadi; yangi mas’ul faol bo‘lishi kerak. Audit va idempotency saqlangan.
+- Oddiy jadvallar, tafsilotlar, import preview va direktor Excel eksportida ichki ID ustunlari yo‘q.
+  ID bazadan/API’dan o‘chirilmagan; mahsulotlar nomiga qarab birlashtirilmagan.
+  Partiya raqami kiritish o‘rniga mahsulot/ta’minotchi/joy/sana/son orqali tanlanadi.
+- Mijoz va ta’minotchi kartasida joriy qarz, davr boshidagi qarz, xronologik operatsiya,
+  summa, qarz o‘zgarishi, har amaldan keyingi qoldiq va davr oxiri alohida.
+  Ta’minotchining hisob sanasi va amalda kiritilgan vaqt ikkalasi ko‘rsatiladi.
+  Eski savdo `paid` qiymati bilan alohida to‘lov yozuvlari mos kelmasa ogohlantirish chiqadi;
+  yo‘q tarix taxmin bilan tiklanmaydi. Qarz muddati va savdo sanasi joriy mijoz qarzida ko‘rinadi.
+
+## Tanlanadigan Excel kategoriyalari
+
+`GET /director-api/report-categories` — ruxsat tekshirilgan 15 kategoriya.
+`GET /director-api/report?start=YYYY-MM-DD&end=YYYY-MM-DD&categories=clients,suppliers`
+— faqat tanlangan bo‘limlar. `all` yoki parametr yo‘q bo‘lsa barcha bo‘limlar.
+Bo‘sh/noma’lum kategoriya rad etiladi. Interfeysda bir nechta checkbox va Barchasi mavjud.
+
+Savdo va mahsulotlar, tushum/refund, joriy mijoz qarzi, ombor/vitrina, harakatlar,
+mijozlar va qarz tarixi, ta’minotchilar va qarz tarixi, kirim/partiyalar, menejer puli,
+xodim/smena/jarima, CRM, KP, yetkazish, sayt katalogi/sync, audit.
+Tranzaksiyalar sana oralig‘ida; joriy qoldiqlarda `as_of` bor. Tarixdagi boshlang‘ich
+saldo oldingi real operatsiyalardan olinadi. Har valyuta alohida qator, konvertatsiya yo‘q.
+Eksport bitta read snapshot’dan, ichki ID va autentifikatsiya ma’lumoti chiqarilmaydi.
+Joriy katalog narxi bo‘limida `price_cents` faqat saytga alohida belgilangan USD narx;
+`price_mode` bot narxidan foydalanish holatini ajratadi.
+
+Qo‘shimcha runtime fayllari: `director_business.py`, `director_reports.py`, `staff.py`,
+`core.py`, `i18n.py`, `reports.py`, `web/director-business.js`.
+Bu qo‘shimchalar yangi migratsiya yoki secret talab qilmaydi. Oldingi menejer pul migratsiyasi
+va rollback cheklovlari saqlanadi. Mijoz tahriri va importlar qaytarilganda eski DB backupni
+avtomatik tiklamang: undan keyingi haqiqiy savdo va to‘lovlar yo‘qoladi.
+
+Qo‘shimcha testlar: parallel/eskirgan mijoz tahriri, direktor/xodim huquqi, faol bo‘lmagan mas’ul,
+client-save idempotency, mijoz qarzi/pay/refund/cancel, tarix yetishmovchiligi ogohlantirishi,
+2500−1000−500 ta’minotchi hisobi, oldinroq sanali yozuvlar, valyuta alohidaligi,
+joriy qoldiqning tarixiy davrdan mustaqilligi, tanlangan va barcha Excel varaqlari, ID yo‘qligi.
+Chromium’da mijoz yaratish/tahrirlash, nomli filtr, qarz tarixi va tanlangan haqiqiy XLSX yuklash.
+`director-stock-filters.png`, `director-debt-history.png`, `director-report-categories.png`
+rasmlari ham faqat vaqtinchalik test bazasidan.

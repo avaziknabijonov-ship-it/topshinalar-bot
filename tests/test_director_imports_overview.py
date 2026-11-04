@@ -134,3 +134,18 @@ class DirectorImportOverviewTests(unittest.TestCase):
         self.assertEqual(len(overview['lowstock']),1);self.assertEqual(rows['total'],1);self.assertEqual(rows['items'][0]['qty'],10)
         with self.assertRaises(PermissionError):director.read(self.service,20,'overview',{})
         with self.assertRaises(PermissionError):director.read(self.service,20,'lowstock',{})
+
+    def test_named_client_edit_and_selected_excel_http_routes(self):
+        status,groups=self.call('/director-api/report-categories');self.assertEqual(status,200);self.assertEqual(len(groups),15)
+        self.assertEqual(self.call('/director-api/report-categories',authorized=False)[0],403)
+        data={'name':'HTTP client','phone':'+998901234567','address':'Office','note':'Note','owner':20}
+        status,response=self.action('director_client_save',data);self.assertEqual(status,200);ref=response['id']
+        status,card=self.call('/director-api/clients?id='+str(ref));self.assertEqual(status,200);row=card['client'][0]
+        changed={**data,'name':'Changed HTTP client','client':ref,'revision':row['revision']}
+        self.assertEqual(self.action('director_client_save',changed,csrf=False)[0],403)
+        self.assertEqual(self.action('director_client_save',changed)[0],200)
+        self.assertEqual(self.action('director_client_save',{**changed,'name':'Stale'})[0],400)
+        status,raw=self.call('/director-api/report?categories=clients,stock');self.assertEqual(status,200)
+        wb=load_workbook(io.BytesIO(raw));self.assertEqual(len(wb.sheetnames),5)
+        self.assertEqual(self.call('/director-api/report?categories=unknown')[0],400)
+        self.assertEqual(self.call('/director-api/report?categories=clients',authorized=False)[0],403)
