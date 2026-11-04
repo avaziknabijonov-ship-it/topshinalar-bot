@@ -12,8 +12,8 @@ Excel uchun botdagi mavjud `InventoryExcel.preview/apply`, PDF uchun mavjud
 `document_import.extract/preview/apply` ishlatiladi. Alohida import biznes mexanizmi yozilmadi.
 
 - XLSX: 4 MiB, 2000 qatorgacha, ixtiyoriy varaq; bo‘sh XLSX shablon yuklash.
-- PDF: 4 MiB, 1–5 sahifa; matn/OCR, nom/ID/dona/USD narxlarini tahrirlash.
-- Preview barcha qatorlarni 100 tadan ko‘rsatadi: mos kelgan ID/yangi mahsulot,
+- PDF: 4 MiB, 1–5 sahifa; matn/OCR, mavjud mahsulotni nom bilan tanlash, dona/USD narxlarini tahrirlash.
+- Preview barcha qatorlarni 100 tadan ko‘rsatadi: mavjud/yangi mahsulot holati,
   oldingi/kelgan/yangi son, eski narx va asl valyuta, yangi USD narx.
 - Tasdiq checkboxi va alohida import tugmasi. Preview biznes yozuvlarini o‘zgartirmaydi.
 - Narx/qoldiq o‘zgarsa fingerprint importni rad etadi va yangi preview kerak.
@@ -139,3 +139,16 @@ joriy qoldiqning tarixiy davrdan mustaqilligi, tanlangan va barcha Excel varaqla
 Chromium’da mijoz yaratish/tahrirlash, nomli filtr, qarz tarixi va tanlangan haqiqiy XLSX yuklash.
 `director-stock-filters.png`, `director-debt-history.png`, `director-report-categories.png`
 rasmlari ham faqat vaqtinchalik test bazasidan.
+
+PDF matnini o‘qish mavjud `pdftotext`/`pdfinfo`, skanlar uchun `pdftoppm` va
+`tesseract` dasturlaridan foydalanadi. VDSda ularning mavjudligi hali tekshirilmagan.
+O‘rnatishdan oldingi read-only tekshiruv:
+
+```bash
+command -v pdftotext pdfinfo pdftoppm tesseract
+tesseract --list-langs
+```
+
+Yetishmasa, mavjud bot PDF importi uchun ham kerak bo‘lgan `poppler-utils`,
+`tesseract-ocr` va kerakli UZ/RU til paketlarini server operatori o‘rnatadi.
+Parser mavjud bo‘lmasa API tushunarli xato beradi; previewdan biznes yozuvi yaratilmaydi.
