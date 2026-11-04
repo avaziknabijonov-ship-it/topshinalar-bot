@@ -74,7 +74,7 @@ async function supplierReport(data){
 
 async function managerPanel(){
  const data=await api('/api/manager-account');
- modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button><button data-action="supplier-payment">${T('Yetkazib beruvchiga to‘lov','Оплатить поставщику')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan − xarajat − qaytarilgan','Выдано − расход − возврат')}: ${money(b.given)} − ${money(b.expenses)} − ${money(b.returned)}</p></article>`).join('')}<h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
+ modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan − xarajat − qaytarilgan','Выдано − расход − возврат')}: ${money(b.given)} − ${money(b.expenses)} − ${money(b.returned)}</p></article>`).join('')}<h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
 }
 
 async function accountingOperations(action,id){
@@ -84,7 +84,7 @@ async function accountingOperations(action,id){
  if(action==='supplier-debts'){
   const data=await api('/api/suppliers');
   const balances=(data.balances||[]).filter(r=>Number(r.balance)>0);
-  modal(T('Yetkazib beruvchilarga qarz','Долги поставщикам'),`<div class="list">${balances.map(r=>{const supplier=data.suppliers.find(s=>s.id===r.supplier);return `<article class="list-card"><h3>${E(supplier?.name||r.supplier_name||T('Yetkazib beruvchi','Поставщик'))}</h3><p>${T('Qolgan qarz','Остаток долга')}: ${money(r.balance)} ${E(r.currency||'USD')}</p></article>`}).join('')||empty(T('Yetkazib beruvchilarga qarz yo‘q.','Долгов поставщикам нет.'))}</div>`);
+  modal(T('Yetkazib beruvchilarga qarz','Долги поставщикам'),`<div class="list">${balances.map(r=>{const supplier=data.suppliers.find(s=>s.id===r.supplier);return `<article class="list-card"><h3>${E(supplier?.name||r.supplier_name||T('Yetkazib beruvchi','Поставщик'))}</h3><p>${T('Qolgan qarz','Остаток долга')}: ${money(r.balance)} ${E(r.currency||'USD')}</p><button class="secondary full" data-account-action="supplier-detail" data-id="${r.supplier}">${T('Tarixni ko‘rish','История')}</button></article>`}).join('')||empty(T('Yetkazib beruvchilarga qarz yo‘q.','Долгов поставщикам нет.'))}</div>`);
   return true;
  }
  if(action==='manager-account'){await managerPanel();return true}
