@@ -70,7 +70,7 @@ def localized(key,val,lang):
         names={'pending':('Tasdiq kutilmoqda','Ожидает подтверждения'),'accepted':('Qabul qilindi','Принято'),'rejected':('Rad etilgan','Отклонено'),'legacy':('Eski yozuv','Прежняя запись'),'open':('Yopilmagan','Не закрыт'),'closed':('Yopilgan','Закрыт'),'reopened':('Qayta tekshirish','Требуется сверка')}
         if val in names:return names[val][lang=='ru']
     if key in {'kind','action','stock_status'}:
-        labels={'in':('Kirim','Приход'),'opening':('Boshlang‘ich qoldiq','Начальный остаток'),'return':('Qaytarish','Возврат'),'writeoff':('Hisobdan chiqarish','Списание'),'sale':('Sotuv','Продажа'),'product':('Mahsulot qo‘shildi','Товар добавлен'),'product_edit':('Mahsulot tahrirlandi','Товар изменён'),'unknown':('Kiritilmagan','Не указан'),'known':('Kiritilgan','Указан')}
+        labels={'excel_income':('Excel/PDF kirimi','Приход Excel/PDF'),'in':('Kirim','Приход'),'opening':('Boshlang‘ich qoldiq','Начальный остаток'),'return':('Qaytarish','Возврат'),'writeoff':('Hisobdan chiqarish','Списание'),'sale':('Sotuv','Продажа'),'product':('Mahsulot qo‘shildi','Товар добавлен'),'product_edit':('Mahsulot tahrirlandi','Товар изменён'),'unknown':('Kiritilmagan','Не указан'),'known':('Kiritilgan','Указан')}
         if val in labels:return labels[val][lang=='ru']
     if key=='status' and val=='active':return 'Faol' if lang=='uz' else 'Активна'
     if key=='method' and val=='refund':return 'Pul qaytarish' if lang=='uz' else 'Возврат денег'
