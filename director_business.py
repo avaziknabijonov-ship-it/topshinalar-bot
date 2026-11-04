@@ -33,11 +33,15 @@ def filtered(rows,q,kind=''):
     result=[]
     for row in rows:
         keep=True
-        for key,columns in {'currency':['currency'],'manager':['manager','actor','owner'],'owner':['owner'],'client':['client'],'supplier':['supplier'],'point':['point_id','point'],'role':['role'],'kind':['kind'],'status':['status'],'receipt_status':['receipt_status'],'sync_status':['sync_status'],'brand':['brand']}.items():
+        for key,columns in {'currency':['currency'],'manager':['manager','actor','owner'],'owner':['owner'],'client':['client'],'supplier':['supplier'],'point':['point_id','point'],'role':['role'],'kind':['kind'],'status':['status'],'receipt_status':['receipt_status'],'sync_status':['sync_status'],'brand':['brand'],'method':['method']}.items():
             value=q.get(key)
             if not value:continue
             column=next((c for c in columns if c in row),None)
-            if column is not None and str(row[column]).casefold()!=str(value).casefold():keep=False;break
+            if column is not None:
+                actual=str(row[column]).casefold();expected=str(value).casefold()
+                if key=='method':
+                    aliases={'naqd':'cash','karta':'card','perechisleniya':'transfer'};actual=aliases.get(actual,actual);expected=aliases.get(expected,expected)
+                if actual!=expected:keep=False;break
         if q.get('size') and re.sub(r'\s','',q['size']).casefold() not in re.sub(r'\s','',str(row.get('size',''))).casefold():keep=False
         state=q.get('stock_status')
         if state:

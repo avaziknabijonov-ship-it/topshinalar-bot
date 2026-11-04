@@ -54,6 +54,8 @@ def read(service,uid,kind,q):
     s=service.s;s.director(uid)
     start=accounting_date(q.get('start',now()[:10]));end=accounting_date(q.get('end',now()[:10]))
     if start>end:raise ValueError('date')
+    from director_sections import KINDS,records
+    if kind in KINDS:return page(records(s,uid,kind,start,end,q),q)
     if kind=='overview':
         from director_overview import overview
         return overview(service,uid,start,end)
@@ -75,7 +77,7 @@ def read(service,uid,kind,q):
     if kind=='lowstock':return page(s.rows('SELECT p.id,p.name,t.name point_name,l.minimum,st.qty FROM stock_limits l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point JOIN stock st ON st.product=l.product AND st.point=l.point WHERE p.active=1 AND l.minimum>0 AND st.qty<=l.minimum ORDER BY st.qty,p.id'),q)
     if kind=='stock':return page(s.inventory_report(uid)['stock'],q)
     if kind=='lots':return page(s.rows('SELECT l.*,p.name product_name,t.name point_name,r.supplier,r.cost,r.currency FROM inventory_lots l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point LEFT JOIN receipts r ON r.id=l.receipt ORDER BY l.id DESC'),q)
-    if kind=='receipts':return page(s.rows('SELECT r.*,p.name product_name,v.name supplier_name,u.name actor_name FROM receipts r JOIN products p ON p.id=r.product JOIN suppliers v ON v.id=r.supplier JOIN users u ON u.id=r.actor WHERE r.date BETWEEN ? AND ? ORDER BY r.id DESC',(start,end)),q)
+
     if kind=='quotes':return page(s.rows('SELECT q.*,c.name client_name,u.name actor_name FROM quotes q JOIN clients c ON c.id=q.client JOIN users u ON u.id=q.actor WHERE substr(q.created,1,10) BETWEEN ? AND ? ORDER BY q.id DESC',(start,end)),q)
     if kind=='clients':
         from director_business import client_card,client_list
