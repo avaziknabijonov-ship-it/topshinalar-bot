@@ -42,6 +42,8 @@ def count_stock(s,uid,d):
 
 
 def page(rows,q):
+    from director_business import filtered
+    rows=filtered(rows,q)
     search=q.get('q','').casefold().strip()[:200]
     if search:rows=[r for r in rows if search in json.dumps(r,ensure_ascii=False).casefold()]
     index=max(0,min(100000,int(q.get('page',0))));size=25
@@ -53,11 +55,8 @@ def read(service,uid,kind,q):
     start=accounting_date(q.get('start',now()[:10]));end=accounting_date(q.get('end',now()[:10]))
     if start>end:raise ValueError('date')
     if kind=='overview':
-        result=service.dashboard(uid,start,end)
-        result['lowstock']=[r for r in result['lowstock'] if s.db.execute('SELECT 1 FROM stock WHERE product=? AND point=?',(r['product'],r['point'])).fetchone()]
-        result['supplier_balances']=s.suppliers(uid)['balances'];result['recent']=s.rows('SELECT a.*,u.name actor_name FROM audit a LEFT JOIN users u ON u.id=a.actor ORDER BY a.id DESC LIMIT 15')
-        result['profit']=None;result['cash_balance']=None;result['financial_note']='Hisoblash uchun ma’lumot yetarli emas / Недостаточно данных для расчёта'
-        return result
+        from director_overview import overview
+        return overview(service,uid,start,end)
     if kind in ('payments','refunds'):
         return page(s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end)),q)
     if kind in ('debts','overdue'):
@@ -66,37 +65,50 @@ def read(service,uid,kind,q):
         rows=s.rows('''SELECT s.*,c.name client_name,u.name manager_name,(s.total-s.paid) debt FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor WHERE substr(s.created,1,10) BETWEEN ? AND ? ORDER BY s.id DESC''',(start,end))
         for row in rows:
             row['items']=[{**item,'currency':row['currency']} for item in s.rows('SELECT * FROM sale_items WHERE sale=?',(row['id'],))];row['payments']=s.rows('SELECT * FROM payments WHERE sale=? ORDER BY id',(row['id'],))
+        if q.get('id'):rows=[r for r in rows if r['id']==quantity(q['id'])]
         for key,column in [('client','client'),('manager','actor')]:
             if q.get(key):rows=[r for r in rows if str(r[column])==q[key]]
         if q.get('product'):rows=[r for r in rows if any(str(i['product'])==q['product'] for i in r['items'])]
         if q.get('payment_status')=='debt':rows=[r for r in rows if r['status']=='active' and r['debt']>0]
         if q.get('payment_status')=='paid':rows=[r for r in rows if r['status']=='active' and r['debt']==0]
         return page(rows,q)
+    if kind=='lowstock':return page(s.rows('SELECT p.id,p.name,t.name point_name,l.minimum,st.qty FROM stock_limits l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point JOIN stock st ON st.product=l.product AND st.point=l.point WHERE p.active=1 AND l.minimum>0 AND st.qty<=l.minimum ORDER BY st.qty,p.id'),q)
     if kind=='stock':return page(s.inventory_report(uid)['stock'],q)
     if kind=='lots':return page(s.rows('SELECT l.*,p.name product_name,t.name point_name,r.supplier,r.cost,r.currency FROM inventory_lots l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point LEFT JOIN receipts r ON r.id=l.receipt ORDER BY l.id DESC'),q)
     if kind=='receipts':return page(s.rows('SELECT r.*,p.name product_name,v.name supplier_name,u.name actor_name FROM receipts r JOIN products p ON p.id=r.product JOIN suppliers v ON v.id=r.supplier JOIN users u ON u.id=r.actor WHERE r.date BETWEEN ? AND ? ORDER BY r.id DESC',(start,end)),q)
     if kind=='quotes':return page(s.rows('SELECT q.*,c.name client_name,u.name actor_name FROM quotes q JOIN clients c ON c.id=q.client JOIN users u ON u.id=q.actor WHERE substr(q.created,1,10) BETWEEN ? AND ? ORDER BY q.id DESC',(start,end)),q)
     if kind=='clients':
-        if q.get('id'):
-            ref=quantity(q['id']);result=s.client_card(uid,ref)
-            result['payments']=s.rows('SELECT p.* FROM payments p JOIN sales s ON s.id=p.sale WHERE s.client=? ORDER BY p.id DESC',(ref,))
-            result['debts']=[r for r in s.debts(uid) if r['client']==ref];return result
-        return page(s.rows('SELECT c.*,u.name owner_name FROM clients c JOIN users u ON u.id=c.owner ORDER BY c.id DESC'),q)
+        from director_business import client_card,client_list
+        if q.get('id'):return client_card(s,uid,quantity(q['id']),start,end)
+        return page(client_list(s,uid,q),q)
     if kind=='suppliers':
-        if q.get('id'):return s.supplier_ledger(uid,quantity(q['id']))
-        result=s.suppliers(uid);paged=page(result['suppliers'],q);result['suppliers']=paged.pop('items');result.update(paged);return result
+        if q.get('id'):
+            from director_business import supplier_card
+            return supplier_card(s,uid,quantity(q['id']),start,end)
+        result=s.suppliers(uid)
+        balances=result['balances']
+        if q.get('currency'):balances=[r for r in balances if r['currency']==q['currency']]
+        state=q.get('balance_status')
+        if state in ('debt','credit'):
+            ids={r['supplier'] for r in balances if r['balance']>0} if state=='debt' else {r['supplier'] for r in balances if r['balance']<0}
+            result['suppliers']=[r for r in result['suppliers'] if r['id'] in ids]
+        names={r['id']:r['name'] for r in result['suppliers']}
+        result['balances']=[{**r,'supplier_name':names[r['supplier']]} for r in balances if r['supplier'] in names]
+        paged=page(result['suppliers'],q);result['suppliers']=paged.pop('items');visible={r['id'] for r in result['suppliers']};result['balances']=[r for r in result['balances'] if r['supplier'] in visible];result.update(paged);return result
     if kind=='managers':
         import manager_money
         with manager_money.read_snapshot(s):
             result=s.manager_account(uid)
             result['days']=manager_money.days(s,uid,start,end)
+        from director_business import filtered
+        for key in ('balances','entries','days','refund_review'):result[key]=filtered(result[key],{k:v for k,v in q.items() if k in ('manager','currency')})
         result['pending_handovers']=[r for r in result['entries'] if r['kind']=='return' and r['receipt_status']=='pending']
         result['entries']=[r for r in result['entries'] if start<=r['date']<=end]
         paged=page(result['entries'],q);result['entries']=paged.pop('items');result.update(paged);return result
     if kind=='staff':
         result=__import__('staff').StaffAccess(s).team(uid)
         paged=page(result['employees'],q);result['employees']=paged.pop('items');result.update(paged)
-        result['sales_performance']=s.rows("SELECT actor,currency,COUNT(*) sales,SUM(total) total FROM sales WHERE status='active' AND substr(created,1,10) BETWEEN ? AND ? GROUP BY actor,currency",(start,end))
+        result['sales_performance']=s.rows("SELECT s.actor,u.name employee_name,s.currency,COUNT(*) sales,SUM(s.total) total FROM sales s JOIN users u ON u.id=s.actor WHERE s.status='active' AND substr(s.created,1,10) BETWEEN ? AND ? GROUP BY s.actor,s.currency",(start,end))
         return result
     if kind=='audit':return page(s.rows('SELECT a.*,u.name actor_name FROM audit a LEFT JOIN users u ON u.id=a.actor WHERE substr(a.created,1,10) BETWEEN ? AND ? ORDER BY a.id DESC',(start,end)),q)
     if kind=='website':
@@ -110,7 +122,7 @@ def read(service,uid,kind,q):
         product=quantity(q.get('product'));point=quantity(q.get('point'));s.one('products',product);s.one('points',point)
         row=s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,point)).fetchone()
         return {'qty':row['qty'] if row else 0,'known':bool(row)}
-    if kind=='lookups':return {'points':s.rows('SELECT id,name,kind FROM points'),'products':s.rows('SELECT id,name FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers')}
+    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers')}
     raise ValueError('route')
 
 
@@ -127,9 +139,10 @@ def handle_http(handler,path,write):
         if write:
             if not handler.server.origin or handler.headers.get('Origin')!=handler.server.origin:raise PermissionError('origin')
             length=int(handler.headers.get('Content-Length','0'))
-            if not 0<length<=64000:raise ValueError('payload')
+            if not 0<length<=6*1024*1024:raise ValueError('payload')
             body=json.loads(handler.rfile.read(length))
             if not isinstance(body,dict):raise ValueError('payload')
+            if length>64000 and not (path=='/director-api/action' and body.get('cmd') in {'excel_preview','excel_import','document_extract','document_preview','document_import'}):raise ValueError('payload')
         else:body={}
         values=auth.cookies(handler.headers.get('Cookie'))
         if path=='/director-auth/start' and write:
@@ -172,6 +185,14 @@ def handle_http(handler,path,write):
             result=service.write(uid,handler.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
         else:
             q=dict(parse_qsl(urlsplit(handler.path).query))
+            if kind=='report-categories':
+                from director_reports import categories
+                handler.send(200,categories());return
+            if kind=='import-template':
+                from openpyxl import Workbook
+                import io
+                wb=Workbook();ws=wb.active;ws.title='Kirim';ws.append(['ID','Nomi','Brend','Razmer','Narx USD','Kelgan dona','SKU']);stream=io.BytesIO();wb.save(stream)
+                handler.send(200,stream.getvalue(),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-kirim-template.xlsx');return
             if kind=='photo':
                 handler.send(200,service.photo(uid,quantity(q.get('product')),quantity(q.get('index',0),zero=True)),'image/jpeg');return
             if kind=='quote':
@@ -180,20 +201,17 @@ def handle_http(handler,path,write):
                 handler.send(200,quotation_pdf(s,uid,ref),'application/pdf',f'TOPSHINALAR-KP-{ref}.pdf');return
             if kind=='report':
                 from reports import workbook
-                start=q.get('start',now()[:10]);end=q.get('end',now()[:10])
-                data=s.report(uid,start,end);data.update(s.inventory_report(uid))
-                sale_ids={row['id'] for row in data['sales']}
-                data['debts']=[row for row in s.debts(uid) if row['id'] in sale_ids]
-                if 'manager_entries' not in data:
-                    manager=s.manager_account(uid);supplier=s.supplier_report(uid,start,end)
-                    data['manager_days']=__import__('manager_money').days(s,uid,start,end)
-                    data.update(manager_entries=[r for r in manager['entries'] if start<=r['date']<=end],manager_balances=manager['balances'],supplier_stock=supplier['stock'],supplier_sold=supplier['sold'],supplier_entries=supplier['entries'],supplier_balances=supplier['balances'],supplier_lots=supplier['lots'])
-                handler.send(200,workbook(service.b.enrich(data),user['lang']),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-director.xlsx');return
+                from director_reports import build
+                data=build(s,uid,q)
+                handler.send(200,workbook(data,user['lang'],hide_ids=True),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-director.xlsx');return
             result=read(service,uid,kind,q)
         handler.send(200,result)
     except (PermissionError,AuthError):handler.send(403,{'error':'Kirish rad etildi / Доступ запрещён'})
     except (ValueError,TypeError,KeyError,__import__('sqlite3').IntegrityError) as exc:
         from i18n import ERRORS
+        from excel_import import ExcelError
+        if isinstance(exc,ExcelError):
+            handler.send(400,{'error':str(exc)});return
         messages=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))
         handler.send(400,{'error':messages[0]+' / '+messages[1]})
     except Exception:

@@ -545,7 +545,7 @@ class Store(Accounting):
             if r['point_id'] is None:continue
             unknown=bool(r['catalog_sku'] and not r['stock_set'])
             row={k:r[k] for k in ('id','name','brand','size','point')}
-            row.update(currency=r['currency'],qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
+            row.update(point_id=r['point_id'],currency=r['currency'],qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
             row['stock_value']=None if unknown or r['price_pending'] else r['qty']*r['price']
             rows.append(row)
             w=warehouses.setdefault((r['point_id'],r['currency']),{'warehouse_name':r['point'],'currency':r['currency'],'qty':0,'stock_value':0,'unknown_stock':0,'unknown_price':0,'as_of':stamp})

@@ -24,6 +24,7 @@ ALIASES={
  'name':['name','nom','nomi','mahsulot','mahsulot nomi','tovar','tovar nomi','название','название товара','наименование','наименование товара','модель','model'],
  'brand':['brand','brend','бренд','марка'],
  'size':['size','razmer','размер'],
+ 'currency':['currency','valyuta','валюта'],
  'price':['price','narx','narxi','цена','цена usd','narx usd','price usd','цена продажи'],
  'qty':['kelgan dona','kelgan soni','kirim','приход','поступило','qty','quantity','qoldiq','ostatok','dona','soni','остаток','количество','колво','остаток шт','остаток на складе','остаток на точке','остатки'],
 }
@@ -74,6 +75,8 @@ class InventoryExcel:
                     continue
                 if any(isinstance(v,str) and v.startswith('=') for v in row):fail(f'{n}-qator: formula o‘rniga qiymat yozing.',f'Строка {n}: замените формулы значениями.')
                 data={key:row[i] if i<len(row) else None for key,i in cols.items()}
+                currency=str(data.get('currency') or '').strip().upper()
+                if currency and currency!='USD':fail(f'{n}-qator: narx valyutasi USD bo‘lsin. Avtomatik konvertatsiya yo‘q.',f'Строка {n}: валюта цены должна быть USD. Автоматической конвертации нет.')
                 try:price=number(data.get('price'));qty=number(data.get('qty'),True)
                 except (ValueError,InvalidOperation,TypeError):fail(f'{n}-qator: narx yoki qoldiq noto‘g‘ri.',f'Строка {n}: некорректная цена или остаток.')
                 def text(key):
@@ -94,7 +97,7 @@ class InventoryExcel:
                 if old and not old['active']:fail(f'{n}-qator: mahsulot faol emas.',f'Строка {n}: товар неактивен.')
                 if not old and not name:fail(f'{n}-qator: yangi mahsulot nomi kerak.',f'Строка {n}: требуется название нового товара.')
                 stock=self.s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(old['id'],point)).fetchone() if old else None
-                records.append({'row':n,'id':old['id'] if old else None,'name':old['name'] if old else name,'brand':old['brand'] if old else brand,'size':old['size'] if old else size,'sku':sku if not old else old['catalog_sku'],'old_qty':stock[0] if stock else None,'old_price':old['price'] if old else None,'old_price_pending':old['price_pending'] if old else None,'qty':qty,'new_qty':(stock[0] if stock else 0)+qty,'price':price})
+                records.append({'row':n,'id':old['id'] if old else None,'name':old['name'] if old else name,'brand':old['brand'] if old else brand,'size':old['size'] if old else size,'sku':sku if not old else old['catalog_sku'],'old_qty':stock[0] if stock else None,'old_price':old['price'] if old else None,'old_price_pending':old['price_pending'] if old else None,'old_currency':old['currency'] if old else None,'qty':qty,'new_qty':(stock[0] if stock else 0)+qty,'price':price})
                 if len(records)>2000:fail('2000 qatordan ko‘p.','Более 2000 строк.')
             if cols is None:fail('Sarlavha: Nomi (yoki ID/SKU), Narx, Kelgan dona.','Заголовки: Название (или ID/SKU), Цена, Количество.')
             if not records:fail('Mahsulot qatorlari yo‘q.','Нет строк товаров.')

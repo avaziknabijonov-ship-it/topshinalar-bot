@@ -100,12 +100,15 @@ def export_fields(rows):
         if key not in fields:fields.append(key)
     return fields
 
-def workbook(sections,lang='uz'):
+def workbook(sections,lang='uz',hide_ids=False):
     wb=Workbook();wb.remove(wb.active)
     for index,(name,rows) in enumerate(sections.items()):
         ws=wb.create_sheet(SECTIONS.get(name,(name,name))[lang=='ru'][:31])
         defaults={'movements':['created','name','brand','size','warehouse_name','qty','kind','actor','note'],'product_events':['created','name','brand','size','action','actor'],'warehouses':['warehouse_name','qty','stock_value','unknown_stock','unknown_price','as_of']}
         fields=export_fields(rows if rows else [dict.fromkeys(defaults[name])]) if name in defaults else export_fields(rows)
+        if hide_ids:
+            from director_reports import INTERNAL
+            fields=[k for k in fields if k not in INTERNAL and not k.endswith('_id')] or ['note']
         ws.append([COLUMNS.get(k,(k,k))[lang=='ru'] for k in fields])
         for row in rows:
             values=[]
@@ -133,3 +136,9 @@ def workbook(sections,lang='uz'):
     if not sections:wb.create_sheet('TOPSHINALAR')
     out=io.BytesIO();wb.save(out);return out.getvalue()
 
+
+SECTIONS.update({'clients':('Mijozlar · joriy','Клиенты · сейчас'),'client_history':('Mijoz qarzi tarixi','История долга клиентов'),'client_opening':('Mijoz davr boshi qarzi','Долг клиентов на начало'),'suppliers':('Ta’minotchilar','Поставщики'),'supplier_opening':('Ta’minotchi davr boshi','Поставщики на начало'),'receipts':('Kirimlar','Приходы'),'staff':('Xodimlar','Сотрудники'),'website':('Sayt katalogi','Каталог сайта'),'audit':('Amallar tarixi','История действий')})
+COLUMNS.update({'change':('Qarz o‘zgarishi','Изменение долга'),'balance_after':('Amaldan keyingi qarz','Долг после операции'),'history_review_count':('Tarixi tekshiriladigan savdolar','Продажи для проверки истории'),'price_cents':('Sayt narxi USD','Цена сайта USD')})
+MONEY.update({'change','balance_after','unit_cost','price_cents'})
+
+SECTIONS['current_debts']=('Mijozlar qarzi · joriy','Долги клиентов · сейчас')
