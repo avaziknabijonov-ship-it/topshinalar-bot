@@ -91,6 +91,7 @@ TABLES = (
         id INTEGER PRIMARY KEY, supplier INTEGER NOT NULL REFERENCES suppliers(id),
         kind TEXT NOT NULL CHECK(kind IN ('receipt','payment','return')),
         amount INTEGER NOT NULL CHECK(amount>=0), currency TEXT NOT NULL CHECK(currency IN ('USD','UZS')),
+        method TEXT NOT NULL DEFAULT '',
         receipt INTEGER REFERENCES receipts(id), lot INTEGER REFERENCES inventory_lots(id),
         qty INTEGER, manager_entry INTEGER UNIQUE REFERENCES manager_entries(id),
         actor INTEGER NOT NULL REFERENCES users(id), note TEXT NOT NULL, date TEXT NOT NULL, created TEXT NOT NULL)''',
@@ -111,6 +112,7 @@ def migrate(store):
                 ('points', 'kind', "TEXT NOT NULL DEFAULT 'sklad' CHECK(kind IN ('sklad','vitrina'))"),
                 ('sale_items', 'point', 'INTEGER REFERENCES points(id)'),
                 ('sale_items', 'location_kind', "TEXT CHECK(location_kind IN ('sklad','vitrina'))"),
+                ('supplier_entries', 'method', "TEXT NOT NULL DEFAULT ''"),
             ):
                 if column not in {r[1] for r in store.db.execute(f'PRAGMA table_info({table})')}:
                     store.db.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
@@ -178,14 +180,18 @@ class Accounting:
         raise ValueError('stock_provenance')
 
     @atomic
-    def receive(self, uid, product, supplier, cost, allocations, note='', date=None, currency='USD'):
+    def receive(self, uid, product, supplier, cost, allocations, note='', date=None, currency='USD', payments=None, manager=None):
         from core import now, money
-        self.user(uid)
+        user=self.user(uid)
         self.one('products', quantity(product))
         self.supplier_row(supplier)
         cost = money(cost)
         currency = valid_currency(currency)
         stamp, note = accounting_date(date), clean_note(note)
+        if manager is None and user['role']=='employee':
+            manager=uid
+        elif manager is not None:
+            self._manager_access(uid,manager)
         if not isinstance(allocations, list) or not 1 <= len(allocations) <= 2:
             raise ValueError('allocations')
         clean = []
@@ -197,15 +203,36 @@ class Accounting:
             clean.append((point, qty))
         if len({p for p, q in clean}) != len(clean) or sum(q for p, q in clean) > 1000000:
             raise ValueError('allocations')
-        if cost*sum(q for p,q in clean)>10**16:
+        total=cost*sum(q for p,q in clean)
+        if total>10**16:
             raise ValueError('amount')
+        if payments is None:payments=[]
+        if not isinstance(payments,list) or len(payments)>3:raise ValueError('payment')
+        clean_payments=[];seen=set();paid_total=0
+        for payment in payments:
+            if not isinstance(payment,dict):raise ValueError('payment')
+            method=payment.get('method')
+            if method not in ('cash','transfer','card') or method in seen:raise ValueError('payment')
+            seen.add(method)
+            amount=money(payment.get('amount','0'))
+            if amount:
+                clean_payments.append((method,amount));paid_total+=amount
+        if paid_total>total:raise ValueError('paid')
         ref = self.add('receipts', supplier=supplier, product=product, qty=sum(q for p, q in clean), cost=cost, currency=currency, actor=uid, note=note, date=stamp, created=now())
         for point, qty in clean:
             self.add('inventory_lots', receipt=ref, product=product, point=point, qty=qty, created=now())
             self.db.execute('INSERT INTO stock(product,point,qty) VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=qty+excluded.qty', (product, point, qty))
             self.add('movements', product=product, point=point, qty=qty, kind='supplier_income', actor=uid, note=f'#{ref}: {note}', created=now())
             self.rearm_stock(product, point)
-        self.add('supplier_entries', supplier=supplier, kind='receipt', amount=cost*sum(q for p, q in clean), currency=currency, receipt=ref, actor=uid, note=note, date=stamp, created=now())
+        self.add('supplier_entries', supplier=supplier, kind='receipt', amount=total, currency=currency, receipt=ref, actor=uid, note=note, date=stamp, created=now())
+        if paid_total:
+            from core import fmt
+            for method,amount in clean_payments:
+                manager_entry=None
+                payment_note=note or f'Kirim #{ref}'
+                if manager is not None:
+                    manager_entry=self.manager_record(uid,manager,'expense',fmt(amount).replace(' ',''),payment_note,stamp,currency)
+                self.add('supplier_entries',supplier=supplier,kind='payment',amount=amount,currency=currency,method=method,receipt=ref,manager_entry=manager_entry,actor=uid,note=payment_note,date=stamp,created=now())
         self.log(uid, 'supplier_income', ref)
         return ref
 
@@ -243,7 +270,7 @@ class Accounting:
         return {'entries':entries, 'balances':balances}
 
     @atomic
-    def supplier_pay(self, uid, supplier, amount, note='', date=None, currency='USD', manager=None):
+    def supplier_pay(self, uid, supplier, amount, note='', date=None, currency='USD', manager=None, method=''):
         from core import now, money
         self.user(uid)
         self.supplier_row(supplier)
@@ -253,12 +280,13 @@ class Accounting:
             self._manager_access(uid, manager)
         amount = money(amount, True)
         currency, stamp, note = valid_currency(currency), accounting_date(date), clean_note(note)
+        if method and method not in ('cash','transfer','card'):raise ValueError('payment')
         manager_entry = None
         if manager is not None:
             # One payment reduces both supplier debt and the manager's cash once.
             from core import fmt
             manager_entry = self.manager_record(uid, manager, 'expense', fmt(amount).replace(' ', ''), note, stamp, currency)
-        ref = self.add('supplier_entries', supplier=supplier, kind='payment', amount=amount, currency=currency, manager_entry=manager_entry, actor=uid, note=note, date=stamp, created=now())
+        ref = self.add('supplier_entries', supplier=supplier, kind='payment', amount=amount, currency=currency, method=method, manager_entry=manager_entry, actor=uid, note=note, date=stamp, created=now())
         self.log(uid, 'supplier_payment', ref)
         return ref
 

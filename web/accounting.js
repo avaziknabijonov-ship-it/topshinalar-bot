@@ -1,10 +1,11 @@
 'use strict';
 
 const accountingKind = kind => ({receipt:T('Kirim','Приход'),payment:T('To‘lov','Оплата'),fund:T('Berilgan pul','Выдано'),expense:T('Xarajat','Расход'),return:T('Qaytarish','Возврат')})[kind]||kind;
+const accountingMethod = method => ({cash:T('Naqd','Наличные'),transfer:T('Bank o‘tkazmasi','Банковский перевод'),card:T('Karta','Карта')})[method]||method;
 const accountingDate = () => state.dashboard?.date || new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const accountingFields = () => select('currency',T('Valyuta','Валюта'),[['USD','USD'],['UZS','UZS']],'USD')+field('date',T('Sana','Дата'),'date',accountingDate())+field('note',T('Izoh','Примечание'),'text','',false);
 const supplierPicker = rows => select('supplier',T('Yetkazib beruvchi','Поставщик'),rows.map(r=>[r.id,r.name]));
-const accountingHistory = entries => entries.map(r=>`<article class="list-card"><h3>${E(accountingKind(r.kind))} · ${money(r.amount)} ${E(r.currency)}</h3><p>${E(r.date)} · ${E(r.actor_name)}${r.manager_name?' · '+E(r.manager_name):''}<br>${E(r.supplier_name||'')} ${E(r.note)}</p></article>`).join('') || empty(T('Yozuvlar yo‘q','Записей нет'));
+const accountingHistory = entries => entries.map(r=>`<article class="list-card"><h3>${E(accountingKind(r.kind))}${r.method?' · '+E(accountingMethod(r.method)):''} · ${money(r.amount)} ${E(r.currency)}</h3><p>${E(r.date)} · ${E(r.actor_name)}${r.manager_name?' · '+E(r.manager_name):''}<br>${E(r.supplier_name||'')} ${E(r.note)}</p></article>`).join('') || empty(T('Yozuvlar yo‘q','Записей нет'));
 
 function accountingPayload(cmd,data){
  if(cmd==='supplier_income'){
@@ -17,6 +18,19 @@ function accountingPayload(cmd,data){
   }
   if(!allocations.length)throw Error(T('Kirim miqdorini kiriting','Введите количество прихода'));
   data.allocations=allocations;
+  const payments=[];
+  for(const method of ['cash','transfer','card']){
+   const amount=Number(data['paid_'+method]||0);
+   if(!Number.isFinite(amount)||amount<0)throw Error(T('To‘lov summasini tekshiring','Проверьте сумму оплаты'));
+   payments.push({method,amount:String(amount)});
+   delete data['paid_'+method];
+  }
+  if(data.cost!==undefined&&data.cost!==''){
+   const unitCost=Number(data.cost);
+   const total=Math.round(unitCost*100)*allocations.reduce((sum,row)=>sum+row.qty,0);
+   if(!Number.isFinite(total)||total<0||payments.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)>total)throw Error(T('To‘lov kirim jami summasidan oshmasin','Оплата не должна превышать сумму прихода'));
+  }
+  data.payments=payments;
  }
  if(cmd==='sell'){
   data.items=data.items.map((item,i)=>({...item,point:Number(data['item_point_'+i])}));
@@ -46,6 +60,12 @@ async function managerPanel(){
 async function accountingOperations(action,id){
  const director=state.me.role==='director';
  if(action==='suppliers'){await supplierPanel();return true}
+ if(action==='supplier-debts'){
+  const data=await api('/api/suppliers');
+  const balances=(data.balances||[]).filter(r=>Number(r.balance)>0);
+  modal(T('Yetkazib beruvchilarga qarz','Долги поставщикам'),`<div class="list">${balances.map(r=>{const supplier=data.suppliers.find(s=>s.id===r.supplier);return `<article class="list-card"><h3>${E(supplier?.name||r.supplier_name||T('Yetkazib beruvchi','Поставщик'))}</h3><p>${T('Qolgan qarz','Остаток долга')}: ${money(r.balance)} ${E(r.currency||'USD')}</p></article>`}).join('')||empty(T('Yetkazib beruvchilarga qarz yo‘q.','Долгов поставщикам нет.'))}</div>`);
+  return true;
+ }
  if(action==='manager-account'){await managerPanel();return true}
  if(action==='supplier-new'||action==='supplier-edit'){
   const r=action==='supplier-edit'?state.suppliers.find(r=>r.id===id):{};
@@ -54,7 +74,8 @@ async function accountingOperations(action,id){
  if(action==='income'){
   const [products,suppliers]=await Promise.all([api('/api/catalog'),api('/api/suppliers?picker=1')]);state.productPick=products.items;
   const points=state.points.map(p=>[p.id,p.name+' · '+(p.kind==='vitrina'?T('Vitrina','Витрина'):T('Sklad','Склад'))]);
-  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(p=>[p.id,p.name]))+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+select('first_point',T('Kirim manzili','Место прихода'),points)+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+accountingFields()+`<p class="help">${T('Saldo kirim narxi × jami miqdorga oshadi.','Сальдо увеличится на закупочную цену × общее количество.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
+  const staff=director?(await api('/api/staff')).filter(r=>r.role==='employee'):[];
+  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(p=>[p.id,p.name]))+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+select('first_point',T('Kirim manzili','Место прихода'),points)+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+field('paid_cash',T('Naqd to‘landi','Оплачено наличными'),'number','0',false)+field('paid_transfer',T('Bank o‘tkazmasi bilan to‘landi','Оплачено банковским переводом'),'number','0',false)+field('paid_card',T('Karta bilan to‘landi','Оплачено картой'),'number','0',false)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+accountingFields()+`<p class="help">${T('To‘lovlarni usuli bo‘yicha kiriting. To‘lanmagan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Укажите оплату по способам. Неоплаченный остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
  }
  if(action==='supplier-report'){
   const data=await api('/api/suppliers');
@@ -68,7 +89,7 @@ async function accountingOperations(action,id){
  if(action==='supplier-payment'){
   const suppliers=await api('/api/suppliers?picker=1');
   const staff=director?(await api('/api/staff')).filter(r=>r.role==='employee'):[];
-  form(T('Yetkazib beruvchiga to‘lov','Оплата поставщику'),'supplier_payment',supplierPicker(suppliers)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+field('amount',T('Summa','Сумма'),'number')+accountingFields()+`<p class="help">${T('Menejer tanlansa, uning xarajatiga avtomatik yoziladi.','При выборе менеджера расход автоматически спишется с его счёта.')}</p>`,director?{}:{manager:state.me.id});return true;
+  form(T('Yetkazib beruvchiga to‘lov','Оплата поставщику'),'supplier_payment',supplierPicker(suppliers)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+select('method',T('To‘lov usuli','Способ оплаты'),[['cash',T('Naqd','Наличные')],['transfer',T('Bank o‘tkazmasi','Банковский перевод')],['card',T('Karta','Карта')]])+field('amount',T('Summa','Сумма'),'number')+accountingFields()+`<p class="help">${T('Menejer tanlansa, uning xarajatiga avtomatik yoziladi.','При выборе менеджера расход автоматически спишется с его счёта.')}</p>`,director?{}:{manager:state.me.id});return true;
  }
  if(action==='supplier-return'){
   const r=await api('/api/supplier-report?start='+accountingDate()+'&end='+accountingDate());
