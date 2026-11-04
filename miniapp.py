@@ -100,7 +100,7 @@ class MiniService:
         today=now()[:10];start=start or today;end=end or today
         data=self.s.report(uid,start,end);sales=[r for r in data['sales'] if r['status']=='active']
         debt=self.s.debts(uid)
-        legacy_count=sum(r.get('currency')=='UZS' for rows in (sales,data['payments'],debt) for r in rows)
+        legacy_count=sum(r.get('currency')=='UZS' for rows in (sales,data['payments'],data['refunds'],debt) for r in rows)
         sales=[r for r in sales if r['currency']=='USD']
         debt=[r for r in debt if r['currency']=='USD']
         data['payments']=[r for r in data['payments'] if r['currency']=='USD']

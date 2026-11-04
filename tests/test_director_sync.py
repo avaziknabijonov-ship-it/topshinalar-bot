@@ -228,6 +228,12 @@ class DirectorSyncTests(unittest.TestCase):
         self.assertIsNone(a['profit']);self.assertIsNone(a['cash_balance'])
         with self.assertRaises(ValueError):director.read(self.service,10,'overview',{'start':'2026-02-01','end':'2026-01-31'})
 
+    def test_legacy_sale_item_currency_is_preserved_in_director_details(self):
+        sale=self.service.write(20,'legacy-sale-item-001','sell',{'client':self.client,'point':self.point,'items':[{'product':self.product,'qty':1,'price':'125'}],'paid':'0','payment':'cash'})['id']
+        with self.s.db:self.s.db.execute("UPDATE sales SET currency='UZS' WHERE id=?",(sale,))
+        result=director.read(self.service,10,'sales',{})['items'][0]
+        self.assertEqual(result['currency'],'UZS');self.assertEqual(result['items'][0]['currency'],'UZS');self.assertEqual(result['items'][0]['price'],12500)
+
     def test_legacy_uzs_review_does_not_relabel(self):
         with self.s.db:self.s.db.execute("UPDATE products SET currency='UZS',price=1250000 WHERE id=?",(self.product,))
         data=sync.inventory(self.s.db);self.assertEqual(len(data['legacy_price_review']),1);self.assertEqual(data['products'][0]['currency'],'UZS');self.assertIsNone(sync.snapshot(self.s,self.product)['price_cents'])
