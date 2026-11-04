@@ -47,7 +47,7 @@ COLUMNS={
 'driver':('Haydovchi','Водитель'),'fee':('Yetkazish narxi','Стоимость доставки'),
 'fulfillment':('Shartlar','Условия'),'lang':('Til','Язык'),'terms':('Avvalgi izoh','Прежнее примечание'),'role':('Lavozim','Роль'),
 }
-SECTIONS={
+SECTIONS={'manager_days':('Menejer ish kunlari','Рабочие дни менеджеров'),
 'supplier_stock':('Yetkazib beruvchi vitrina','Витрина по поставщикам'),
 'supplier_sold':('Vitrinadan sotilgan','Продано с витрины'),
 'supplier_entries':('Yetkazib beruvchi hisob','Операции поставщиков'),
@@ -66,6 +66,9 @@ SECTIONS={
 VALUES={'director':('Direktor','Директор'),'employee':('Xodim','Сотрудник'),'open':('Ochiq','Открыта'),'done':('Bajarilgan','Выполнена'),'draft':('Qoralama','Черновик'),'sent':('Yuborilgan','Отправлено'),'accepted':('Qabul qilingan','Принято'),'rejected':('Rad etilgan','Отклонено'),'new':('Yangi','Новая'),'on_way':('Yo‘lda','В пути'),'delivered':('Yetkazildi','Доставлено'),'cancelled':('Bekor qilingan','Отменено')}
 
 def localized(key,val,lang):
+    if key in {'receipt_status','day_status'}:
+        names={'pending':('Tasdiq kutilmoqda','Ожидает подтверждения'),'accepted':('Qabul qilindi','Принято'),'rejected':('Rad etilgan','Отклонено'),'legacy':('Eski yozuv','Прежняя запись'),'open':('Yopilmagan','Не закрыт'),'closed':('Yopilgan','Закрыт'),'reopened':('Qayta tekshirish','Требуется сверка')}
+        if val in names:return names[val][lang=='ru']
     if key in {'kind','action','stock_status'}:
         labels={'in':('Kirim','Приход'),'opening':('Boshlang‘ich qoldiq','Начальный остаток'),'return':('Qaytarish','Возврат'),'writeoff':('Hisobdan chiqarish','Списание'),'sale':('Sotuv','Продажа'),'product':('Mahsulot qo‘shildi','Товар добавлен'),'product_edit':('Mahsulot tahrirlandi','Товар изменён'),'unknown':('Kiritilmagan','Не указан'),'known':('Kiritilgan','Указан')}
         if val in labels:return labels[val][lang=='ru']
@@ -76,9 +79,9 @@ def localized(key,val,lang):
     if key in {'status','role'} and val in VALUES:return VALUES[val][lang=='ru']
     return val
 
-MONEY={'price','total','paid','amount','fee','debt','stock_value','source_total_usd','cost','balance','given','expenses','returned'}
-PEOPLE={'actor':'employee_name','owner':'owner_name','approved_by':'approved_by_name','cancelled_by':'cancelled_by_name'}
-COLUMNS.update({
+MONEY={'received','received_cash','received_card','received_transfer','received_other','historical_received','pending_return','legacy_returned','refunds','price','total','paid','amount','fee','debt','stock_value','source_total_usd','cost','balance','given','expenses','returned'}
+PEOPLE={'accepted_by':'accepted_by_name','actor':'employee_name','owner':'owner_name','approved_by':'approved_by_name','cancelled_by':'cancelled_by_name'}
+COLUMNS.update({'day_status':('Kun holati','Статус дня'),'closed_by':('Kunni yopgan','Закрыл день'),'closed_at':('Yopilgan vaqt','Время закрытия'),'refund_review_count':('Tekshirilmagan refundlar','Непроверенные возвраты'),'historical_received':('Avvalgi to‘lovlardan tushum','Поступления по прежним оплатам'),'legacy_returned':('Eski qaytarish yozuvlari','Прежние записи возвратов'),'received_cash':('Naqd tushum','Наличные поступления'),'received_card':('Karta tushumi','Поступления по карте'),'received_transfer':('Bank tushumi','Банковские поступления'),'received_other':('Boshqa tushum','Прочие поступления'),'received':('Qabul qilgan pul','Получено'),'pending_return':('Tasdiq kutilmoqda','Ожидает подтверждения'),'refunds':('Mijozga qaytargan','Возвращено клиенту'),'receipt_status':('Qabul holati','Статус приёма'),'accepted_by':('Qabul qilgan direktor ID','ID принявшего директора'),'accepted_at':('Qabul vaqti','Время приёма'),'source':('Manba','Источник'),'source_id':('Manba ID','ID источника'),
 'supplier':('Yetkazib beruvchi ID','ID поставщика'),'supplier_name':('Yetkazib beruvchi','Поставщик'),
 'manager':('Menejer ID','ID менеджера'),'manager_name':('Menejer','Менеджер'),
 'actor_name':('Yozuvni kiritgan','Кто записал'),'date':('Hisob sanasi','Дата операции'),
@@ -91,7 +94,7 @@ COLUMNS.update({
 def export_fields(rows):
     """Replace person identifiers in-place and omit duplicate name columns."""
     fields=[]
-    for key in rows[0] if rows else ['id']:
+    for key in dict.fromkeys(key for row in rows for key in row) if rows else ['id']:
         if key=='discount':continue
         key=PEOPLE.get(key,key)
         if key not in fields:fields.append(key)

@@ -626,6 +626,7 @@ class Bot(Usability):
         data['manager_entries']=[row for row in manager_report['entries'] if start<=row['date']<=end]
         data['manager_balances']=manager_report['balances']
         if self.s.user(uid)['role']=='director':
+            data['manager_days']=__import__('manager_money').days(self.s,uid,start,end)
             supplier_report=self.s.supplier_report(uid,start,end)
             data.update({
                 'supplier_stock':supplier_report['stock'],
