@@ -556,12 +556,14 @@ class Store(Accounting):
         return {'stock':rows,'warehouses':list(warehouses.values())}
 
     def client_card(self,uid,ref):
-        self.user(uid)
-        result={'client':[self.one('clients',ref)]}
+        user=self.user(uid);client=self.one('clients',ref);own=user['role']!='director'
+        if own and client['owner']!=uid and not any(self.db.execute('SELECT 1 FROM '+t+' WHERE client=? AND actor=?',(ref,uid)).fetchone() for t in ('sales','quotes','calls','tasks','deliveries')):raise PermissionError()
+        result={'client':[client]}
         for table in ('sales','quotes','calls','tasks','deliveries'):
-            result[table]=self.rows(f'SELECT * FROM {table} WHERE client=? ORDER BY id DESC',(ref,))
-        result['refunds']=self.rows('SELECT r.* FROM refunds r JOIN sales s ON s.id=r.sale WHERE s.client=? ORDER BY r.id DESC',(ref,))
+            result[table]=self.rows(f'SELECT * FROM {table} WHERE client=?'+(' AND actor=?' if own else '')+' ORDER BY id DESC',(ref,uid) if own else (ref,))
+        result['refunds']=self.rows('SELECT r.* FROM refunds r JOIN sales s ON s.id=r.sale WHERE s.client=?'+(' AND s.actor=?' if own else '')+' ORDER BY r.id DESC',(ref,uid) if own else (ref,))
         return result
+
 
 
 def csv_report(sections):

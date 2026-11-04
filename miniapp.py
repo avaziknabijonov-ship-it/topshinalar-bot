@@ -112,7 +112,9 @@ class MiniService:
         scope='' if self.s.user(uid)['role']=='director' else ' WHERE r.actor=?'
         rows=self.s.rows(f'SELECT r.*,c.name client_name FROM {kind} r JOIN clients c ON c.id=r.client'+scope+' ORDER BY r.id DESC LIMIT 100',() if not scope else (uid,))
         if kind=='sales':
-            for row in rows:row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
+            for row in rows:
+                row['debt']=row['total']-row['paid'] if row['status']=='active' else 0
+                row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
         return rows
 
     def write(self,uid,key,cmd,data):
@@ -341,7 +343,7 @@ class MiniHandler(BaseHTTPRequestHandler):
         if path.startswith(('/director-auth/','/director-api/')):
             from director import handle_http
             handle_http(self,path,write);return
-        static={'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         store=None;user=None
@@ -373,7 +375,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))
-            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
+            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
             require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
@@ -389,10 +391,14 @@ class MiniHandler(BaseHTTPRequestHandler):
                     if brand.casefold() not in seen:result.append(brand);seen.add(brand.casefold())
             elif path=='/api/clients':
                 q=' '.join(query.get('q','').casefold().split())[:200]
-                rows=store.rows('SELECT id,name,phone,address,note FROM clients ORDER BY name,id')
+                scope=" WHERE owner=? OR EXISTS(SELECT 1 FROM sales s WHERE s.client=clients.id AND s.actor=?)" if query.get('scope')=='mine' and user['role']!='director' else ''
+                rows=store.rows('SELECT id,name,phone,address,note FROM clients'+scope+' ORDER BY name,id',(uid,uid) if scope else ())
                 digits=re.sub(r'\D','',q)
                 rows=[r for r in rows if q in ' '.join((r['name']+' '+r['phone']).casefold().split()) or (digits and re.fullmatch(r'[+\d\s()-]+',q) and digits in re.sub(r'\D','',r['phone']))]
                 result={'items':rows[page*20:(page+1)*20],'total':len(rows)}
+            elif path=='/api/my-sales':
+                from employee_sales import history
+                result=history(store,uid,query,employee=uid)
             elif path=='/api/debts':result=store.debts(uid,query.get('overdue')=='1')
             elif path=='/api/dashboard':
                 result=service.dashboard(uid,query.get('start'),query.get('end'))
