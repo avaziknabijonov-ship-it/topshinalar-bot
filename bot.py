@@ -105,11 +105,11 @@ class Bot(Usability):
 
     def keyboard(self,uid):
         u=self.s.user(uid)
-        keys=[k for k in MENU if (u['role']=='director' or k not in DIRECTOR_ONLY) and self.command_allowed(uid,k)]
+        keys=[k for k in MENU if k not in DIRECTOR_ONLY and self.command_allowed(uid,k)]
         rows=[[{'text':label(k,u['lang'])} for k in keys[i:i+2]] for i in range(0,len(keys),2)]
         url=os.environ.get('PUBLIC_APP_URL','')
         if url.startswith('https://'):
-            rows.insert(0,[{'text':'📱 '+('Ilovani ochish' if u['lang']=='uz' else 'Открыть приложение')}])
+            rows.insert(0,[{'text':'📊 Direktor kabineti' if u['role']=='director' else '📱 '+('Ilovani ochish' if u['lang']=='uz' else 'Открыть приложение')}])
         return {'keyboard':rows,'resize_keyboard':True}
 
     def queue(self,uid,text=None,document=None,filename=None,photo=None,keyboard=None):
@@ -196,6 +196,18 @@ class Bot(Usability):
 
     def route(self,uid,message):
         lang=self.lang(uid); text=message.get('text','').strip()
+        if text.startswith('/cabinet_login '):
+            from director_auth import approve
+            self.s.director(uid)
+            try:approve(self.s,uid,text.split(' ',1)[1])
+            except (ValueError,PermissionError):
+                self.queue(uid,'Kod eskirgan yoki urinishlar chegarasi oshgan / Код истёк или превышен лимит попыток');return
+            self.queue(uid,'Kirish tasdiqlandi. Brauzerga qayting. / Вход подтверждён. Вернитесь в браузер.');return
+        if text=='📊 Direktor kabineti' or text.split(' ')[0]=='/cabinet':
+            self.s.director(uid);url=os.environ.get('PUBLIC_APP_URL','').rstrip('/')
+            if url.startswith('https://'):self.queue(uid,'📊 Direktor kabineti',keyboard={'inline_keyboard':[[{'text':'📊 Direktor kabineti','web_app':{'url':url+'/director'}}]]})
+            else:self.queue(uid,'PUBLIC_APP_URL sozlanmagan / URL не настроен')
+            return
         if '_callback' in message:
             self.ui_callback(uid,message['_callback']);return
         if text in {'/cancel',tr('cancel',lang)}:

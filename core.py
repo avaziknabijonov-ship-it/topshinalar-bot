@@ -182,6 +182,10 @@ class Store(Accounting):
         self.db.execute('CREATE UNIQUE INDEX IF NOT EXISTS products_catalog_sku ON products(catalog_sku) WHERE catalog_sku IS NOT NULL')
         self.db.commit()
         migrate_accounting(self)
+        from catalog_sync import migrate as migrate_catalog
+        migrate_catalog(self)
+        from director_auth import migrate as migrate_director
+        migrate_director(self)
         if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
             self.db.execute('PRAGMA journal_mode=WAL')
         self.db.commit()
@@ -332,6 +336,11 @@ class Store(Accounting):
         ref=self.add('movements',product=product,point=point,qty=qty,kind=kind,actor=uid,note=note,created=now())
         self.log(uid,kind,ref)
         return ref
+
+    def transfer(self,uid,product,source,destination,qty,note=''):
+        # Retained /transfer command uses the same audited cabinet transaction.
+        from director import transfer
+        return transfer(self,uid,{'product':product,'source':source,'target':destination,'qty':qty,'reason':note})
 
     def opening_stock(self,uid,product,point,qty,note=''):
         self.director(uid);self.one('products',product);self.one('points',point)

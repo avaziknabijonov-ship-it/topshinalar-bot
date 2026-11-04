@@ -185,6 +185,14 @@ class MiniService:
 
     def action(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd in {'website_save','website_retry','stock_transfer','inventory_count'}:
+            self.s.director(uid)
+            if cmd=='website_save':return __import__('catalog_sync').save_settings(self.s,uid,d)
+            if cmd=='website_retry':
+                product=integer(d.get('product'));self.s.one('products',product)
+                self.s.db.execute('UPDATE catalog_outbox SET version=version+1,attempts=0,next_attempt=0 WHERE product=?',(product,))
+                self.s.log(uid,'website_retry',product);return product
+            return getattr(__import__('director'),'transfer' if cmd=='stock_transfer' else 'count_stock')(self.s,uid,d)
         if cmd=='supplier_save':return self.s.supplier_save(uid,text(d.get('name','')),text(d.get('phone',''),False,100),text(d.get('note',''),False),integer(d['supplier']) if d.get('supplier') else None)
         if cmd=='supplier_income':return self.s.receive(uid,integer(d.get('product')),integer(d.get('supplier')),d.get('cost'),d.get('allocations'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),d.get('payments',[]),telegram_id(d['manager']) if d.get('manager') else None)
         if cmd=='supplier_payment':return self.s.supplier_pay(uid,integer(d.get('supplier')),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),telegram_id(d['manager']) if d.get('manager') else None,d.get('method',''))
@@ -313,6 +321,8 @@ class MiniHandler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','no-referrer')
         self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; object-src 'none'; base-uri 'none'")
+        for value in getattr(self,'extra_cookies',[]):self.send_header('Set-Cookie',value)
+        self.extra_cookies=[]
         if filename:self.send_header('Content-Disposition','attachment; filename="'+filename+'"')
         self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
 
@@ -321,15 +331,24 @@ class MiniHandler(BaseHTTPRequestHandler):
 
     def handle_request(self,write):
         target=urlsplit(self.path);path=target.path
-        static={'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        if path.startswith(('/director-auth/','/director-api/')):
+            from director import handle_http
+            handle_http(self,path,write);return
+        static={'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         store=None;user=None
         try:
             origin=self.headers.get('Origin')
             if origin and self.server.origin and origin!=self.server.origin:raise AuthError()
-            signed=authenticate(self.headers.get('X-Telegram-Init-Data',''),self.server.bot_token)
             store=Store(self.server.db_path);service=MiniService(store,self.server.bot_token)
+            if self.headers.get('X-Telegram-Init-Data'):
+                signed=authenticate(self.headers.get('X-Telegram-Init-Data',''),self.server.bot_token)
+            else:
+                from director_auth import identity
+                if write and (not self.server.origin or origin!=self.server.origin):raise AuthError()
+                cookie_user,_=identity(store,self.headers.get('Cookie'),self.headers.get('X-CSRF-Token'),write)
+                signed={'id':cookie_user['id']}
             try:user=store.user(signed['id'])
             except (ValueError,PermissionError):raise AuthError() from None
             uid=user['id']
