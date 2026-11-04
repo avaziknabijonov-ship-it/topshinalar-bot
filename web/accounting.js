@@ -60,6 +60,12 @@ async function managerPanel(){
 async function accountingOperations(action,id){
  const director=state.me.role==='director';
  if(action==='suppliers'){await supplierPanel();return true}
+ if(action==='supplier-debts'){
+  const data=await api('/api/suppliers');
+  const balances=(data.balances||[]).filter(r=>Number(r.balance)>0);
+  modal(T('Yetkazib beruvchilarga qarz','Долги поставщикам'),`<div class="list">${balances.map(r=>{const supplier=data.suppliers.find(s=>s.id===r.supplier);return `<article class="list-card"><h3>${E(supplier?.name||r.supplier_name||T('Yetkazib beruvchi','Поставщик'))}</h3><p>${T('Qolgan qarz','Остаток долга')}: ${money(r.balance)} ${E(r.currency||'USD')}</p></article>`}).join('')||empty(T('Yetkazib beruvchilarga qarz yo‘q.','Долгов поставщикам нет.'))}</div>`);
+  return true;
+ }
  if(action==='manager-account'){await managerPanel();return true}
  if(action==='supplier-new'||action==='supplier-edit'){
   const r=action==='supplier-edit'?state.suppliers.find(r=>r.id===id):{};
