@@ -19,7 +19,7 @@ PERMISSIONS = {
     "income": ("Mahsulot kirimi", "Приход товара"),
 }
 COMMANDS = {
- "stock":"catalog", "photo":"catalog", "catalog":"catalog", "product_photo":"catalog",
+ "stock":"catalog", "photo":"catalog", "catalog":"catalog", "product_photo":"catalog", "product_photo_delete":"catalog",
  "sell":"sales", "sales":"sales", "clients":"clients", "newclient":"clients", "client":"clients", "card":"clients",
  "pay":"debts", "debt_due":"debts", "debts":"debts", "overdue":"debts",
  "quote":"quotes", "quotes":"quotes", "pdf":"quotes", "quote_options":"quotes", "quote_status":"quotes",
