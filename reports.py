@@ -142,3 +142,5 @@ COLUMNS.update({'change':('Qarz o‘zgarishi','Изменение долга'),'
 MONEY.update({'change','balance_after','unit_cost','price_cents'})
 
 SECTIONS['current_debts']=('Mijozlar qarzi · joriy','Долги клиентов · сейчас')
+
+SECTIONS.update({'products':('Mahsulotlar · joriy','Товары · сейчас'),'expenses':('Menejer xarajatlari','Расходы менеджеров'),'customer_returns':('Mijozdan qaytarishlar','Возвраты клиентов'),'supplier_returns':('Ta’minotchiga qaytarishlar','Возвраты поставщикам'),'other_incomes':('Boshqa tovar kirimi','Прочий приход товара')})

@@ -8,6 +8,10 @@ import json
 from types import SimpleNamespace
 
 GROUPS={
+ 'products':(('Mahsulotlar · joriy','Товары · сейчас'),('products',)),
+ 'expenses':(('Menejer xarajatlari','Расходы менеджеров'),('expenses',)),
+ 'customer_returns':(('Mijozdan qaytarishlar','Возвраты клиентов'),('customer_returns',)),
+ 'supplier_returns':(('Ta’minotchiga qaytarishlar','Возвраты поставщикам'),('supplier_returns',)),
  'sales':(('Savdolar','Продажи'),('sales','sale_items')),
  'payments':(('Tushum va refund','Поступления и возвраты'),('payments','refunds')),
  'debts':(('Mijozlar qarzi · joriy','Долги клиентов · сейчас'),('current_debts',)),
@@ -15,7 +19,7 @@ GROUPS={
  'movements':(('Ombor harakatlari','Движения склада'),('movements','product_events')),
  'clients':(('Mijozlar va qarz tarixi','Клиенты и история долга'),('clients','client_history','client_opening')),
  'suppliers':(('Ta’minotchilar va qarz tarixi','Поставщики и история долга'),('suppliers','supplier_entries','supplier_opening','supplier_balances','supplier_stock','supplier_sold')),
- 'receipts':(('Kirim va partiyalar','Приходы и партии'),('receipts','supplier_lots')),
+ 'receipts':(('Kirim va partiyalar','Приходы и партии'),('receipts','supplier_lots','other_incomes')),
  'managers':(('Menejer puli','Деньги менеджера'),('manager_entries','manager_balances','manager_days')),
  'staff':(('Xodimlar, smena va jarimalar','Сотрудники, смены и штрафы'),('staff','shifts','fines')),
  'crm':(('CRM: vazifa va qo‘ng‘iroqlar','CRM: задачи и звонки'),('tasks','calls')),
@@ -40,6 +44,13 @@ def build(s,uid,q):
     wanted={name for c in chosen for name in GROUPS[c][1]}
     with read_snapshot(s):
         data=s.report(uid,start,end)
+        from director_sections import records
+        for key in ('products','expenses','customer_returns','supplier_returns'):
+            if key in chosen:
+                data[key]=records(s,uid,key,start,end,q)
+                if key=='customer_returns':
+                    for row in data[key]:row.pop('items',None)
+        if 'receipts' in chosen:data['other_incomes']=records(s,uid,'receipts',start,end,{'receipt_source':'movements'})
         if 'debts' in chosen:data['current_debts']=s.debts(uid)
         if 'stock' in chosen:data.update(s.inventory_report(uid))
         if 'clients' in chosen:
@@ -68,7 +79,7 @@ def build(s,uid,q):
             for r in rows:
                 for key,table,dest in [('supplier','suppliers','supplier_name'),('manager','users','manager_name'),('product','products','product_name')]:
                     if r.get(key) is not None and dest not in r:r[dest]=(s.supplier_row(r[key]) if table=='suppliers' else s.one(table,r[key]))['name']
-        current={'stock','warehouses','current_debts','clients','suppliers','supplier_balances','supplier_stock','supplier_lots','manager_balances','staff','tasks','website'}
+        current={'products','stock','warehouses','current_debts','clients','suppliers','supplier_balances','supplier_stock','supplier_lots','manager_balances','staff','tasks','website'}
         stamp=now()
         for key,rows in enriched.items():
             if key in current:

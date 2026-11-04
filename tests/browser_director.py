@@ -37,7 +37,7 @@ def main():
                 page.goto(server.origin+'/director');page.locator('#start-login').click();expect(page.locator('#login-code')).to_contain_text('/cabinet_login')
                 command=page.locator('#login-code').inner_text();auth.approve(s,10,command.split()[1]);s.db.commit()
                 page.locator('#workspace').wait_for(state='visible');page.locator('.metric').first.wait_for(timeout=12000);page.screenshot(path=str(screens/'director-desktop.png'),full_page=True)
-                for section in ('sales','stock','clients','suppliers','managers','staff','reports','website','audit'):
+                for section in ('sales','products','stock','receipts','payments','customer_returns','supplier_returns','expenses','quotes','clients','suppliers','managers','staff','reports','website','audit'):
                     page.locator('[data-section="'+section+'"]').click();expect(page.locator('#status')).not_to_contain_text('Yuklanmoqda')
                     status=page.locator('#status').inner_text();assert 'mavjud emas' not in status and 'tekshiring' not in status,(section,status)
                 page.locator('[data-section="clients"]').click();page.locator('#actions button').filter(has_text='Mijoz qo‘shish').click();page.locator('input[name="name"]').fill('Browser new client');page.locator('input[name="phone"]').fill('+998901234567');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden')
@@ -78,6 +78,17 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),'Manager money mobile overflow'
                 page.locator('[data-section="overview"]').click();page.set_viewport_size({'width':390,'height':844});page.locator('.metric').first.wait_for();page.screenshot(path=str(screens/'director-mobile.png'),full_page=True);page.screenshot(path=str(screens/'premium-dashboard-mobile.png'),full_page=True)
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Mobile document overflow'
+                page.set_viewport_size({'width':1440,'height':1000})
+                page.locator('[data-section="products"]').click();page.locator('tr[data-id]').first.click();page.locator('#operation input[name="brand"]').fill('Browser brand');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden');page.screenshot(path=str(screens/'business-sections-products.png'),full_page=True)
+                with s.db:s.manager_record(10,20,'fund','10','Browser expense fund')
+                page.locator('[data-section="expenses"]').click();page.locator('#actions button').filter(has_text='Xarajat kiritish').click();page.locator('#operation input[name="amount"]').fill('10');page.locator('#operation input[name="note"]').fill('Browser fuel');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden');expect(page.locator('#content')).to_contain_text('Browser fuel')
+                page.locator('[data-section="receipts"]').click();page.locator('#section-filters select[name="receipt_source"]').select_option('movements');expect(page.locator('#status')).not_to_contain_text('Yuklanmoqda');expect(page.locator('#content')).to_contain_text('Browser Excel tire');page.locator('#section-filters select[name="receipt_source"]').select_option('supplier');expect(page.locator('#content')).to_contain_text('Test kirim shina')
+                page.locator('[data-section="supplier_returns"]').click();page.locator('#actions button').filter(has_text='Ta’minotchiga qaytarish').click();page.locator('#operation input[name="qty"]').fill('1');page.locator('#operation input[name="note"]').fill('Browser supplier return');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden');expect(page.locator('#content')).to_contain_text('Browser supplier return')
+                page.screenshot(path=str(screens/'business-sections-supplier-returns.png'),full_page=True)
+                with s.db:s.order(20,1,[dict(product=product,qty=1,price='10')],point=point,paid='0',payment='cash')
+                page.locator('[data-section="customer_returns"]').click();page.locator('#actions button').filter(has_text='Savdoni tanlash').click();page.locator('tr[data-id]').first.click();page.locator('#detail-content button').filter(has_text='Sotuvni bekor qilish').click();page.locator('#operation input[name="reason"]').fill('Browser customer return');page.locator('#operation input[name="settlement"]').check();page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden')
+                page.locator('[data-section="customer_returns"]').click();expect(page.locator('#content')).to_contain_text('Browser customer return');page.set_viewport_size({'width':390,'height':844});assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth');page.screenshot(path=str(screens/'business-sections-mobile.png'),full_page=True)
+                page.locator('[data-section="overview"]').click();page.locator('.metric').first.wait_for()
                 page.locator('#language').click();page.locator('[data-section="overview"]').wait_for();assert page.locator('#title').inner_text()=='Обзор'
                 page.locator('#logout').click();page.locator('#login').wait_for(state='visible')
                 assert not errors,errors
@@ -89,7 +100,7 @@ def main():
                 telegram_page.locator('[data-section="website"]').click();telegram_page.locator('tr[data-id]').first.wait_for()
                 telegram_page.locator('#logout').click();telegram_page.locator('#login').wait_for(state='visible');telegram_context.close()
                 browser.close()
-            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout, Telegram initData without cookies, automatic received money, accepted cash, day closing, Excel preview/confirm, PDF extraction/edit/confirm, premium dashboard, named stock filters, client create/edit, chronological supplier debt, selected Excel categories','screenshots':13,'result':'passed'}))
+            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout, Telegram initData without cookies, automatic received money, accepted cash, day closing, Excel preview/confirm, PDF extraction/edit/confirm, premium dashboard, named stock filters, client create/edit, chronological supplier debt, selected Excel categories, all named business sections, product edit, actual manager expense, receipt sources, supplier return, full customer cancellation','screenshots':16,'result':'passed'}))
         finally:server.shutdown();server.server_close();thread.join();s.db.close()
 
 if __name__=='__main__':main()
