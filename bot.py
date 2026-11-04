@@ -607,7 +607,21 @@ class Bot(Usability):
         self.queue(uid,title)
         refunds=sum(p['amount'] for p in data['refunds'] if p['currency']=='USD')
         self.queue(uid,tr('refund_summary',lang,refunds=fmt(refunds),net=fmt(received-refunds)))
+        sale_ids={row['id'] for row in data['sales']}
+        data['debts']=[row for row in self.s.debts(uid) if row['id'] in sale_ids]
         data.update(self.s.inventory_report(uid))
+        manager_report=self.s.manager_account(uid)
+        data['manager_entries']=[row for row in manager_report['entries'] if start<=row['date']<=end]
+        data['manager_balances']=manager_report['balances']
+        if self.s.user(uid)['role']=='director':
+            supplier_report=self.s.supplier_report(uid,start,end)
+            data.update({
+                'supplier_stock':supplier_report['stock'],
+                'supplier_sold':supplier_report['sold'],
+                'supplier_entries':supplier_report['entries'],
+                'supplier_balances':supplier_report['balances'],
+                'supplier_lots':supplier_report['lots'],
+            })
         self.xlsx(uid,data,f'TOPSHINALAR-{start}-{end}.xlsx')
 
     def notify_shift(self,uid,event,report=''):
