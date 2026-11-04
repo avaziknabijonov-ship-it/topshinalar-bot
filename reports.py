@@ -116,7 +116,10 @@ def workbook(sections,lang='uz',hide_ids=False):
                 val=localized(key,row.get(key),lang)
                 if key in PEOPLE.values() and not val:
                     val='Имя не указано' if lang=='ru' else 'Ism kiritilmagan'
-                if key in MONEY and val is not None:val=val/100
+                if key in MONEY and val is not None:
+                    if isinstance(val,int) and abs(val)>=10**15:
+                        absolute=abs(val);val=('-' if val<0 else '')+str(absolute//100)+'.'+str(absolute%100).zfill(2)
+                    else:val=val/100
                 if isinstance(val,str) and val.lstrip().startswith(('=','+','-','@')):val="'"+val
                 values.append(val)
             ws.append(values)
@@ -144,3 +147,10 @@ MONEY.update({'change','balance_after','unit_cost','price_cents'})
 SECTIONS['current_debts']=('Mijozlar qarzi · joriy','Долги клиентов · сейчас')
 
 SECTIONS.update({'products':('Mahsulotlar · joriy','Товары · сейчас'),'expenses':('Menejer xarajatlari','Расходы менеджеров'),'customer_returns':('Mijozdan qaytarishlar','Возвраты клиентов'),'supplier_returns':('Ta’minotchiga qaytarishlar','Возвраты поставщикам'),'other_incomes':('Boshqa tovar kirimi','Прочий приход товара')})
+
+SECTIONS.update({'product_analytics':('Tovarlar tahlili','Аналитика товаров'),'employee_analytics':('Xodimlar tahlili','Аналитика сотрудников')})
+COLUMNS.update({'revenue':('Savdo summasi','Сумма продаж'),'sales_count':('Savdolar soni','Количество продаж'),'client_count':('Mijozlar soni','Количество клиентов'),'paid_to_date':('Hozirgacha to‘langan','Оплачено на сейчас'),'debt_to_date':('Qolgan mijoz qarzi','Остаток долга клиентов'),'unknown_sales_count':('Tekshirish kerak bo‘lgan savdolar','Продажи для проверки')})
+MONEY.update({'revenue','paid_to_date','debt_to_date'})
+
+SECTIONS['analytics_review']=('Tovar tahlili tekshiruvi','Проверка аналитики товаров')
+COLUMNS['review_sales_count']=('Tekshiriladigan savdolar','Продажи для проверки')

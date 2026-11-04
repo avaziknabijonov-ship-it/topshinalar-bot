@@ -18,3 +18,4 @@ jobs:
       - run: node tests/web/pdf_chat.test.js
       - run: node tests/web/accounting.test.js
 
+      - run: node tests/web/director_analytics.test.js

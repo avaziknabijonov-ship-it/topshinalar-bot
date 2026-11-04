@@ -59,6 +59,9 @@ def read(service,uid,kind,q):
     if kind=='employee-sales':
         from employee_sales import history
         return history(s,uid,q,employee=quantity(q.get('employee')))
+    if kind=='analytics':
+        from director_analytics import analytics,for_api
+        return for_api(analytics(s,uid,start,end))
     if kind=='overview':
         from director_overview import overview
         return overview(service,uid,start,end)
