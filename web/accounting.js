@@ -132,9 +132,6 @@ async function accountingOperations(action,id){
   const r=await api('/api/supplier-report?start='+accountingDate()+'&end='+accountingDate());
   form(T('Yetkazib beruvchiga tovar qaytarish','Возврат товара поставщику'),'supplier_return',select('lot',T('Kirim partiyasi','Партия прихода'),r.lots.map(l=>[l.id,`#${l.receipt} ${l.product_name} · ${l.point_name} · ${l.qty} · ${money(l.cost)} ${l.currency}`]))+field('qty',T('Dona','Количество'),'number','1')+field('date',T('Sana','Дата'),'date',accountingDate())+field('note',T('Izoh','Примечание'),'text','',false));return true;
  }
- if(action==='point-kind'){
-  form(T('Saqlash joyi turi','Тип места хранения'),'point_kind',select('point',T('Joy','Место'),state.points.map(r=>[r.id,r.name]))+select('kind',T('Turi','Тип'),[['sklad',T('Sklad','Склад')],['vitrina',T('Vitrina','Витрина')]]));return true;
- }
 
  return false;
 }
