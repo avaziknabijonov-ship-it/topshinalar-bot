@@ -1,0 +1,61 @@
+'use strict';
+let directorImportState=null;
+const importHelp=()=>tr('Kirim mavjud qoldiqqa qo‘shiladi. USD sotuv narxi yangilanadi; ta’minotchi qarzi yoki tannarx yaratilmaydi. Savdo uchun tasdiqlanmagan yangi mahsulot saytda yashirin qoladi.','Приход добавляется к остатку. Цена продажи USD обновляется; долг поставщику и себестоимость не создаются. Новый товар остаётся скрытым на сайте до одобрения.');
+function importDialog(title,html){dialog('<div class="dialog-eyebrow">TOPSHINALAR · '+tr('MAHSULOT KIRIMI','ПРИХОД ТОВАРА')+'</div><h2>'+esc(title)+'</h2>'+html);}
+function openDirectorImport(kind){
+ if(!lookups.points?.length){importDialog(tr('Avval ombor qo‘shing','Сначала добавьте склад'),'<p>'+tr('Ombor / vitrina bo‘limida saqlash joyini yarating.','Создайте место хранения в разделе Склад / витрина.')+'</p>');return;}
+ directorImportState={kind:kind||'excel',file:'',point:directorImportState?.point||lookups.points[0].id,sheet:'',applyKey:crypto.randomUUID(),rows:[],text:'',preview:null,page:0,busy:false};importUpload();
+}
+function importUpload(){
+ const state=directorImportState;const pdf=state.kind==='pdf';
+ importDialog(tr('Fayldan mahsulot qo‘shish','Добавить товары из файла'),'<div class="import-tabs"><button type="button" data-import-kind="excel" class="'+(!pdf?'selected':'')+'">Excel · XLSX</button><button type="button" data-import-kind="pdf" class="'+(pdf?'selected':'')+'">PDF</button></div><form id="director-import-upload">'+select('point',lookups.points,tr('Qabul qiluvchi ombor / vitrina','Склад / витрина получения'),'required')+'<label class="file-drop">'+esc(pdf?tr('PDF hujjatni tanlang','Выберите документ PDF'):tr('Excel faylni tanlang','Выберите файл Excel'))+'<input id="director-import-file" type="file" accept="'+(pdf?'.pdf,application/pdf':'.xlsx')+'" required><small>'+esc(pdf?tr('4 MB gacha · 1–5 sahifa · keyin qatorlarni tekshirasiz','До 4 МБ · 1–5 страниц · затем проверка строк'):tr('4 MB gacha · Nomi yoki ID/SKU, Narx USD, Kelgan dona','До 4 МБ · Название или ID/SKU, Цена USD, Количество'))+'</small></label>'+(!pdf?input('sheet',tr('Excel varag‘i (ixtiyoriy)','Лист Excel (необязательно)')):'')+'<p class="note">'+esc(importHelp())+'</p><p class="import-error" role="alert"></p><button type="submit">'+tr('Tekshirish va preview','Проверить и просмотреть')+' →</button></form>'+(!pdf?'<button class="quiet-button" id="download-import-template">↓ '+tr('Bo‘sh Excel shablon','Пустой шаблон Excel')+'</button>':''));
+ $('director-import-upload').elements.point.value=state.point;
+ document.querySelectorAll('[data-import-kind]').forEach(b=>b.onclick=()=>openDirectorImport(b.dataset.importKind));
+ if($('download-import-template'))$('download-import-template').onclick=async()=>{try{const r=await authenticatedFetch('/director-api/import-template');if(!r.ok)throw Error(tr('Shablon yuklanmadi','Шаблон не загружен'));downloadImportBlob(await r.blob(),'TOPSHINALAR-kirim.xlsx');}catch(e){importError(e);}};
+ $('director-import-upload').onsubmit=async e=>{
+  e.preventDefault();const submit=e.submitter;submit.disabled=true;submit.textContent=pdf?tr('Hujjat o‘qilmoqda…','Документ распознаётся…'):tr('Fayl tekshirilmoqda…','Файл проверяется…');
+  try{
+   const file=$('director-import-file').files[0];if(!file||file.size>4*1024*1024||file.size===0)throw Error(tr('4 MB gacha fayl tanlang','Выберите непустой файл до 4 МБ'));
+   if(!file.name.toLowerCase().endsWith(pdf?'.pdf':'.xlsx'))throw Error(tr('Fayl formatini tekshiring','Проверьте формат файла'));
+   if(pdf&&new TextDecoder().decode(new Uint8Array(await file.slice(0,5).arrayBuffer()))!=='%PDF-')throw Error(tr('PDF fayl tanlang','Выберите PDF'));
+   state.file=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result.split(',')[1]);reader.onerror=()=>reject(Error(tr('Fayl o‘qilmadi','Файл не прочитан')));reader.readAsDataURL(file);});
+   const f=new FormData(e.target);state.point=+f.get('point');state.sheet=f.get('sheet')||'';
+   if(pdf){const r=await api('/director-api/action',{cmd:'document_extract',data:{file:state.file,point:state.point}});if(directorImportState!==state)return;state.rows=r.id.rows.length?r.id.rows:[{name:'',qty:'',price:''}];state.text=r.id.text;state.currencyReview=r.id.currency_review_required;importRows();}
+   else await importPreview();
+  }catch(error){if(directorImportState===state){importError(error);submit.disabled=false;submit.textContent=tr('Qayta tekshirish','Проверить снова');}}
+ };
+}
+function importError(error){const box=$('detail-content').querySelector('.import-error');if(box)box.textContent=error.message||String(error);}
+function downloadImportBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function collectImportRows(){return [...document.querySelectorAll('.import-edit-row')].map(row=>Object.fromEntries([...row.querySelectorAll('[data-field]')].map(input=>[input.dataset.field,input.value])));}
+function importRows(){
+ const state=directorImportState;
+ importDialog(tr('PDF qatorlarini tekshiring','Проверьте строки PDF'),(state.currencyReview?'<p class="legacy-notice">'+tr('Hujjatda UZS narxi ko‘rindi. USD narxlari avtomatik to‘ldirilmaydi — har birini tekshirib qo‘lda kiriting.','В документе обнаружена цена UZS. Цены USD не подставляются автоматически — проверьте и введите каждую вручную.')+'</p>':'')+'<p class="note">'+tr('Nom, dona va USD sotuv narxini asl hujjat bilan solishtiring. Jami, soliq va xizmat qatorlarini tovar sifatida kiritmang. ID bo‘sh bo‘lsa mavjud nom bo‘yicha moslik preview’da ko‘rsatiladi.','Сверьте название, количество и цену продажи USD с оригиналом. Не добавляйте итоги, налоги и услуги как товары. Без ID совпадение по названию будет показано в предпросмотре.')+'</p><details><summary>'+tr('Hujjatdan o‘qilgan matn','Распознанный текст')+'</summary><pre>'+esc(state.text)+'</pre></details><form id="director-import-rows"><div class="import-edit-list">'+state.rows.map((row,i)=>'<div class="import-edit-row"><span class="row-number">'+(i+1)+'</span><label>ID<input data-field="id" inputmode="numeric" value="'+esc(row.id||'')+'" list="import-products"></label><label>'+tr('Nom','Название')+'<input data-field="name" required maxlength="200" value="'+esc(row.name)+'"></label><label>'+tr('Dona','Шт.')+'<input data-field="qty" type="number" min="0" step="1" required value="'+esc(row.qty)+'"></label><label>USD<input data-field="price" inputmode="decimal" required value="'+esc(String(row.price??'').replace(/\s/g,'').replace(',','.'))+'"></label><button type="button" data-remove-import="'+i+'" aria-label="'+tr('Qatorni olib tashlash','Удалить строку')+'">×</button></div>').join('')+'</div><datalist id="import-products">'+lookups.products.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</datalist><button type="button" id="add-import-row" class="quiet-button">+ '+tr('Qator qo‘shish','Добавить строку')+'</button><p class="import-error" role="alert"></p><button type="submit">'+tr('Kirim previewsi','Предпросмотр прихода')+' →</button></form>');
+ document.querySelectorAll('[data-remove-import]').forEach(b=>b.onclick=()=>{state.rows=collectImportRows();state.rows.splice(+b.dataset.removeImport,1);importRows();});
+ $('add-import-row').onclick=()=>{state.rows=collectImportRows();if(state.rows.length>=100){importError(Error(tr('100 tagacha qator','Не более 100 строк')));return;}state.rows.push({name:'',qty:'',price:''});importRows();};
+ $('director-import-rows').onsubmit=async e=>{e.preventDefault();state.rows=collectImportRows();e.submitter.disabled=true;try{await importPreview();}catch(error){importError(error);e.submitter.disabled=false;}};
+}
+async function importPreview(){
+ const state=directorImportState;const pdf=state.kind==='pdf';
+ const data=pdf?{point:state.point,rows:state.rows.map(r=>({id:r.id||'',name:r.name,qty:r.qty,price:r.price}))}:{point:state.point,file:state.file,sheet:state.sheet,mode:'income'};
+ const result=await api('/director-api/action',{cmd:pdf?'document_preview':'excel_preview',data});
+ if(directorImportState!==state)return;
+ state.preview=result.id;state.data=data;state.page=0;state.applyKey=crypto.randomUUID();renderImportPreview();
+}
+function renderImportPreview(){
+ const state=directorImportState,p=state.preview,rows=p.rows.slice(state.page*100,(state.page+1)*100);
+ importDialog(tr('Kirimni tasdiqlash','Подтвердить приход'),'<div class="import-summary"><span>'+tr('Qatorlar','Строки')+' <strong>'+p.count+'</strong></span><span>'+tr('Yangi mahsulotlar','Новые товары')+' <strong>'+p.new_count+'</strong></span><span>'+tr('Ombor','Склад')+' <strong>'+esc(lookups.points.find(x=>x.id===state.point)?.name||state.point)+'</strong></span></div><p class="note">'+esc(importHelp())+'</p><div class="panel import-preview"><table><thead><tr>'+[tr('Mahsulot','Товар'),'ID',tr('Oldingi qoldiq','Было'),tr('Kelgan dona','Поступило'),tr('Yangi qoldiq','Станет'),tr('Oldingi USD narx','Прежняя цена USD'),tr('Yangi USD narx','Новая цена USD')].map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(r.name)+'</td><td>'+esc(r.id||tr('Yangi','Новый'))+'</td><td>'+esc(r.old_qty===null?tr('Belgilanmagan','Не задан'):r.old_qty)+'</td><td>'+esc(r.qty)+'</td><td>'+esc(r.new_qty)+'</td><td>'+esc(r.old_price===null||r.old_price_pending?'—':money(r.old_price,r.old_currency||tr('valyuta belgilanmagan','валюта не указана')))+'</td><td>'+esc(money(r.price))+'</td></tr>').join('')+'</tbody></table></div><div class="import-page"><button id="import-prev" '+(state.page===0?'disabled':'')+'>←</button><span>'+((state.page*100)+1)+'–'+Math.min((state.page+1)*100,p.count)+' / '+p.count+'</span><button id="import-next" '+((state.page+1)*100>=p.count?'disabled':'')+'>→</button></div><label class="checks import-consent"><input id="director-import-confirm" type="checkbox">'+tr('Asl hujjatdagi barcha qator, kelgan dona va USD narxlarni tekshirdim','Я сверил все строки, поступившее количество и цены USD с оригиналом')+'</label><p class="import-error" role="alert"></p><div class="import-buttons"><button id="import-back" class="quiet-button">'+tr('Qayta tekshirish','Проверить заново')+'</button><button id="director-import-apply">'+tr('Tasdiqlash va kirim qilish','Подтвердить и оприходовать')+' →</button></div>');
+ $('import-prev').onclick=()=>{state.page--;renderImportPreview();};$('import-next').onclick=()=>{state.page++;renderImportPreview();};
+ $('import-back').onclick=()=>{if(state.kind==='pdf')importRows();else importPreview().catch(importError);};
+ $('director-import-apply').onclick=async()=>{
+  if(!$('director-import-confirm').checked){importError(Error(tr('Avval hujjatni tekshirib tasdiqlang','Сначала проверьте и подтвердите документ')));return;}
+  if(state.busy)return;state.busy=true;['director-import-apply','import-back','import-prev','import-next','close-detail'].forEach(id=>$(id).disabled=true);
+  try{
+   const pdf=state.kind==='pdf';const data={...state.data,fingerprint:state.preview.fingerprint,...(pdf?{confirmed:true}:{sheet:state.preview.sheet})};
+   const result=await api('/director-api/action',{cmd:pdf?'document_import':'excel_import',data},state.applyKey);
+   directorImportState=null;$('detail').close();lookups=await api('/director-api/lookups');await load();$('status').textContent=tr('Kirim saqlandi: ','Приход сохранён: ')+result.id.count+tr(' ta mahsulot',' товаров');
+  }catch(error){importError(error);}finally{state.busy=false;['director-import-apply','import-back','import-prev','import-next','close-detail'].forEach(id=>{if($(id))$(id).disabled=false;});}
+ };
+}
+document.getElementById('detail').addEventListener('cancel',e=>{if(directorImportState?.busy)e.preventDefault();});
+document.getElementById('detail').addEventListener('close',()=>{if(!directorImportState?.busy)directorImportState=null;});

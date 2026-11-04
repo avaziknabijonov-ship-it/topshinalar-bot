@@ -44,14 +44,28 @@ def main():
                 page.screenshot(path=str(screens/'director-catalog.png'),full_page=True)
                 page.locator('[data-section="stock"]').click();page.locator('#actions button').filter(has_text='Inventarizatsiya').click();page.locator('input[name="actual"]').fill('8');page.locator('input[name="reason"]').fill('Browser inventory test');page.locator('#operation button[type="submit"]').click();page.locator('#operation').get_by_text('Joriy: 10 · Haqiqiy: 8 · Farq: -2').wait_for();page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden')
                 assert s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,point)).fetchone()[0]==8
+                from openpyxl import Workbook
+                from reportlab.pdfgen.canvas import Canvas
+                excel=Path(temp)/'receipt.xlsx';wb=Workbook();ws=wb.active;ws.append(['Nomi','Narx USD','Kelgan dona']);ws.append(['Browser Excel tire','125.25',3]);wb.save(excel)
+                page.locator('#header-import').click();page.locator('#director-import-file').set_input_files(str(excel));page.locator('#director-import-upload button[type="submit"]').click();page.locator('#director-import-apply').wait_for()
+                assert s.db.execute("SELECT COUNT(*) FROM products WHERE name='Browser Excel tire'").fetchone()[0]==0
+                page.locator('#director-import-apply').click();expect(page.locator('.import-error')).to_contain_text('Avval');page.locator('#director-import-confirm').check();page.locator('#director-import-apply').click();page.locator('#detail').wait_for(state='hidden');expect(page.locator('#status')).to_contain_text('Kirim saqlandi')
+                assert s.db.execute("SELECT price FROM products WHERE name='Browser Excel tire'").fetchone()[0]==12525
+                pdf=Path(temp)/'receipt.pdf';canvas=Canvas(str(pdf));canvas.drawString(40,780,'Nomi | Kelgan dona | Narx USD');canvas.drawString(40,755,'Browser PDF tire | 2 | 50.00');canvas.save()
+                page.locator('#header-import').click();page.locator('[data-import-kind="pdf"]').click();page.locator('#director-import-file').set_input_files(str(pdf));page.locator('#director-import-upload button[type="submit"]').click();page.locator('#director-import-rows').wait_for();page.locator('[data-field="qty"]').fill('4');page.locator('[data-field="price"]').fill('50.25');page.locator('#director-import-rows button[type="submit"]').click();page.locator('#director-import-apply').wait_for();page.screenshot(path=str(screens/'premium-import-preview.png'),full_page=True)
+                assert s.db.execute("SELECT COUNT(*) FROM products WHERE name='Browser PDF tire'").fetchone()[0]==0
+                page.locator('#director-import-confirm').check();page.locator('#director-import-apply').click();page.locator('#detail').wait_for(state='hidden');expect(page.locator('#status')).to_contain_text('Kirim saqlandi')
+                assert s.db.execute("SELECT s.qty FROM stock s JOIN products p ON p.id=s.product WHERE p.name='Browser PDF tire'").fetchone()[0]==4
+                assert s.db.execute("SELECT price FROM products WHERE name='Browser PDF tire'").fetchone()[0]==5025
                 with s.db:s.order(20,1,[dict(product=product,qty=1,price='125')],point=point,paid='25',payment='cash')
                 page.locator('[data-section="managers"]').click();expect(page.locator('#status')).not_to_contain_text('Yuklanmoqda');expect(page.locator('#content')).to_contain_text('25.00 USD')
                 page.screenshot(path=str(screens/'manager-money-desktop.png'),full_page=True)
+                page.locator('[data-section="overview"]').click();page.locator('.metric').first.wait_for();page.screenshot(path=str(screens/'premium-dashboard-desktop.png'),full_page=True);page.locator('[data-section="managers"]').click();expect(page.locator('#status')).not_to_contain_text('Yuklanmoqda')
                 page.locator('#actions button').filter(has_text='Pul yozuvi').click();page.locator('select[name="kind"]').select_option('accepted');page.locator('select[name="manager"]').select_option('20');page.locator('input[name="amount"]').fill('25');page.locator('input[name="note"]').fill('Browser cash desk receipt');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden')
                 page.locator('[data-close-manager="20"]').click();page.locator('input[name="note"]').fill('Browser verified closing');page.locator('#operation button[type="submit"]').click();page.locator('#detail').wait_for(state='hidden');expect(page.locator('#content')).to_contain_text('Yopilgan')
                 page.set_viewport_size({'width':390,'height':844});page.screenshot(path=str(screens/'manager-money-mobile.png'),full_page=True)
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),'Manager money mobile overflow'
-                page.locator('[data-section="overview"]').click();page.set_viewport_size({'width':390,'height':844});page.locator('.metric').first.wait_for();page.screenshot(path=str(screens/'director-mobile.png'),full_page=True)
+                page.locator('[data-section="overview"]').click();page.set_viewport_size({'width':390,'height':844});page.locator('.metric').first.wait_for();page.screenshot(path=str(screens/'director-mobile.png'),full_page=True);page.screenshot(path=str(screens/'premium-dashboard-mobile.png'),full_page=True)
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Mobile document overflow'
                 page.locator('#language').click();page.locator('[data-section="overview"]').wait_for();assert page.locator('#title').inner_text()=='Обзор'
                 page.locator('#logout').click();page.locator('#login').wait_for(state='visible')
@@ -64,7 +78,7 @@ def main():
                 telegram_page.locator('[data-section="website"]').click();telegram_page.locator('tr[data-id]').first.wait_for()
                 telegram_page.locator('#logout').click();telegram_page.locator('#login').wait_for(state='visible');telegram_context.close()
                 browser.close()
-            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout, Telegram initData without cookies, automatic received money, accepted cash, day closing','screenshots':5,'result':'passed'}))
+            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout, Telegram initData without cookies, automatic received money, accepted cash, day closing, Excel preview/confirm, PDF extraction/edit/confirm, premium dashboard','screenshots':8,'result':'passed'}))
         finally:server.shutdown();server.server_close();thread.join();s.db.close()
 
 if __name__=='__main__':main()

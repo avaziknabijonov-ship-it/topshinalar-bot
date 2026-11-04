@@ -53,11 +53,8 @@ def read(service,uid,kind,q):
     start=accounting_date(q.get('start',now()[:10]));end=accounting_date(q.get('end',now()[:10]))
     if start>end:raise ValueError('date')
     if kind=='overview':
-        result=service.dashboard(uid,start,end)
-        result['lowstock']=[r for r in result['lowstock'] if s.db.execute('SELECT 1 FROM stock WHERE product=? AND point=?',(r['product'],r['point'])).fetchone()]
-        result['supplier_balances']=s.suppliers(uid)['balances'];result['recent']=s.rows('SELECT a.*,u.name actor_name FROM audit a LEFT JOIN users u ON u.id=a.actor ORDER BY a.id DESC LIMIT 15')
-        result['profit']=None;result['cash_balance']=None;result['financial_note']='Hisoblash uchun ma’lumot yetarli emas / Недостаточно данных для расчёта'
-        return result
+        from director_overview import overview
+        return overview(service,uid,start,end)
     if kind in ('payments','refunds'):
         return page(s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end)),q)
     if kind in ('debts','overdue'):
@@ -66,12 +63,14 @@ def read(service,uid,kind,q):
         rows=s.rows('''SELECT s.*,c.name client_name,u.name manager_name,(s.total-s.paid) debt FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor WHERE substr(s.created,1,10) BETWEEN ? AND ? ORDER BY s.id DESC''',(start,end))
         for row in rows:
             row['items']=[{**item,'currency':row['currency']} for item in s.rows('SELECT * FROM sale_items WHERE sale=?',(row['id'],))];row['payments']=s.rows('SELECT * FROM payments WHERE sale=? ORDER BY id',(row['id'],))
+        if q.get('id'):rows=[r for r in rows if r['id']==quantity(q['id'])]
         for key,column in [('client','client'),('manager','actor')]:
             if q.get(key):rows=[r for r in rows if str(r[column])==q[key]]
         if q.get('product'):rows=[r for r in rows if any(str(i['product'])==q['product'] for i in r['items'])]
         if q.get('payment_status')=='debt':rows=[r for r in rows if r['status']=='active' and r['debt']>0]
         if q.get('payment_status')=='paid':rows=[r for r in rows if r['status']=='active' and r['debt']==0]
         return page(rows,q)
+    if kind=='lowstock':return page(s.rows('SELECT p.id,p.name,t.name point_name,l.minimum,st.qty FROM stock_limits l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point JOIN stock st ON st.product=l.product AND st.point=l.point WHERE p.active=1 AND l.minimum>0 AND st.qty<=l.minimum ORDER BY st.qty,p.id'),q)
     if kind=='stock':return page(s.inventory_report(uid)['stock'],q)
     if kind=='lots':return page(s.rows('SELECT l.*,p.name product_name,t.name point_name,r.supplier,r.cost,r.currency FROM inventory_lots l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point LEFT JOIN receipts r ON r.id=l.receipt ORDER BY l.id DESC'),q)
     if kind=='receipts':return page(s.rows('SELECT r.*,p.name product_name,v.name supplier_name,u.name actor_name FROM receipts r JOIN products p ON p.id=r.product JOIN suppliers v ON v.id=r.supplier JOIN users u ON u.id=r.actor WHERE r.date BETWEEN ? AND ? ORDER BY r.id DESC',(start,end)),q)
@@ -127,9 +126,10 @@ def handle_http(handler,path,write):
         if write:
             if not handler.server.origin or handler.headers.get('Origin')!=handler.server.origin:raise PermissionError('origin')
             length=int(handler.headers.get('Content-Length','0'))
-            if not 0<length<=64000:raise ValueError('payload')
+            if not 0<length<=6*1024*1024:raise ValueError('payload')
             body=json.loads(handler.rfile.read(length))
             if not isinstance(body,dict):raise ValueError('payload')
+            if length>64000 and not (path=='/director-api/action' and body.get('cmd') in {'excel_preview','excel_import','document_extract','document_preview','document_import'}):raise ValueError('payload')
         else:body={}
         values=auth.cookies(handler.headers.get('Cookie'))
         if path=='/director-auth/start' and write:
@@ -172,6 +172,11 @@ def handle_http(handler,path,write):
             result=service.write(uid,handler.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
         else:
             q=dict(parse_qsl(urlsplit(handler.path).query))
+            if kind=='import-template':
+                from openpyxl import Workbook
+                import io
+                wb=Workbook();ws=wb.active;ws.title='Kirim';ws.append(['ID','Nomi','Brend','Razmer','Narx USD','Kelgan dona','SKU']);stream=io.BytesIO();wb.save(stream)
+                handler.send(200,stream.getvalue(),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-kirim-template.xlsx');return
             if kind=='photo':
                 handler.send(200,service.photo(uid,quantity(q.get('product')),quantity(q.get('index',0),zero=True)),'image/jpeg');return
             if kind=='quote':
@@ -194,6 +199,9 @@ def handle_http(handler,path,write):
     except (PermissionError,AuthError):handler.send(403,{'error':'Kirish rad etildi / Доступ запрещён'})
     except (ValueError,TypeError,KeyError,__import__('sqlite3').IntegrityError) as exc:
         from i18n import ERRORS
+        from excel_import import ExcelError
+        if isinstance(exc,ExcelError):
+            handler.send(400,{'error':str(exc)});return
         messages=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))
         handler.send(400,{'error':messages[0]+' / '+messages[1]})
     except Exception:
