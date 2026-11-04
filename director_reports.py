@@ -8,6 +8,8 @@ import json
 from types import SimpleNamespace
 
 GROUPS={
+ 'product_analytics':(('Tovarlar tahlili','Аналитика товаров'),('product_analytics','analytics_review')),
+ 'employee_analytics':(('Xodimlar tahlili','Аналитика сотрудников'),('employee_analytics',)),
  'products':(('Mahsulotlar · joriy','Товары · сейчас'),('products',)),
  'expenses':(('Menejer xarajatlari','Расходы менеджеров'),('expenses',)),
  'customer_returns':(('Mijozdan qaytarishlar','Возвраты клиентов'),('customer_returns',)),
@@ -28,7 +30,7 @@ GROUPS={
  'website':(('Sayt katalogi va sync','Каталог сайта и синхронизация'),('website',)),
  'audit':(('Amallar tarixi','История действий'),('audit',)),
 }
-INTERNAL={'id','source_id','ref','actor','owner','client','product','supplier','manager','sale','quote','receipt','receipt_id','lot','item','manager_entry','point_id','approved_by','cancelled_by','accepted_by','revision','priority','photos','gallery','file_id','token','token_hash','password','fingerprint'}
+INTERNAL={'employee','id','source_id','ref','actor','owner','client','product','supplier','manager','sale','quote','receipt','receipt_id','lot','item','manager_entry','point_id','approved_by','cancelled_by','accepted_by','revision','priority','photos','gallery','file_id','token','token_hash','password','fingerprint'}
 
 def categories():return [{'id':k,'uz':v[0][0],'ru':v[0][1]} for k,v in GROUPS.items()]
 
@@ -44,6 +46,12 @@ def build(s,uid,q):
     wanted={name for c in chosen for name in GROUPS[c][1]}
     with read_snapshot(s):
         data=s.report(uid,start,end)
+        if any(key in chosen for key in ('product_analytics','employee_analytics')):
+            from director_analytics import analytics
+            analysis=analytics(s,uid,start,end)
+            if 'product_analytics' in chosen:data['analytics_review']=[dict(currency=c,review_sales_count=count,note='Mahsulot qatorlarini tekshirish kerak / Требуется проверка строк товаров',as_of=analysis['as_of']) for c,count in sorted(analysis['review_by_currency'].items())]
+            for key,source in [('product_analytics','products'),('employee_analytics','employees')]:
+                if key in chosen:data[key]=[{**r,'as_of':analysis['as_of']} for r in analysis[source]]
         from director_sections import records
         for key in ('products','expenses','customer_returns','supplier_returns'):
             if key in chosen:

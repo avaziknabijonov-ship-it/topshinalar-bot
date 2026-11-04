@@ -18,6 +18,8 @@ def overview(service,uid,start,end):
     s=service.s;s.director(uid)
     with read_snapshot(s):
         result=service.dashboard(uid,start,end)
+        from director_analytics import analytics,for_api
+        result['analytics']=for_api(analytics(s,uid,start,end))
         result['as_of']=now()
         result['lowstock']=[r for r in result['lowstock'] if s.db.execute('SELECT 1 FROM stock WHERE product=? AND point=?',(r['product'],r['point'])).fetchone()]
         suppliers=s.suppliers(uid);names={r['id']:r['name'] for r in suppliers['suppliers']}

@@ -136,7 +136,7 @@ class DirectorImportOverviewTests(unittest.TestCase):
         with self.assertRaises(PermissionError):director.read(self.service,20,'lowstock',{})
 
     def test_named_client_edit_and_selected_excel_http_routes(self):
-        status,groups=self.call('/director-api/report-categories');self.assertEqual(status,200);self.assertEqual(len(groups),19)
+        status,groups=self.call('/director-api/report-categories');self.assertEqual(status,200);self.assertEqual(len(groups),21)
         self.assertEqual(self.call('/director-api/report-categories',authorized=False)[0],403)
         data={'name':'HTTP client','phone':'+998901234567','address':'Office','note':'Note','owner':20}
         status,response=self.action('director_client_save',data);self.assertEqual(status,200);ref=response['id']
