@@ -191,7 +191,6 @@ class MiniService:
         if cmd=='supplier_return':return self.s.supplier_return(uid,integer(d.get('lot')),d.get('qty'),text(d.get('note',''),False),d.get('date'))
         if cmd=='manager_record':return self.s.manager_record(uid,telegram_id(d.get('manager',uid)),d.get('kind'),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'))
         if cmd=='point_kind':return self.s.point_kind(uid,integer(d.get('point')),d.get('kind'))
-        if cmd=='transfer':return self.s.transfer(uid,integer(d.get('product')),integer(d.get('source')),integer(d.get('destination')),d.get('qty'),text(d.get('note',''),False))
         if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
         if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
         if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching. / Закройте приложение и откройте заново через /app.')
