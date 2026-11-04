@@ -145,13 +145,21 @@ def handle_http(handler,path,write):
             token=auth.telegram(s,body.get('initData',''),handler.server.bot_token)
             handler.extra_cookies=[auth.cookie(auth.COOKIE,token,auth.TTL)]
             handler.send(200,{'ok':True});return
-        user,token=auth.identity(s,handler.headers.get('Cookie'),handler.headers.get('X-CSRF-Token'),write)
+        telegram_raw=handler.headers.get('X-Telegram-Init-Data','')
+        if telegram_raw:
+            user=auth.telegram_identity(s,telegram_raw,handler.server.bot_token,handler.headers.get('X-Director-Nonce',''));token=None
+        else:user,token=auth.identity(s,handler.headers.get('Cookie'),handler.headers.get('X-CSRF-Token'),write)
         uid=user['id']
         if path=='/director-auth/me' and not write:
-            handler.send(200,{'name':user['name'],'lang':user['lang'],'csrf':auth.csrf(token)});return
+            handler.send(200,{'name':user['name'],'lang':user['lang'],'csrf':auth.csrf(token) if token else 'telegram-init-data'});return
         if path=='/director-auth/logout' and write:
             with s.db:
-                s.db.execute('DELETE FROM director_sessions WHERE token_hash=?',(auth.digest(token),));s.log(uid,'director_logout',None)
+                if token:s.db.execute('DELETE FROM director_sessions WHERE token_hash=?',(auth.digest(token),))
+                if telegram_raw:s.db.execute('UPDATE director_telegram_sessions SET revoked=1 WHERE hash=?',(auth.digest(telegram_raw),))
+                # Revoke any accompanying browser cookie too.
+                cookie_token=values.get(auth.COOKIE)
+                if cookie_token:s.db.execute('DELETE FROM director_sessions WHERE token_hash=?',(auth.digest(cookie_token),))
+                s.log(uid,'director_logout',None)
             handler.extra_cookies=[auth.cookie(auth.COOKIE,'',0)];handler.send(200,{'ok':True});return
         if not path.startswith('/director-api/'):raise ValueError('route')
         kind=path.rsplit('/',1)[-1];service=MiniService(s,handler.server.bot_token)
@@ -160,6 +168,12 @@ def handle_http(handler,path,write):
             result=service.write(uid,handler.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
         else:
             q=dict(parse_qsl(urlsplit(handler.path).query))
+            if kind=='photo':
+                handler.send(200,service.photo(uid,quantity(q.get('product')),quantity(q.get('index',0),zero=True)),'image/jpeg');return
+            if kind=='quote':
+                from quotation import quotation_pdf
+                ref=quantity(q.get('id'));s.one('quotes',ref)
+                handler.send(200,quotation_pdf(s,uid,ref),'application/pdf',f'TOPSHINALAR-KP-{ref}.pdf');return
             if kind=='report':
                 from reports import workbook
                 start=q.get('start',now()[:10]);end=q.get('end',now()[:10])

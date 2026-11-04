@@ -232,6 +232,26 @@ class DirectorSyncTests(unittest.TestCase):
         with self.s.db:self.s.db.execute("UPDATE products SET currency='UZS',price=1250000 WHERE id=?",(self.product,))
         data=sync.inventory(self.s.db);self.assertEqual(len(data['legacy_price_review']),1);self.assertEqual(data['products'][0]['currency'],'UZS');self.assertIsNone(sync.snapshot(self.s,self.product)['price_cents'])
 
+    def test_telegram_cookie_free_session_nonce_replay_and_logout_http(self):
+        server=MiniServer(('127.0.0.1',0),self.path,TOKEN,'https://cabinet.test');thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();base='http://127.0.0.1:'+str(server.server_address[1]);raw=signed(10,query_id='cookie-free')
+        def request(path,body=None,nonce=None):
+            import secrets
+            headers={'Content-Type':'application/json','Origin':'https://cabinet.test','X-Telegram-Init-Data':raw,'X-Director-Nonce':nonce or secrets.token_hex(16),'Idempotency-Key':'telegram-cookie-free-1'}
+            try:
+                with urlopen(Request(base+path,data=None if body is None else json.dumps(body).encode(),headers=headers)) as r:return r.status,json.loads(r.read())
+            except HTTPError as e:return e.code,json.loads(e.read())
+        try:
+            self.assertEqual(request('/director-auth/telegram',{'initData':raw})[0],200)
+            nonce='ab'*16;self.assertEqual(request('/director-api/overview',nonce=nonce)[0],200)
+            self.assertEqual(request('/director-api/overview',nonce=nonce)[0],403)
+            before=self.version();payload={'cmd':'website_retry','data':{'product':self.product}}
+            self.assertEqual(request('/director-api/action',payload)[0],200);after=self.version();self.assertGreater(after,before)
+            self.assertEqual(request('/director-api/action',payload)[0],200);self.assertEqual(self.version(),after)
+            self.assertEqual(request('/director-auth/logout',{})[0],200)
+            self.assertEqual(request('/director-api/overview')[0],403)
+            self.assertEqual(request('/director-auth/telegram',{'initData':raw})[0],403)
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_http_browser_auth_logout_origin_and_employee_rejection(self):
         server=MiniServer(('127.0.0.1',0),self.path,TOKEN,'https://cabinet.test');thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start();base='http://127.0.0.1:'+str(server.server_address[1])
         def request(path,body=None,cookie='',csrf='',origin='https://cabinet.test'):

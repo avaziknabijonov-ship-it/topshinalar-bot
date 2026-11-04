@@ -40,7 +40,10 @@ Saytning mavjud admin autentifikatsiyasi saqlandi. Kabinet ChatGPT login talab q
 
 `PUBLIC_APP_URL` — MiniServerga yo‘nalgan HTTPS origin, yo‘lsiz.
 Telegramda mavjud HMAC bilan tasdiqlanadigan initData faqat faol direktor uchun 5 daqiqagacha qabul qilinadi.
-Bir initData sessiyaga faqat bir marta almashtiriladi. Yangi cookie sessiyasi 8 soat amal qiladi.
+Bir initData sessiyaga faqat bir marta almashtiriladi. Yangi kompyuter cookie sessiyasi 8 soat amal qiladi. Telegram sessiyasi 1 soatgacha.
+Telegram Web iframe cookie cheklasa, mavjud signed initData headeri serverda ro‘yxatdan o‘tgan,
+bekor qilinadigan sessiya sifatida ishlatiladi; har so‘rov bir martalik nonce bilan.
+Yangi frontend bearer tokeni berilmaydi. Logout raw initData sessiyasini ham bekor qiladi.
 
 Kompyuterda `/director`: kod olish → brauzerdagi `/cabinet_login KOD`ni aynan o‘z botiga yuborish → brauzerga qaytish.
 Kod 180 soniyalik, bir martalik; faqat oldindan ruxsat berilgan faol direktor tasdiqlaydi.
@@ -64,7 +67,7 @@ Har yangi migratsiya `BEGIN IMMEDIATE`/savepoint va bitta tranzaksiyada, qayta b
 - `website_products`: direktorning nashr, USD sent, kategoriya/model, UZ/RU tavsif, joy va rasm tasdiqlari.
 - `catalog_outbox`: har mahsulotning manba versiyasi, yuborilgan versiya, urinish, keyingi urinish, muvaffaqiyat/xato.
 - `catalog_images`: tasdiqlangan rasm ref-hashi → ommaviy content hashli yo‘l.
-- `director_sessions`, `director_logins`, `director_replays`, `director_limits`: vaqtinchalik xavfsizlik yozuvlari.
+- `director_sessions`, `director_logins`, `director_replays`, `director_limits`, `director_telegram_sessions`, `director_request_nonces`: vaqtinchalik xavfsizlik yozuvlari.
 - Mahsulot/qoldiq/galereya/sayt-sozlama triggerlari shu biznes tranzaksiyasida outboxni o‘zgartiradi.
 
 Eski mahsulot, narx, mijoz, savdo, to‘lov, qarz, ombor, qoldiq va partiyalar almashtirilmaydi/o‘chirilmaydi.

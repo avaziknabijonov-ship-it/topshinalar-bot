@@ -12,6 +12,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from core import Store
 from miniapp import MiniServer
 import director_auth as auth
+from test_miniapp import signed,TOKEN
 
 
 def main():
@@ -26,7 +27,7 @@ def main():
             s.move(20,product,point,10,'in','Browser test fixture')
             s.client(20,'Test mijoz','+998900000001','','')
             s.supplier_save(10,'Test ta’minotchi')
-        server=MiniServer(('127.0.0.1',0),path,'fake-test-token');port=server.server_address[1];server.origin=f'http://localhost:{port}'
+        server=MiniServer(('127.0.0.1',0),path,TOKEN);port=server.server_address[1];server.origin=f'http://localhost:{port}'
         thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
         try:
             with sync_playwright() as p:
@@ -48,8 +49,15 @@ def main():
                 page.locator('#language').click();page.locator('[data-section="overview"]').wait_for();assert page.locator('#title').inner_text()=='Обзор'
                 page.locator('#logout').click();page.locator('#login').wait_for(state='visible')
                 assert not errors,errors
+                telegram_context=browser.new_context(viewport={'width':1000,'height':800})
+                telegram_context.route('https://telegram.org/js/telegram-web-app.js',lambda route:route.abort())
+                telegram_context.add_init_script('window.Telegram={WebApp:{initData:'+json.dumps(signed(10,query_id='browser-cookie-free'))+'}};')
+                telegram_page=telegram_context.new_page();telegram_page.goto(server.origin+'/director');telegram_page.locator('#workspace').wait_for(state='visible')
+                telegram_context.clear_cookies()
+                telegram_page.locator('[data-section="website"]').click();telegram_page.locator('tr[data-id]').first.wait_for()
+                telegram_page.locator('#logout').click();telegram_page.locator('#login').wait_for(state='visible');telegram_context.close()
                 browser.close()
-            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout','screenshots':3,'result':'passed'}))
+            print(json.dumps({'browser':'Chromium','desktop':'1440x1000','mobile':'390x844','checks':'login approval, sections, USD settings, inventory preview/confirmation, RU, logout, Telegram initData without cookies','screenshots':3,'result':'passed'}))
         finally:server.shutdown();server.server_close();thread.join();s.db.close()
 
 if __name__=='__main__':main()

@@ -20,6 +20,9 @@ def migrate(s):
             'CREATE TABLE IF NOT EXISTS director_sessions(token_hash TEXT PRIMARY KEY,uid INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL)',
             'CREATE TABLE IF NOT EXISTS director_logins(code_hash TEXT PRIMARY KEY,browser_hash TEXT NOT NULL UNIQUE,expires INTEGER NOT NULL,approved_by INTEGER REFERENCES users(id))',
             'CREATE TABLE IF NOT EXISTS director_replays(hash TEXT PRIMARY KEY,expires INTEGER NOT NULL)',
+            'CREATE TABLE IF NOT EXISTS director_telegram_sessions(hash TEXT PRIMARY KEY,uid INTEGER NOT NULL REFERENCES users(id),expires INTEGER NOT NULL,revoked INTEGER NOT NULL DEFAULT 0)',
+            'CREATE TABLE IF NOT EXISTS director_request_nonces(hash TEXT PRIMARY KEY,expires INTEGER NOT NULL)',
+            "CREATE TRIGGER IF NOT EXISTS director_telegram_revoke AFTER UPDATE OF active,role ON users WHEN NEW.active=0 OR NEW.role<>'director' BEGIN UPDATE director_telegram_sessions SET revoked=1 WHERE uid=NEW.id; END",
             'CREATE TABLE IF NOT EXISTS director_limits(key TEXT PRIMARY KEY,count INTEGER NOT NULL,expires INTEGER NOT NULL)',
             "CREATE TRIGGER IF NOT EXISTS director_revoke AFTER UPDATE OF active,role ON users WHEN NEW.active=0 OR NEW.role<>'director' BEGIN DELETE FROM director_sessions WHERE uid=NEW.id; DELETE FROM director_logins WHERE approved_by=NEW.id; END",
         ):s.db.execute(sql)
@@ -92,6 +95,8 @@ def telegram(s,raw,bot_token):
         s.db.execute('DELETE FROM director_replays WHERE expires<?',(int(time.time()),))
         try:s.db.execute('INSERT INTO director_replays VALUES(?,?)',(digest(raw),int(time.time())+600))
         except __import__('sqlite3').IntegrityError:raise PermissionError('replay') from None
+        s.db.execute('DELETE FROM director_telegram_sessions WHERE expires<?',(int(time.time()),))
+        s.db.execute('INSERT INTO director_telegram_sessions(hash,uid,expires) VALUES(?,?,?)',(digest(raw),user['id'],int(time.time())+3600))
         return issue(s,user['id'])
 
 
@@ -103,3 +108,20 @@ def identity(s,header,csrf_header=None,write=False):
     s.director(row['uid'])
     if write and not hmac.compare_digest(csrf_header or '',csrf(token)):raise PermissionError('csrf')
     return s.user(row['uid']),token
+
+
+def telegram_identity(s,raw,bot_token,nonce):
+    """Telegram Web may block third-party cookies. Reuse Telegram's signed header;
+    never return a new bearer secret to JS. Every request consumes a one-use nonce.
+    """
+    from miniapp import authenticate
+    import re
+    user=authenticate(raw,bot_token,max_age=3600);s.director(user['id'])
+    if not re.fullmatch(r'[a-f0-9]{32}',nonce or ''):raise PermissionError('nonce')
+    with s.db,transaction(s):
+        row=s.db.execute('SELECT uid FROM director_telegram_sessions WHERE hash=? AND expires>? AND revoked=0',(digest(raw),int(time.time()))).fetchone()
+        if not row or row['uid']!=user['id']:raise PermissionError()
+        s.db.execute('DELETE FROM director_request_nonces WHERE expires<?',(int(time.time()),))
+        try:s.db.execute('INSERT INTO director_request_nonces VALUES(?,?)',(digest(raw+nonce),int(time.time())+3600))
+        except __import__('sqlite3').IntegrityError:raise PermissionError('replay') from None
+    return s.user(user['id'])
