@@ -122,16 +122,6 @@ class AccountingTests(unittest.TestCase):
         self.assertEqual(self.s.rows('SELECT * FROM inventory_lots'),before)
         self.assertEqual((self.qty(self.sklad),self.qty(self.vitrina)),(5,1))
 
-    def test_transfers_preserve_supplier_cost_and_do_not_change_supplier_balance(self):
-        self.receive(5,0)
-        with self.s.db:self.s.transfer(10,self.product,self.sklad,self.vitrina,3,'Display')
-        self.assertEqual(self.balance(),5125)
-        self.assertEqual((self.qty(self.sklad),self.qty(self.vitrina)),(2,3))
-        self.assertEqual(self.report()['stock'][0]['supplier'],self.supplier)
-        self.sell([(self.vitrina,1)])
-        self.assertEqual(self.report()['sold'][0]['qty'],1)
-        self.assert_provenance()
-
     def test_reports_use_sale_location_snapshot_and_period(self):
         self.receive(2,3)
         sale = self.sell([(self.vitrina,1)])
@@ -176,7 +166,7 @@ class AccountingTests(unittest.TestCase):
         self.assertEqual(self.s.manager_account(20)['balances'][0]['balance'],-500)
 
     def test_supplier_permissions_and_manager_isolation(self):
-        operations=[lambda:self.s.supplier_save(20,'No'),lambda:self.s.supplier_save(20,'No',supplier=self.supplier),lambda:self.s.suppliers(20),lambda:self.s.supplier_report(20,self.today,self.today),lambda:self.s.manager_record(20,20,'fund','10'),lambda:self.s.manager_record(20,21,'expense','10'),lambda:self.s.manager_account(20,21),lambda:self.s.supplier_pay(20,self.supplier,'1'),lambda:self.s.supplier_pay(20,self.supplier,'1',manager=21),lambda:self.s.point_kind(20,self.sklad,'vitrina'),lambda:self.s.transfer(20,self.product,self.sklad,self.vitrina,1)]
+        operations=[lambda:self.s.supplier_save(20,'No'),lambda:self.s.supplier_save(20,'No',supplier=self.supplier),lambda:self.s.suppliers(20),lambda:self.s.supplier_report(20,self.today,self.today),lambda:self.s.manager_record(20,20,'fund','10'),lambda:self.s.manager_record(20,21,'expense','10'),lambda:self.s.manager_account(20,21),lambda:self.s.supplier_pay(20,self.supplier,'1'),lambda:self.s.supplier_pay(20,self.supplier,'1',manager=21),lambda:self.s.point_kind(20,self.sklad,'vitrina')]
         for operation in operations:
             with self.subTest(operation=operation):
                 with self.s.db:

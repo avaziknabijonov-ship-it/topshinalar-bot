@@ -135,10 +135,7 @@ async function accountingOperations(action,id){
  if(action==='point-kind'){
   form(T('Saqlash joyi turi','Тип места хранения'),'point_kind',select('point',T('Joy','Место'),state.points.map(r=>[r.id,r.name]))+select('kind',T('Turi','Тип'),[['sklad',T('Sklad','Склад')],['vitrina',T('Vitrina','Витрина')]]));return true;
  }
- if(action==='transfer'){
-  const products=await api('/api/catalog');
-  form(T('Sklad ↔ Vitrina','Склад ↔ Витрина'),'transfer',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(r=>[r.id,r.name]))+select('source',T('Qayerdan','Откуда'),state.points.map(r=>[r.id,r.name]))+select('destination',T('Qayerga','Куда'),state.points.map(r=>[r.id,r.name]))+field('qty',T('Dona','Количество'),'number','1')+field('note',T('Izoh','Примечание'),'text','',false));return true;
- }
+
  return false;
 }
 
