@@ -309,35 +309,6 @@ class Accounting:
         self.log(uid, 'supplier_return', ref)
         return ref
 
-    @atomic
-    def transfer(self, uid, product, source, destination, qty, note=''):
-        from core import now
-        self.director(uid)
-        self.one('products', product)
-        self.one('points', source)
-        self.one('points', destination)
-        qty, note = quantity(qty), clean_note(note)
-        if source == destination:
-            raise ValueError('allocations')
-        if not self.db.execute('UPDATE stock SET qty=qty-? WHERE product=? AND point=? AND qty>=?', (qty, product, source, qty)).rowcount:
-            raise ValueError('stock')
-        self.db.execute('INSERT INTO stock VALUES(?,?,?) ON CONFLICT(product,point) DO UPDATE SET qty=qty+excluded.qty', (product, destination, qty))
-        remaining = qty
-        for lot in self.rows('SELECT * FROM inventory_lots WHERE product=? AND point=? AND qty>0 ORDER BY receipt IS NOT NULL,receipt,id', (product, source)):
-            take = min(remaining, lot['qty'])
-            self.db.execute('UPDATE inventory_lots SET qty=qty-? WHERE id=?', (take, lot['id']))
-            self.add('inventory_lots', receipt=lot['receipt'], product=product, point=destination, qty=take, created=lot['created'])
-            remaining -= take
-            if not remaining:
-                break
-        if remaining:
-            raise ValueError('stock_provenance')
-        for point, delta in ((source, -qty), (destination, qty)):
-            ref = self.add('movements', product=product, point=point, qty=delta, kind='transfer', actor=uid, note=note, created=now())
-            self.rearm_stock(product, point)
-        self.log(uid, 'stock_transfer', ref)
-        return ref
-
     def supplier_report(self, uid, start, end, supplier=None):
         self.director(uid)
         start, end = accounting_date(start), accounting_date(end)
