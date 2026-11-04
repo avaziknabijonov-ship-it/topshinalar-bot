@@ -3,6 +3,7 @@
 const accountingKind = kind => ({receipt:T('Kirim','Приход'),payment:T('To‘lov','Оплата'),fund:T('Berilgan pul','Выдано'),expense:T('Xarajat','Расход'),return:T('Qaytarish','Возврат')})[kind]||kind;
 const accountingMethod = method => ({cash:T('Naqd','Наличные'),transfer:T('Bank o‘tkazmasi','Банковский перевод'),card:T('Karta','Карта')})[method]||method;
 const accountingDate = () => state.dashboard?.date || new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const accountingTimestamp = value => {if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?E(value):new Intl.DateTimeFormat(state.me.lang==='ru'?'ru-RU':'uz-UZ',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date)};
 const accountingFields = () => select('currency',T('Valyuta','Валюта'),[['USD','USD'],['UZS','UZS']],'USD')+field('date',T('Sana','Дата'),'date',accountingDate())+field('note',T('Izoh','Примечание'),'text','',false);
 const supplierPicker = rows => select('supplier',T('Yetkazib beruvchi','Поставщик'),rows.map(r=>[r.id,r.name]));
 const accountingHistory = entries => entries.map(r=>`<article class="list-card"><h3>${E(accountingKind(r.kind))}${r.method?' · '+E(accountingMethod(r.method)):''} · ${money(r.amount)} ${E(r.currency)}</h3><p>${E(r.date)} · ${E(r.actor_name)}${r.manager_name?' · '+E(r.manager_name):''}<br>${E(r.supplier_name||'')} ${E(r.note)}</p></article>`).join('') || empty(T('Yozuvlar yo‘q','Записей нет'));
@@ -42,7 +43,26 @@ function accountingPayload(cmd,data){
 
 async function supplierPanel(){
  const data=await api('/api/suppliers');state.suppliers=data.suppliers;
- modal(T('Yetkazib beruvchilar','Поставщики'),`<button class="primary full" data-action="supplier-new">+ ${T('Yetkazib beruvchi','Поставщик')}</button><button class="secondary full" data-action="supplier-report">${T('Vitrina va saldo hisoboti','Витрина и взаиморасчёты')}</button>${data.suppliers.map(r=>`<article class="list-card"><h3>${E(r.name)}</h3><p>${E(r.phone)}<br>${E(r.note)}</p>${data.balances.filter(b=>b.supplier===r.id).map(b=>`<p>${T('Saldo','Сальдо')}: ${money(b.balance)} ${E(b.currency)}</p>`).join('')}<button class="secondary" data-account-action="supplier-edit" data-id="${r.id}">${T('Tahrirlash','Изменить')}</button></article>`).join('')}`);
+ modal(T('Yetkazib beruvchilar','Поставщики'),`<button class="primary full" data-action="supplier-new">+ ${T('Yetkazib beruvchi','Поставщик')}</button><button class="secondary full" data-action="supplier-report">${T('Vitrina va saldo hisoboti','Витрина и взаиморасчёты')}</button>${data.suppliers.map(r=>`<article class="list-card"><h3>${E(r.name)}</h3><p>${E(r.phone)}<br>${E(r.note)}</p>${data.balances.filter(b=>b.supplier===r.id).map(b=>`<p>${T('Saldo','Сальдо')}: ${money(b.balance)} ${E(b.currency)}</p>`).join('')}<button class="secondary full" data-account-action="supplier-detail" data-id="${r.id}">${T('Kirim va to‘lovlar tarixi','История поступлений и оплат')}</button><button class="secondary" data-account-action="supplier-edit" data-id="${r.id}">${T('Tahrirlash','Изменить')}</button></article>`).join('')}`);
+}
+
+
+async function supplierDetail(id){
+ const data=await api('/api/supplier-ledger?supplier='+encodeURIComponent(id));
+ const totals=data.totals.map(r=>`<article class="list-card"><h3>${E(r.currency)} · ${T('Joriy saldo','Текущий баланс')}: ${money(r.balance)} ${E(r.currency)}</h3><p>${T('Jami kirim','Всего поступило')}: ${money(r.received)} · ${T('To‘landi','Оплачено')}: ${money(r.paid)} · ${T('Qaytarildi','Возвращено')}: ${money(r.returned)}</p></article>`).join('');
+ const entries=data.entries.slice().reverse().map(r=>{
+  const lines=[];
+  if(r.product_name)lines.push(`<p>${T('Mahsulot','Товар')}: ${E(r.product_name)}${r.receipt_qty? ` · ${T('Kirim miqdori','Количество прихода')}: ${r.receipt_qty} ${T('dona','шт.')}`:''}${r.qty&&r.kind==='return'? ` · ${T('Qaytarilgan','Возвращено')}: ${r.qty} ${T('dona','шт.')}`:''}</p>`);
+  if(r.unit_cost!==null&&r.unit_cost!==undefined)lines.push(`<p>${T('Bir dona narxi','Цена за штуку')}: ${money(r.unit_cost)} ${E(r.currency)}</p>`);
+  if(r.locations)lines.push(`<p>${T('Qabul qilingan joylar','Места поступления')}: ${E(r.locations)}</p>`);
+  if(r.receipt_id)lines.push(`<p>${T('Kirim raqami','Номер прихода')}: #${r.receipt_id}</p>`);
+  if(r.method)lines.push(`<p>${T('To‘lov usuli','Способ оплаты')}: ${E(accountingMethod(r.method))}</p>`);
+  lines.push(`<p>${T('Sana-vaqt','Дата и время')}: ${E(accountingTimestamp(r.created))}<br>${T('Hisob sanasi','Дата учета')}: ${E(r.date)} · ${T('Kiritgan','Внёс')}: ${E(r.actor_name)}</p>`);
+  lines.push(`<p><strong>${T('Operatsiyadan keyingi saldo','Баланс после операции')}: ${money(r.balance_after)} ${E(r.currency)}</strong></p>`);
+  if(r.note)lines.push(`<p>${E(r.note)}</p>`);
+  return `<article class="list-card"><h3>#${r.id} · ${E(accountingKind(r.kind))} · ${money(r.amount)} ${E(r.currency)}</h3>${lines.join('')}</article>`;
+ }).join('');
+ modal(`${T('Yetkazib beruvchi','Поставщик')}: ${E(data.supplier.name)}`,`<div class="list">${totals||empty(T('Hozircha hisob yozuvi yo‘q','Пока нет записей'))}</div><h3>${T('Kirim va to‘lovlar tarixi','История поступлений и оплат')}</h3><div class="list">${entries||empty(T('Operatsiyalar yo‘q','Операций нет'))}</div><button class="secondary full" data-account-action="suppliers">${T('Yetkazib beruvchilar ro‘yxatiga qaytish','Назад к списку поставщиков')}</button>`);
 }
 
 async function supplierReport(data){
@@ -60,6 +80,7 @@ async function managerPanel(){
 async function accountingOperations(action,id){
  const director=state.me.role==='director';
  if(action==='suppliers'){await supplierPanel();return true}
+ if(action==='supplier-detail'){await supplierDetail(id);return true}
  if(action==='supplier-debts'){
   const data=await api('/api/suppliers');
   const balances=(data.balances||[]).filter(r=>Number(r.balance)>0);

@@ -357,3 +357,43 @@ class Accounting:
         entries = self.rows('SELECT e.*,v.name supplier_name,u.name actor_name FROM supplier_entries e JOIN suppliers v ON v.id=e.supplier JOIN users u ON u.id=e.actor WHERE e.date BETWEEN ? AND ?'+scope+' ORDER BY e.id', (start, end, *params))
         lots = self.rows('SELECT l.*,r.supplier,r.cost,r.currency,p.name product_name,t.name point_name FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0'+where+' ORDER BY l.id', params)
         return {'stock':stock, 'sold':sold, 'entries':entries, 'lots':lots, 'balances':[r for r in self.suppliers(uid)['balances'] if supplier is None or r['supplier']==supplier], 'start':start, 'end':end}
+
+    def supplier_ledger(self, uid, supplier):
+        """Return a supplier's itemized ledger with actor, timestamp, and running balance."""
+        self.director(uid)
+        supplier = quantity(supplier)
+        row = self.supplier_row(supplier)
+        totals = self.rows(
+            "SELECT currency,"
+            "SUM(CASE WHEN kind='receipt' THEN amount ELSE 0 END) received,"
+            "SUM(CASE WHEN kind='payment' THEN amount ELSE 0 END) paid,"
+            "SUM(CASE WHEN kind='return' THEN amount ELSE 0 END) returned,"
+            "SUM(CASE WHEN kind='receipt' THEN amount ELSE -amount END) balance "
+            "FROM supplier_entries WHERE supplier=? GROUP BY currency ORDER BY currency",
+            (supplier,),
+        )
+        entries = self.rows(
+            """SELECT e.*,u.name actor_name,r.id receipt_id,r.product product,
+                      p.name product_name,r.qty receipt_qty,r.cost unit_cost,
+                      (SELECT GROUP_CONCAT(t.name || ' × ' || (
+                           l.qty
+                           + COALESCE((SELECT SUM(a.qty) FROM sale_allocations a WHERE a.lot=l.id),0)
+                           + COALESCE((SELECT SUM(x.qty) FROM supplier_entries x WHERE x.kind='return' AND x.lot=l.id),0)
+                       ), ', ')
+                       FROM inventory_lots l JOIN points t ON t.id=l.point
+                       WHERE l.receipt=r.id) locations
+               FROM supplier_entries e
+               JOIN users u ON u.id=e.actor
+               LEFT JOIN receipts r ON r.id=e.receipt
+               LEFT JOIN products p ON p.id=COALESCE(r.product,(SELECT product FROM inventory_lots WHERE id=e.lot))
+               WHERE e.supplier=?
+               ORDER BY e.created,e.id""",
+            (supplier,),
+        )
+        running = {}
+        for entry in entries:
+            currency = entry['currency']
+            change = entry['amount'] if entry['kind'] == 'receipt' else -entry['amount']
+            running[currency] = running.get(currency, 0) + change
+            entry['balance_after'] = running[currency]
+        return {'supplier':row, 'totals':totals, 'entries':entries}
