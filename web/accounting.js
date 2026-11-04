@@ -25,8 +25,11 @@ function accountingPayload(cmd,data){
    payments.push({method,amount:String(amount)});
    delete data['paid_'+method];
   }
-  const total=Math.round(Number(data.cost)*100)*allocations.reduce((sum,row)=>sum+row.qty,0);
-  if(!Number.isFinite(total)||payments.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)>total)throw Error(T('To‘lov kirim jami summasidan oshmasin','Оплата не должна превышать сумму прихода'));
+  if(data.cost!==undefined&&data.cost!==''){
+   const unitCost=Number(data.cost);
+   const total=Math.round(unitCost*100)*allocations.reduce((sum,row)=>sum+row.qty,0);
+   if(!Number.isFinite(total)||total<0||payments.reduce((sum,row)=>sum+Math.round(Number(row.amount)*100),0)>total)throw Error(T('To‘lov kirim jami summasidan oshmasin','Оплата не должна превышать сумму прихода'));
+  }
   data.payments=payments;
  }
  if(cmd==='sell'){
