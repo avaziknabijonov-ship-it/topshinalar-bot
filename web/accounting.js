@@ -49,8 +49,8 @@ async function supplierPanel(){
 
 async function supplierDetail(id){
  const data=await api('/api/supplier-ledger?supplier='+encodeURIComponent(id));
- const totals=data.totals.map(r=>`<article class="list-card"><h3>${E(r.currency)} · ${T('Joriy saldo','Текущий баланс')}: ${money(r.balance)} ${E(r.currency)}</h3><p>${T('Jami kirim','Всего поступило')}: ${money(r.received)} · ${T('To‘landi','Оплачено')}: ${money(r.paid)} · ${T('Qaytarildi','Возвращено')}: ${money(r.returned)}</p></article>`).join('');
- const entries=data.entries.slice().reverse().map(r=>{
+ const entries=data.entries.slice().reverse();
+ const entryCard=r=>{
   const lines=[];
   if(r.product_name)lines.push(`<p>${T('Mahsulot','Товар')}: ${E(r.product_name)}${r.receipt_qty? ` · ${T('Kirim miqdori','Количество прихода')}: ${r.receipt_qty} ${T('dona','шт.')}`:''}${r.qty&&r.kind==='return'? ` · ${T('Qaytarilgan','Возвращено')}: ${r.qty} ${T('dona','шт.')}`:''}</p>`);
   if(r.unit_cost!==null&&r.unit_cost!==undefined)lines.push(`<p>${T('Bir dona narxi','Цена за штуку')}: ${money(r.unit_cost)} ${E(r.currency)}</p>`);
@@ -61,8 +61,24 @@ async function supplierDetail(id){
   lines.push(`<p><strong>${T('Operatsiyadan keyingi saldo','Баланс после операции')}: ${money(r.balance_after)} ${E(r.currency)}</strong></p>`);
   if(r.note)lines.push(`<p>${E(r.note)}</p>`);
   return `<article class="list-card"><h3>#${r.id} · ${E(accountingKind(r.kind))} · ${money(r.amount)} ${E(r.currency)}</h3>${lines.join('')}</article>`;
+ };
+ const sections=data.totals.map(r=>{
+  const currencyEntries=entries.filter(e=>e.currency===r.currency);
+  const debtEntries=currencyEntries.filter(e=>e.kind==='receipt'||e.kind==='return');
+  const paymentEntries=currencyEntries.filter(e=>e.kind==='payment');
+  const debtHistory=debtEntries.map(entryCard).join('')||empty(T('Kirim yoki qaytarish yozuvi yo‘q','Нет приходов или возвратов'));
+  const paymentHistory=paymentEntries.map(entryCard).join('')||empty(T('To‘lov yozuvi yo‘q','Нет записей об оплате'));
+  return `<section class="supplier-ledger-currency"><h3>${E(r.currency)}</h3>
+   <details class="list-card" open><summary><strong>${T('Qarz','Долг')}: ${money(r.balance)} ${E(r.currency)}</strong></summary>
+    <p>${T('Jami kirim','Всего поступило')}: ${money(r.received)} · ${T('To‘landi','Оплачено')}: ${money(r.paid)} · ${T('Qaytarildi','Возвращено')}: ${money(r.returned)}</p>
+    <div class="list">${debtHistory}</div>
+   </details>
+   <details class="list-card"><summary><strong>${T('Berilgan pul','Переданные деньги')}: ${money(r.paid)} ${E(r.currency)}</strong></summary>
+    <div class="list">${paymentHistory}</div>
+   </details>
+  </section>`;
  }).join('');
- modal(`${T('Yetkazib beruvchi','Поставщик')}: ${E(data.supplier.name)}`,`<div class="list">${totals||empty(T('Hozircha hisob yozuvi yo‘q','Пока нет записей'))}</div><h3>${T('Kirim va to‘lovlar tarixi','История поступлений и оплат')}</h3><div class="list">${entries||empty(T('Operatsiyalar yo‘q','Операций нет'))}</div><button class="secondary full" data-account-action="suppliers">${T('Yetkazib beruvchilar ro‘yxatiga qaytish','Назад к списку поставщиков')}</button>`);
+ modal(`${T('Yetkazib beruvchi','Поставщик')}: ${E(data.supplier.name)}`,`${sections||empty(T('Hozircha hisob yozuvi yo‘q','Пока нет записей'))}<button class="secondary full" data-account-action="suppliers">${T('Yetkazib beruvchilar ro‘yxatiga qaytish','Назад к списку поставщиков')}</button>`);
 }
 
 async function supplierReport(data){
