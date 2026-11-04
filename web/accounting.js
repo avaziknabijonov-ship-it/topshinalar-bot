@@ -74,7 +74,7 @@ async function supplierReport(data){
 
 async function managerPanel(){
  const data=await api('/api/manager-account');
- modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan − xarajat − qaytarilgan','Выдано − расход − возврат')}: ${money(b.given)} − ${money(b.expenses)} − ${money(b.returned)}</p></article>`).join('')}<h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
+ modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button><button data-action="supplier-payment">${T('Yetkazib beruvchiga to‘lov','Оплата поставщику')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan − xarajat − qaytarilgan','Выдано − расход − возврат')}: ${money(b.given)} − ${money(b.expenses)} − ${money(b.returned)}</p></article>`).join('')}<h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
 }
 
 async function accountingOperations(action,id){
