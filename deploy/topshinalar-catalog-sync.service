@@ -1,0 +1,12 @@
+[Unit]
+Description=TOPSHINALAR public catalog outbox delivery (no business writes over HTTP)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=topshinalar
+WorkingDirectory=/opt/topshinalar-bot
+EnvironmentFile=/etc/topshinalar-bot.env
+ExecStart=/opt/topshinalar-bot/.venv/bin/python catalog_sync.py --db /opt/topshinalar-bot/data/topshinalar.sqlite3 once
+NoNewPrivileges=true
+PrivateTmp=true
