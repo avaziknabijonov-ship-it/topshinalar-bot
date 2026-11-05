@@ -211,7 +211,7 @@ class MiniService:
         if cmd=='point_kind':return self.s.point_kind(uid,integer(d.get('point')),d.get('kind'))
         if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
         if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
-        if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching. / Закройте приложение и откройте заново через /app.')
+        if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching.','Excel: Закройте приложение и откройте заново через /app.')
         if cmd=='excel_preview':return InventoryExcel(self.s).preview(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100))
         if cmd=='excel_import':return InventoryExcel(self.s).apply(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100),d.get('fingerprint'))
         if cmd=='staff_role':return StaffAccess(self.s).assign_role(uid,telegram_id(d.get('employee')),d.get('role'))
@@ -347,10 +347,15 @@ class MiniHandler(BaseHTTPRequestHandler):
         if path.startswith(('/director-auth/','/director-api/')):
             from director import handle_http
             handle_http(self,path,write);return
+        if not write and path=='/ui-text.js':
+            from ui_text import browser_script
+            self.send(200,browser_script().encode(),'text/javascript; charset=utf-8');return
         static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
+        from ui_text import language,text
         store=None;user=None
+        ui_lang=language(self.headers.get('X-UI-Language'))
         try:
             origin=self.headers.get('Origin')
             if origin and self.server.origin and origin!=self.server.origin:raise AuthError()
@@ -365,6 +370,7 @@ class MiniHandler(BaseHTTPRequestHandler):
             try:user=store.user(signed['id'])
             except (ValueError,PermissionError):raise AuthError() from None
             uid=user['id']
+            ui_lang=language(self.headers.get('X-UI-Language'),user['lang'])
             name=' '.join(str(signed.get(k,'')).strip() for k in ('first_name','last_name')).strip()
             if name:
                 with store.db:store.db.execute('UPDATE users SET name=? WHERE id=?',(name[:150],uid))
@@ -430,16 +436,16 @@ class MiniHandler(BaseHTTPRequestHandler):
             elif re.fullmatch(r'/api/photo/\d+(?:/\d+)?',path):
                 parts=path.strip('/').split('/')
                 self.send(200,service.photo(uid,int(parts[2]),int(parts[3]) if len(parts)>3 else 0),'image/jpeg');return
-            else:self.send(404,{'error':'Not found'});return
+            else:self.send(404,{'error':text('not_found',language(self.headers.get('X-UI-Language'),user['lang']))});return
             self.send(200,result)
-        except (AuthError,PermissionError):self.send(403,{'error':'Telegram orqali kiring / Откройте через Telegram'})
+        except (AuthError,PermissionError):self.send(403,{'error':text('permission_error',language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz'))})
         except (ValueError,TypeError,KeyError,sqlite3.IntegrityError) as exc:
-            lang=user['lang'] if user else 'uz';message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
-            if isinstance(exc,ExcelError):message=str(exc)
+            lang=language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz');message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
+            if isinstance(exc,ExcelError):message=exc.localized(lang)
             self.send(400,{'error':message})
         except Exception:
             logging.exception('Mini App request failed: %s %s','POST' if write else 'GET',path)
-            self.send(503,{'error':'Vaqtincha ulanish yo‘q / Временно недоступно'})
+            self.send(503,{'error':text('not_available',ui_lang)})
         finally:
             if store:store.db.close()
 

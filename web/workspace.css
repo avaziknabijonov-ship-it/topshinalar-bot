@@ -28,6 +28,7 @@
 .director-workspace footer { position: static; padding: 15px 4px 0; border-top: 1px solid #ffffff12; gap: 8px; }
 .director-workspace footer button { min-height: 42px; font-size: 12px; color: #c1cddd; }
 .director-workspace footer #logout { flex: 1; }
+.director-workspace #session-error { font-size: 12px; line-height: 1.7; color: #ffd5cf; margin: 14px 8px 0; }
 .director-workspace main { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding: 32px clamp(22px,3vw,48px); max-width: 2000px; }
 .director-workspace header { min-height: 58px; margin-bottom: 28px; }
 .director-workspace header p { font-size: 10px; color: #687c92; letter-spacing: 1.8px; }
@@ -88,6 +89,8 @@
 .director-workspace th { font-size: 10px; color: #62768c; background: #f8fafc; letter-spacing: .5px; }
 .director-workspace td { color: #344d65; }
 .director-workspace tr[data-id]:focus-visible { outline-offset: -3px; }
+.director-workspace .record-open span { display: inline-flex; align-items: center; gap: 7px; color: #3f6b8b; font-size: 11px; }
+.director-workspace .record-open svg { width: 15px; height: 15px; }
 .director-workspace .pagination { font-size: 12px; gap: 14px; }
 .director-workspace .pagination button { min-height: 42px; min-width: 42px; }
 .director-workspace .analytics-caption, .director-workspace .analytics-note, .director-workspace .analytics-review { font-size: 12px; line-height: 1.8; color: #63758b; }
@@ -117,6 +120,7 @@
 .workspace-loading span { height: 154px; border: 1px solid #e0e7ef; border-radius: 16px; background: linear-gradient(100deg,#e9eef4 20%,#f9fbfd 50%,#e9eef4 80%); background-size: 300% 100%; animation: workspace-pulse 1.8s ease-in-out infinite; }
 @keyframes workspace-pulse { to { background-position: -150% 0; } }
 #menu-toggle, #menu-close { display: none; }
+.director-workspace #header-language { display: none; }
 .director-workspace.signed-out nav { visibility: hidden; }
 .director-workspace.signed-out #menu-toggle { display: none; }
 .director-workspace #nav-backdrop { position: fixed; inset: 0; z-index: 34; background: #0e1e2e80; border-radius: 0; backdrop-filter: blur(3px); }
@@ -189,6 +193,7 @@
   .director-workspace .period-presets { align-self: start; }
 }
 @media (max-width: 900px) {
+  .director-workspace.signed-out #header-language { display: block; min-height: 42px; min-width: 42px; border: 1px solid #dce5ef; background: white; color: #294960; font-size: 12px; }
   .director-workspace { display: block; }
   .director-workspace aside { position: fixed; inset: 0 auto 0 0; height: 100dvh; width: min(320px,88vw); padding: 24px 16px 18px; visibility: hidden; transform: translateX(-100%); transition: transform .2s ease; box-shadow: 12px 0 60px #102b4230; }
   .director-workspace.menu-open { overflow: hidden; }

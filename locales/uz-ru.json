@@ -1,0 +1,1526 @@
+{
+  "fields": {
+    "creator_name": [
+      "KP tuzuvchi",
+      "Составитель КП"
+    ],
+    "creator_phone": [
+      "Tuzuvchi telefoni",
+      "Телефон составителя"
+    ],
+    "currency": [
+      "Valyuta",
+      "Валюта"
+    ],
+    "exchange_rate": [
+      "USD kursi, so‘m",
+      "Курс USD, сум"
+    ],
+    "source_total_usd": [
+      "Asl jami, USD",
+      "Исходная сумма, USD"
+    ],
+    "warehouse_name": [
+      "Ombor",
+      "Склад"
+    ],
+    "stock_value": [
+      "Narxi ma’lum qoldiq qiymati",
+      "Стоимость остатков с ценой"
+    ],
+    "unknown_stock": [
+      "Qoldig‘i kiritilmagan mahsulotlar",
+      "Товары без остатка"
+    ],
+    "unknown_price": [
+      "Narxi kiritilmagan qoldiqlar",
+      "Остатки без цены"
+    ],
+    "as_of": [
+      "Ma’lumot holati vaqti",
+      "Данные на момент"
+    ],
+    "stock_status": [
+      "Qoldiq holati",
+      "Состояние остатка"
+    ],
+    "kind": [
+      "Harakat turi",
+      "Тип движения"
+    ],
+    "action": [
+      "Amal",
+      "Действие"
+    ],
+    "brand": [
+      "Brend",
+      "Бренд"
+    ],
+    "size": [
+      "O‘lcham",
+      "Размер"
+    ],
+    "debt_due": [
+      "To‘lov muddati",
+      "Срок оплаты"
+    ],
+    "cancel_reason": [
+      "Bekor qilish sababi",
+      "Причина отмены"
+    ],
+    "cancelled_by": [
+      "Bekor qilgan direktor ID",
+      "ID отменившего директора"
+    ],
+    "cancelled_by_name": [
+      "Bekor qilgan direktor",
+      "Отменивший директор"
+    ],
+    "cancelled_at": [
+      "Bekor qilingan vaqt",
+      "Время отмены"
+    ],
+    "id": [
+      "ID",
+      "ID"
+    ],
+    "name": [
+      "Nomi / ism",
+      "Название / имя"
+    ],
+    "phone": [
+      "Telefon",
+      "Телефон"
+    ],
+    "address": [
+      "Manzil",
+      "Адрес"
+    ],
+    "note": [
+      "Izoh",
+      "Примечание"
+    ],
+    "owner": [
+      "Mas’ul ID",
+      "ID ответственного"
+    ],
+    "client": [
+      "Mijoz ID",
+      "ID клиента"
+    ],
+    "client_name": [
+      "Mijoz",
+      "Клиент"
+    ],
+    "actor": [
+      "Xodim ID",
+      "ID сотрудника"
+    ],
+    "employee_name": [
+      "Xodim",
+      "Сотрудник"
+    ],
+    "owner_name": [
+      "Mas’ul xodim",
+      "Ответственный сотрудник"
+    ],
+    "approved_by_name": [
+      "Tasdiqlagan direktor",
+      "Утвердивший директор"
+    ],
+    "point": [
+      "Ombor / vitrina",
+      "Склад / витрина"
+    ],
+    "point_id": [
+      "Nuqta ID",
+      "ID точки"
+    ],
+    "product": [
+      "Mahsulot ID",
+      "ID товара"
+    ],
+    "price": [
+      "Narx",
+      "Цена"
+    ],
+    "qty": [
+      "Dona",
+      "Количество"
+    ],
+    "discount": [
+      "Chegirma, %",
+      "Скидка, %"
+    ],
+    "sale": [
+      "Sotuv ID",
+      "ID продажи"
+    ],
+    "quote": [
+      "КП ID",
+      "ID КП"
+    ],
+    "total": [
+      "Jami",
+      "Итого"
+    ],
+    "paid": [
+      "To‘langan",
+      "Оплачено"
+    ],
+    "debt": [
+      "Qarz",
+      "Долг"
+    ],
+    "payment": [
+      "To‘lov turi",
+      "Тип оплаты"
+    ],
+    "amount": [
+      "Summa",
+      "Сумма"
+    ],
+    "method": [
+      "To‘lov turi",
+      "Тип оплаты"
+    ],
+    "created": [
+      "Sana va vaqt",
+      "Дата и время"
+    ],
+    "due": [
+      "Eslatma vaqti",
+      "Время напоминания"
+    ],
+    "status": [
+      "Holat",
+      "Статус"
+    ],
+    "notified": [
+      "Eslatma yuborildi",
+      "Напоминание отправлено"
+    ],
+    "result": [
+      "Natija",
+      "Результат"
+    ],
+    "started": [
+      "Ish boshlandi",
+      "Начало работы"
+    ],
+    "ended": [
+      "Ish tugadi",
+      "Конец работы"
+    ],
+    "report": [
+      "Kun hisoboti",
+      "Отчет за день"
+    ],
+    "reason": [
+      "Sabab",
+      "Причина"
+    ],
+    "approved_by": [
+      "Tasdiqlagan direktor ID",
+      "ID утвердившего директора"
+    ],
+    "driver": [
+      "Haydovchi",
+      "Водитель"
+    ],
+    "fee": [
+      "Yetkazish narxi",
+      "Стоимость доставки"
+    ],
+    "fulfillment": [
+      "Shartlar",
+      "Условия"
+    ],
+    "lang": [
+      "Til",
+      "Язык"
+    ],
+    "terms": [
+      "Avvalgi izoh",
+      "Прежнее примечание"
+    ],
+    "role": [
+      "Lavozim",
+      "Роль"
+    ],
+    "day_status": [
+      "Pul kuni holati",
+      "Состояние денежного дня"
+    ],
+    "closed_by": [
+      "Kunni yopgan",
+      "Закрыл день"
+    ],
+    "closed_at": [
+      "Kun yopilgan vaqt",
+      "Время закрытия дня"
+    ],
+    "refund_review_count": [
+      "Tekshirilmagan qaytarishlar",
+      "Непроверенные возвраты"
+    ],
+    "historical_received": [
+      "Avvalgi tushumlar",
+      "Прежние поступления"
+    ],
+    "legacy_returned": [
+      "Eski topshirishlar",
+      "Прежние сдачи"
+    ],
+    "received_cash": [
+      "Naqd tushum",
+      "Наличные поступления"
+    ],
+    "received_card": [
+      "Karta tushumi",
+      "Поступления по карте"
+    ],
+    "received_transfer": [
+      "Bank tushumi",
+      "Банковские поступления"
+    ],
+    "received_other": [
+      "Boshqa tushum",
+      "Прочие поступления"
+    ],
+    "received": [
+      "Qabul qilgan pul",
+      "Получено"
+    ],
+    "pending_return": [
+      "Tasdiq kutilayotgan topshirish",
+      "Сдача ожидает подтверждения"
+    ],
+    "refunds": [
+      "Qaytarilgan pul",
+      "Возвраты денег"
+    ],
+    "receipt_status": [
+      "Topshirish holati",
+      "Статус сдачи"
+    ],
+    "accepted_by": [
+      "Qabul qilgan direktor ID",
+      "ID принявшего директора"
+    ],
+    "accepted_at": [
+      "Qabul vaqti",
+      "Время приёма"
+    ],
+    "source": [
+      "Manba",
+      "Источник"
+    ],
+    "source_id": [
+      "Manba ID",
+      "ID источника"
+    ],
+    "supplier": [
+      "Yetkazib beruvchi ID",
+      "ID поставщика"
+    ],
+    "supplier_name": [
+      "Ta’minotchi",
+      "Поставщик"
+    ],
+    "manager": [
+      "Menejer ID",
+      "ID менеджера"
+    ],
+    "manager_name": [
+      "Menejer",
+      "Менеджер"
+    ],
+    "actor_name": [
+      "Kiritgan xodim",
+      "Внёс сотрудник"
+    ],
+    "date": [
+      "Hisob sanasi",
+      "Дата операции"
+    ],
+    "cost": [
+      "Bir dona kirim narxi",
+      "Закупочная цена за штуку"
+    ],
+    "balance": [
+      "Saldo",
+      "Сальдо"
+    ],
+    "given": [
+      "Menejerga berilgan",
+      "Выдано менеджеру"
+    ],
+    "expenses": [
+      "Xarajatlar",
+      "Расходы"
+    ],
+    "returned": [
+      "Kassaga qabul qilingan",
+      "Принято в кассу"
+    ],
+    "receipt": [
+      "Kirim ID",
+      "ID прихода"
+    ],
+    "lot": [
+      "Partiya ID",
+      "ID партии"
+    ],
+    "point_name": [
+      "Ombor / vitrina",
+      "Склад / витрина"
+    ],
+    "product_name": [
+      "Mahsulot",
+      "Товар"
+    ],
+    "manager_entry": [
+      "Menejer xarajat ID",
+      "ID расхода менеджера"
+    ],
+    "change": [
+      "Qarz o‘zgarishi",
+      "Изменение долга"
+    ],
+    "balance_after": [
+      "Amaldan keyingi qarz",
+      "Долг после операции"
+    ],
+    "history_review_count": [
+      "Tarixini tekshirish kerak bo‘lgan savdolar",
+      "Продажи с неполной историей"
+    ],
+    "price_cents": [
+      "Sayt narxi USD",
+      "Цена сайта USD"
+    ],
+    "revenue": [
+      "Savdo summasi",
+      "Сумма продаж"
+    ],
+    "sales_count": [
+      "Savdolar soni",
+      "Количество продаж"
+    ],
+    "client_count": [
+      "Mijozlar soni",
+      "Количество клиентов"
+    ],
+    "paid_to_date": [
+      "Hozirgacha to‘langan",
+      "Оплачено на сейчас"
+    ],
+    "debt_to_date": [
+      "Hozirgi mijoz qarzi",
+      "Текущий долг клиента"
+    ],
+    "unknown_sales_count": [
+      "Summasi tekshiriladigan savdolar",
+      "Продажи с суммой для проверки"
+    ],
+    "review_sales_count": [
+      "Tekshiriladigan savdolar",
+      "Продажи для проверки"
+    ],
+    "items": [
+      "Mahsulotlar",
+      "Товары"
+    ],
+    "sales": [
+      "Savdolar",
+      "Продажи"
+    ],
+    "payments": [
+      "To‘lovlar",
+      "Платежи"
+    ],
+    "quotes": [
+      "Tijorat takliflari",
+      "Коммерческие предложения"
+    ],
+    "tasks": [
+      "Vazifalar",
+      "Задачи"
+    ],
+    "calls": [
+      "Qo‘ng‘iroqlar",
+      "Звонки"
+    ],
+    "deliveries": [
+      "Yetkazishlar",
+      "Доставки"
+    ],
+    "entries": [
+      "Operatsiyalar",
+      "Операции"
+    ],
+    "totals": [
+      "Valyuta bo‘yicha jami",
+      "Итоги по валютам"
+    ],
+    "active": [
+      "Faollik",
+      "Активность"
+    ],
+    "published": [
+      "Saytda ko‘rsatiladi",
+      "Опубликован на сайте"
+    ],
+    "has_debt": [
+      "Qarzi bor",
+      "Есть долг"
+    ],
+    "overdue": [
+      "Qarzi kechikkan",
+      "Есть просрочка"
+    ],
+    "debt_currencies": [
+      "Qarz valyutalari",
+      "Валюты долга"
+    ],
+    "price_pending": [
+      "Narx tekshirilishi kerak",
+      "Цена требует проверки"
+    ],
+    "stock_pending": [
+      "Qoldiq noma’lum",
+      "Остаток неизвестен"
+    ],
+    "version": [
+      "Manba versiyasi",
+      "Версия источника"
+    ],
+    "delivered_version": [
+      "Yuborilgan versiya",
+      "Доставленная версия"
+    ],
+    "last_success": [
+      "Oxirgi muvaffaqiyatli yangilanish",
+      "Последнее успешное обновление"
+    ],
+    "last_error": [
+      "Oxirgi xatolik",
+      "Последняя ошибка"
+    ],
+    "sync_status": [
+      "Sinxronlash holati",
+      "Статус синхронизации"
+    ],
+    "attempts": [
+      "Yuborish urinishlari",
+      "Попытки отправки"
+    ],
+    "category": [
+      "Kategoriya",
+      "Категория"
+    ],
+    "model": [
+      "Model",
+      "Модель"
+    ],
+    "catalog_sku": [
+      "Mahsulot artikuli",
+      "Артикул товара"
+    ],
+    "price_mode": [
+      "Narx manbasi",
+      "Источник цены"
+    ],
+    "stock_mode": [
+      "Qoldiq ko‘rinishi",
+      "Отображение остатка"
+    ],
+    "collector_name": [
+      "Pulni qabul qilgan",
+      "Принял оплату"
+    ],
+    "receipt_qty": [
+      "Kirim soni",
+      "Количество прихода"
+    ],
+    "unit_cost": [
+      "Bir dona tannarxi",
+      "Себестоимость за штуку"
+    ],
+    "locations": [
+      "Saqlash joylari",
+      "Места хранения"
+    ],
+    "minimum": [
+      "Eng kam qoldiq",
+      "Минимальный остаток"
+    ],
+    "refund_review": [
+      "Qaytarilgan pulni tekshirish",
+      "Проверка возврата денег"
+    ],
+    "accepted_by_name": [
+      "Qabul qilgan direktor",
+      "Принял директор"
+    ],
+    "opening": [
+      "Davr boshidagi qoldiq",
+      "Остаток на начало периода"
+    ],
+    "period_closing": [
+      "Davr oxiridagi qoldiq",
+      "Остаток на конец периода"
+    ],
+    "current_balances": [
+      "Joriy qoldiqlar",
+      "Текущие остатки"
+    ],
+    "description_uz": [
+      "O‘zbekcha tavsif",
+      "Описание на узбекском"
+    ],
+    "description_ru": [
+      "Ruscha tavsif",
+      "Описание на русском"
+    ],
+    "payment_term": [
+      "To‘lov sharti",
+      "Условия оплаты"
+    ],
+    "delivery_term": [
+      "Yetkazish sharti",
+      "Условия доставки"
+    ],
+    "warranty_term": [
+      "Kafolat sharti",
+      "Условия гарантии"
+    ],
+    "contact_phone": [
+      "Aloqa telefoni",
+      "Контактный телефон"
+    ],
+    "client_company": [
+      "Mijoz tashkiloti",
+      "Компания клиента"
+    ],
+    "client_director": [
+      "Mijoz rahbari",
+      "Руководитель клиента"
+    ],
+    "client_phone": [
+      "Mijoz telefoni",
+      "Телефон клиента"
+    ],
+    "payment_history_complete": [
+      "To‘lovlar tarixi to‘liq",
+      "История оплат полная"
+    ],
+    "lots": [
+      "Kirim partiyalari · joriy qoldiq",
+      "Партии прихода · текущий остаток"
+    ],
+    "sale_date": [
+      "Savdo sanasi",
+      "Дата продажи"
+    ],
+    "location_kind": [
+      "Saqlash joyi turi",
+      "Тип места хранения"
+    ],
+    "remaining_qty": [
+      "Qolgan soni",
+      "Остаток количества"
+    ],
+    "operation": [
+      "Operatsiya",
+      "Операция"
+    ]
+  },
+  "values": {
+    "status": {
+      "active": [
+        "Faol",
+        "Активна"
+      ],
+      "cancelled": [
+        "Bekor qilingan",
+        "Отменена"
+      ],
+      "draft": [
+        "Qoralama",
+        "Черновик"
+      ],
+      "sent": [
+        "Yuborilgan",
+        "Отправлено"
+      ],
+      "accepted": [
+        "Qabul qilingan",
+        "Принято"
+      ],
+      "rejected": [
+        "Rad etilgan",
+        "Отклонено"
+      ],
+      "open": [
+        "Ochiq",
+        "Открыта"
+      ],
+      "done": [
+        "Bajarilgan",
+        "Выполнена"
+      ],
+      "new": [
+        "Yangi",
+        "Новая"
+      ],
+      "on_way": [
+        "Yo‘lda",
+        "В пути"
+      ],
+      "delivered": [
+        "Yetkazilgan",
+        "Доставлено"
+      ],
+      "pending": [
+        "Kutilmoqda",
+        "Ожидается"
+      ]
+    },
+    "role": {
+      "employee": [
+        "Xodim",
+        "Сотрудник"
+      ],
+      "director": [
+        "Direktor",
+        "Директор"
+      ]
+    },
+    "method": {
+      "naqd": [
+        "Naqd",
+        "Наличные"
+      ],
+      "cash": [
+        "Naqd",
+        "Наличные"
+      ],
+      "karta": [
+        "Karta",
+        "Карта"
+      ],
+      "card": [
+        "Karta",
+        "Карта"
+      ],
+      "perechisleniya": [
+        "Bank o‘tkazmasi",
+        "Банковский перевод"
+      ],
+      "transfer": [
+        "Bank o‘tkazmasi",
+        "Банковский перевод"
+      ],
+      "refund": [
+        "Pul qaytarish",
+        "Возврат денег"
+      ]
+    },
+    "payment": {
+      "naqd": [
+        "Naqd",
+        "Наличные"
+      ],
+      "cash": [
+        "Naqd",
+        "Наличные"
+      ],
+      "karta": [
+        "Karta",
+        "Карта"
+      ],
+      "card": [
+        "Karta",
+        "Карта"
+      ],
+      "perechisleniya": [
+        "Bank o‘tkazmasi",
+        "Банковский перевод"
+      ],
+      "transfer": [
+        "Bank o‘tkazmasi",
+        "Банковский перевод"
+      ],
+      "refund": [
+        "Pul qaytarish",
+        "Возврат денег"
+      ]
+    },
+    "kind": {
+      "in": [
+        "Tovar kirimi",
+        "Приход товара"
+      ],
+      "opening": [
+        "Boshlang‘ich qoldiq",
+        "Начальный остаток"
+      ],
+      "opening_stock": [
+        "Boshlang‘ich qoldiq",
+        "Начальный остаток"
+      ],
+      "excel_income": [
+        "Excel/PDF orqali kirim",
+        "Приход из Excel/PDF"
+      ],
+      "return": [
+        "Qaytarish / topshirish",
+        "Возврат / сдача"
+      ],
+      "writeoff": [
+        "Hisobdan chiqarish",
+        "Списание"
+      ],
+      "transfer": [
+        "Omborlar orasida ko‘chirish",
+        "Перемещение между складами"
+      ],
+      "sale": [
+        "Savdo",
+        "Продажа"
+      ],
+      "sale_receipt": [
+        "Savdo yoki qarz to‘lovi",
+        "Оплата продажи или долга"
+      ],
+      "received": [
+        "Boshqa qabul qilingan pul",
+        "Прочие полученные деньги"
+      ],
+      "customer_refund": [
+        "Mijozga pul qaytarish",
+        "Возврат денег клиенту"
+      ],
+      "fund": [
+        "Menejerga pul berish",
+        "Выдача денег менеджеру"
+      ],
+      "expense": [
+        "Xarajat",
+        "Расход"
+      ],
+      "receipt": [
+        "Ta’minotchidan kirim",
+        "Приход от поставщика"
+      ],
+      "payment": [
+        "To‘lov",
+        "Оплата"
+      ],
+      "sale_debt": [
+        "Savdodan qarz paydo bo‘ldi",
+        "Начислен долг по продаже"
+      ],
+      "client_payment": [
+        "Mijoz to‘lovi",
+        "Оплата клиента"
+      ],
+      "client_refund": [
+        "Mijozga pul qaytarildi",
+        "Возвращены деньги клиенту"
+      ],
+      "sale_cancelled": [
+        "Savdo bekor qilindi",
+        "Продажа отменена"
+      ],
+      "sklad": [
+        "Ombor",
+        "Склад"
+      ],
+      "vitrina": [
+        "Vitrina",
+        "Витрина"
+      ]
+    },
+    "source": {
+      "sale": [
+        "Savdo",
+        "Продажа"
+      ],
+      "payment": [
+        "To‘lov",
+        "Оплата"
+      ],
+      "refund": [
+        "Pul qaytarish",
+        "Возврат денег"
+      ],
+      "cancellation": [
+        "Bekor qilish",
+        "Отмена"
+      ],
+      "receipt": [
+        "Tovar kirimi",
+        "Приход товара"
+      ],
+      "manager": [
+        "Menejer yozuvi",
+        "Запись менеджера"
+      ]
+    },
+    "receipt_status": {
+      "pending": [
+        "Tasdiq kutilmoqda",
+        "Ожидает подтверждения"
+      ],
+      "accepted": [
+        "Qabul qilindi",
+        "Принято"
+      ],
+      "rejected": [
+        "Rad etilgan",
+        "Отклонено"
+      ],
+      "legacy": [
+        "Eski topshirish yozuvi",
+        "Прежняя запись сдачи"
+      ]
+    },
+    "day_status": {
+      "open": [
+        "Yopilmagan",
+        "Не закрыт"
+      ],
+      "closed": [
+        "Yopilgan",
+        "Закрыт"
+      ],
+      "reopened": [
+        "Qayta tekshirish kerak",
+        "Требуется повторная сверка"
+      ]
+    },
+    "sync_status": {
+      "synced": [
+        "Yuborilgan",
+        "Синхронизировано"
+      ],
+      "pending": [
+        "Navbatda",
+        "В очереди"
+      ],
+      "retry_required": [
+        "Qayta yuborish kerak",
+        "Нужна повторная отправка"
+      ]
+    },
+    "stock_status": {
+      "known": [
+        "Ma’lum",
+        "Известен"
+      ],
+      "unknown": [
+        "Noma’lum",
+        "Неизвестен"
+      ],
+      "available": [
+        "Mavjud",
+        "В наличии"
+      ],
+      "empty": [
+        "Tugagan",
+        "Нет в наличии"
+      ]
+    },
+    "price_mode": {
+      "bot": [
+        "Botdagi narx",
+        "Цена из бота"
+      ],
+      "website": [
+        "Alohida sayt narxi",
+        "Отдельная цена сайта"
+      ]
+    },
+    "stock_mode": {
+      "exact": [
+        "Aniq son",
+        "Точное количество"
+      ],
+      "availability": [
+        "Mavjudlik",
+        "Наличие"
+      ]
+    },
+    "fulfillment": {
+      "pickup": [
+        "Olib ketish",
+        "Самовывоз"
+      ],
+      "delivery": [
+        "Yetkazib berish",
+        "Доставка"
+      ]
+    },
+    "lang": {
+      "uz": [
+        "O‘zbekcha",
+        "Узбекский"
+      ],
+      "ru": [
+        "Ruscha",
+        "Русский"
+      ]
+    },
+    "manager_kind": {
+      "in": [
+        "Tovar kirimi",
+        "Приход товара"
+      ],
+      "opening": [
+        "Boshlang‘ich qoldiq",
+        "Начальный остаток"
+      ],
+      "opening_stock": [
+        "Boshlang‘ich qoldiq",
+        "Начальный остаток"
+      ],
+      "excel_income": [
+        "Excel/PDF orqali kirim",
+        "Приход из Excel/PDF"
+      ],
+      "return": [
+        "Kassaga topshirish",
+        "Сдача в кассу"
+      ],
+      "writeoff": [
+        "Hisobdan chiqarish",
+        "Списание"
+      ],
+      "transfer": [
+        "Omborlar orasida ko‘chirish",
+        "Перемещение между складами"
+      ],
+      "sale": [
+        "Savdo",
+        "Продажа"
+      ],
+      "sale_receipt": [
+        "Savdo yoki qarz to‘lovi",
+        "Оплата продажи или долга"
+      ],
+      "received": [
+        "Boshqa qabul qilingan pul",
+        "Прочие полученные деньги"
+      ],
+      "customer_refund": [
+        "Mijozga pul qaytarish",
+        "Возврат денег клиенту"
+      ],
+      "fund": [
+        "Menejerga pul berish",
+        "Выдача денег менеджеру"
+      ],
+      "expense": [
+        "Xarajat",
+        "Расход"
+      ],
+      "receipt": [
+        "Ta’minotchidan kirim",
+        "Приход от поставщика"
+      ],
+      "payment": [
+        "To‘lov",
+        "Оплата"
+      ],
+      "sale_debt": [
+        "Savdodan qarz paydo bo‘ldi",
+        "Начислен долг по продаже"
+      ],
+      "client_payment": [
+        "Mijoz to‘lovi",
+        "Оплата клиента"
+      ],
+      "client_refund": [
+        "Mijozga pul qaytarildi",
+        "Возвращены деньги клиенту"
+      ],
+      "sale_cancelled": [
+        "Savdo bekor qilindi",
+        "Продажа отменена"
+      ],
+      "sklad": [
+        "Ombor",
+        "Склад"
+      ],
+      "vitrina": [
+        "Vitrina",
+        "Витрина"
+      ]
+    },
+    "location_kind": {
+      "sklad": [
+        "Ombor",
+        "Склад"
+      ],
+      "vitrina": [
+        "Vitrina",
+        "Витрина"
+      ]
+    }
+  },
+  "actions": {
+    "product": [
+      "Mahsulot qo‘shildi",
+      "Добавлен товар"
+    ],
+    "product_edit": [
+      "Mahsulot tahrirlandi",
+      "Изменён товар"
+    ],
+    "stock_minimum": [
+      "Eng kam qoldiq o‘zgartirildi",
+      "Изменён минимальный остаток"
+    ],
+    "debt_due": [
+      "Qarz muddati belgilandi",
+      "Установлен срок оплаты долга"
+    ],
+    "sale_cancel": [
+      "Savdo bekor qilindi",
+      "Продажа отменена"
+    ],
+    "opening_stock": [
+      "Boshlang‘ich qoldiq",
+      "Начальный остаток"
+    ],
+    "client": [
+      "Mijoz qo‘shildi",
+      "Добавлен клиент"
+    ],
+    "client_edit": [
+      "Mijoz tahrirlandi",
+      "Изменён клиент"
+    ],
+    "director_client_save": [
+      "Mijoz kartasi saqlandi",
+      "Сохранена карточка клиента"
+    ],
+    "quote": [
+      "Tijorat taklifi yaratildi",
+      "Создано коммерческое предложение"
+    ],
+    "quote_options": [
+      "Taklif shartlari yangilandi",
+      "Изменены условия предложения"
+    ],
+    "quote_status": [
+      "Taklif holati yangilandi",
+      "Изменён статус предложения"
+    ],
+    "sale": [
+      "Savdo",
+      "Продажа"
+    ],
+    "payment": [
+      "To‘lov",
+      "Оплата"
+    ],
+    "shift_start": [
+      "Ish kuni boshlandi",
+      "Начат рабочий день"
+    ],
+    "shift_end": [
+      "Ish kuni tugatildi",
+      "Завершён рабочий день"
+    ],
+    "task": [
+      "Vazifa yaratildi",
+      "Создана задача"
+    ],
+    "task_done": [
+      "Vazifa bajarildi",
+      "Задача выполнена"
+    ],
+    "fine": [
+      "Jarima kiritildi",
+      "Записан штраф"
+    ],
+    "call": [
+      "Qo‘ng‘iroq qayd qilindi",
+      "Записан звонок"
+    ],
+    "delivery": [
+      "Yetkazish yaratildi",
+      "Создана доставка"
+    ],
+    "delivery_status": [
+      "Yetkazish holati yangilandi",
+      "Изменён статус доставки"
+    ],
+    "supplier_create": [
+      "Ta’minotchi qo‘shildi",
+      "Добавлен поставщик"
+    ],
+    "supplier_edit": [
+      "Ta’minotchi tahrirlandi",
+      "Изменён поставщик"
+    ],
+    "point_kind": [
+      "Saqlash joyi turi o‘zgartirildi",
+      "Изменён тип места хранения"
+    ],
+    "supplier_income": [
+      "Ta’minotchidan kirim qilindi",
+      "Оформлен приход от поставщика"
+    ],
+    "supplier_payment": [
+      "Ta’minotchiga to‘landi",
+      "Оплачено поставщику"
+    ],
+    "supplier_return": [
+      "Ta’minotchiga tovar qaytarildi",
+      "Возвращён товар поставщику"
+    ],
+    "manager_fund": [
+      "Menejerga pul berildi",
+      "Выданы деньги менеджеру"
+    ],
+    "manager_expense": [
+      "Menejer xarajati yozildi",
+      "Записан расход менеджера"
+    ],
+    "manager_return": [
+      "Menejer pul topshirdi",
+      "Менеджер сдал деньги"
+    ],
+    "manager_received": [
+      "Menejer pul qabul qildi",
+      "Менеджер получил деньги"
+    ],
+    "manager_handover_requested": [
+      "Pul topshirish tasdiqqa yuborildi",
+      "Сдача денег отправлена на подтверждение"
+    ],
+    "manager_handover_accepted": [
+      "Topshirilgan pul qabul qilindi",
+      "Сдача денег принята"
+    ],
+    "manager_handover_rejected": [
+      "Pul topshirish rad etildi",
+      "Сдача денег отклонена"
+    ],
+    "manager_refund_payer": [
+      "Qaytarilgan pul manbasi tasdiqlandi",
+      "Подтверждён источник возврата"
+    ],
+    "manager_day_closed": [
+      "Menejer pul kuni yopildi",
+      "Закрыт денежный день менеджера"
+    ],
+    "director_login_approved": [
+      "Kabinetga kirish tasdiqlandi",
+      "Подтверждён вход в кабинет"
+    ],
+    "director_session_created": [
+      "Direktor kabinetga kirdi",
+      "Директор вошёл в кабинет"
+    ],
+    "director_logout": [
+      "Direktor kabinetdan chiqdi",
+      "Директор вышел из кабинета"
+    ],
+    "staff_role": [
+      "Xodim roli o‘zgartirildi",
+      "Изменена роль сотрудника"
+    ],
+    "staff_invite": [
+      "Xodimga taklif yaratildi",
+      "Создано приглашение сотруднику"
+    ],
+    "staff_invite_cancel": [
+      "Xodim taklifi bekor qilindi",
+      "Отменено приглашение сотруднику"
+    ],
+    "staff_enable": [
+      "Xodim kirishi yoqildi",
+      "Включён доступ сотруднику"
+    ],
+    "staff_disable": [
+      "Xodim kirishi o‘chirildi",
+      "Отключён доступ сотруднику"
+    ],
+    "staff_join": [
+      "Xodim ro‘yxatdan o‘tdi",
+      "Сотрудник зарегистрирован"
+    ],
+    "website_settings": [
+      "Sayt mahsuloti sozlandi",
+      "Настроен товар сайта"
+    ],
+    "inventory_count": [
+      "Inventarizatsiya tasdiqlandi",
+      "Подтверждена инвентаризация"
+    ],
+    "stock_transfer": [
+      "Tovar ko‘chirildi",
+      "Товар перемещён"
+    ],
+    "excel_import": [
+      "Excel orqali kirim qilindi",
+      "Оформлен приход из Excel"
+    ],
+    "product_photo": [
+      "Mahsulot rasmi qo‘shildi",
+      "Добавлено фото товара"
+    ],
+    "product_photo_delete": [
+      "Mahsulot rasmi olib tashlandi",
+      "Удалено фото товара"
+    ],
+    "in": [
+      "Tovar kirimi",
+      "Приход товара"
+    ],
+    "opening": [
+      "Boshlang‘ich qoldiq",
+      "Начальный остаток"
+    ],
+    "excel_income": [
+      "Excel/PDF orqali kirim",
+      "Приход из Excel/PDF"
+    ],
+    "return": [
+      "Qaytarish / topshirish",
+      "Возврат / сдача"
+    ],
+    "writeoff": [
+      "Hisobdan chiqarish",
+      "Списание"
+    ],
+    "transfer": [
+      "Omborlar orasida ko‘chirish",
+      "Перемещение между складами"
+    ],
+    "sale_receipt": [
+      "Savdo yoki qarz to‘lovi",
+      "Оплата продажи или долга"
+    ],
+    "received": [
+      "Boshqa qabul qilingan pul",
+      "Прочие полученные деньги"
+    ],
+    "customer_refund": [
+      "Mijozga pul qaytarish",
+      "Возврат денег клиенту"
+    ],
+    "fund": [
+      "Menejerga pul berish",
+      "Выдача денег менеджеру"
+    ],
+    "expense": [
+      "Xarajat",
+      "Расход"
+    ],
+    "receipt": [
+      "Ta’minotchidan kirim",
+      "Приход от поставщика"
+    ],
+    "sale_debt": [
+      "Savdodan qarz paydo bo‘ldi",
+      "Начислен долг по продаже"
+    ],
+    "client_payment": [
+      "Mijoz to‘lovi",
+      "Оплата клиента"
+    ],
+    "client_refund": [
+      "Mijozga pul qaytarildi",
+      "Возвращены деньги клиенту"
+    ],
+    "sale_cancelled": [
+      "Savdo bekor qilindi",
+      "Продажа отменена"
+    ]
+  },
+  "ui": {
+    "from": [
+      "Dan",
+      "С"
+    ],
+    "until": [
+      "Gacha",
+      "По"
+    ],
+    "search": [
+      "Qidirish",
+      "Поиск"
+    ],
+    "search_placeholder": [
+      "Nom, telefon yoki mahsulot",
+      "Название, телефон или товар"
+    ],
+    "show": [
+      "Ko‘rsatish",
+      "Показать"
+    ],
+    "today": [
+      "Bugun",
+      "Сегодня"
+    ],
+    "seven_days": [
+      "7 kun",
+      "7 дней"
+    ],
+    "thirty_days": [
+      "30 kun",
+      "30 дней"
+    ],
+    "logout": [
+      "Chiqish",
+      "Выйти"
+    ],
+    "cabinet": [
+      "Direktor kabineti",
+      "Кабинет директора"
+    ],
+    "login_title": [
+      "Telegram orqali xavfsiz kirish",
+      "Безопасный вход через Telegram"
+    ],
+    "login_help": [
+      "Quyidagi buyruqni o‘z botingizga yuboring. Tasdiqlashdan oldin brauzerdagi kodni solishtiring.",
+      "Отправьте команду своему боту. Перед подтверждением сверьте код с этим браузером."
+    ],
+    "login_expiry": [
+      "Kod 3 daqiqa amal qiladi.",
+      "Код действует 3 минуты."
+    ],
+    "login_start": [
+      "Kirish kodini olish",
+      "Получить код входа"
+    ],
+    "close": [
+      "Yopish",
+      "Закрыть"
+    ],
+    "previous": [
+      "Oldingi sahifa",
+      "Предыдущая страница"
+    ],
+    "next": [
+      "Keyingi sahifa",
+      "Следующая страница"
+    ],
+    "skip": [
+      "Ish maydoniga o‘tish",
+      "К содержимому"
+    ],
+    "no_name": [
+      "Ism kiritilmagan",
+      "Имя не указано"
+    ],
+    "unknown": [
+      "Aniqlanmagan",
+      "Не определено"
+    ],
+    "extra_field": [
+      "Qo‘shimcha ma’lumot",
+      "Дополнительные данные"
+    ],
+    "other_action": [
+      "Boshqa amal",
+      "Другое действие"
+    ],
+    "yes": [
+      "Ha",
+      "Да"
+    ],
+    "no": [
+      "Yo‘q",
+      "Нет"
+    ],
+    "network_error": [
+      "Server bilan aloqa uzildi. Qayta urinib ko‘ring.",
+      "Связь с сервером прервана. Повторите попытку."
+    ],
+    "server_error": [
+      "Amal bajarilmadi. Keyinroq qayta urinib ko‘ring.",
+      "Не удалось выполнить действие. Повторите попытку позже."
+    ],
+    "logout_error": [
+      "Chiqib bo‘lmadi. Qayta urinib ko‘ring.",
+      "Не удалось выйти. Повторите попытку."
+    ],
+    "permission_error": [
+      "Kirish rad etildi. Ruxsatni tekshiring yoki qayta kiring.",
+      "Доступ запрещён. Проверьте разрешения или войдите снова."
+    ],
+    "not_found": [
+      "Ma’lumot topilmadi",
+      "Данные не найдены"
+    ],
+    "not_available": [
+      "Xizmat vaqtincha mavjud emas. Qayta urinib ko‘ring.",
+      "Сервис временно недоступен. Повторите попытку."
+    ],
+    "check_data": [
+      "Kiritilgan ma’lumotlarni tekshiring",
+      "Проверьте введённые данные"
+    ],
+    "request_expired": [
+      "Ma’lumot o‘zgargan. Sahifani yangilab qayta tekshiring.",
+      "Данные изменились. Обновите страницу и проверьте снова."
+    ],
+    "change_language": [
+      "Tilni almashtirish",
+      "Сменить язык"
+    ],
+    "sections": [
+      "Bo‘limlar",
+      "Разделы"
+    ],
+    "management": [
+      "BIZNES BOSHQARUVI",
+      "УПРАВЛЕНИЕ БИЗНЕСОМ"
+    ],
+    "file_error": [
+      "Faylni o‘qib bo‘lmadi. Fayl formati va tarkibini tekshiring.",
+      "Не удалось прочитать файл. Проверьте формат и содержимое."
+    ]
+  },
+  "method_aliases": {
+    "naqd": "naqd",
+    "наличные": "naqd",
+    "perechisleniya": "perechisleniya",
+    "bankotkazmasi": "perechisleniya",
+    "перечисление": "perechisleniya",
+    "karta": "karta",
+    "kartaorqalitolov": "karta",
+    "оплатакартой": "karta",
+    "naxt": "naqd",
+    "naht": "naqd",
+    "cash": "naqd",
+    "nal": "naqd",
+    "нал": "naqd",
+    "наличными": "naqd",
+    "transfer": "perechisleniya",
+    "bank": "perechisleniya",
+    "perchesleniya": "perechisleniya",
+    "perechesleniya": "perechisleniya",
+    "перечислением": "perechisleniya",
+    "otkazma": "perechisleniya",
+    "banktransfer": "perechisleniya",
+    "bankorqali": "perechisleniya",
+    "перевод": "perechisleniya",
+    "безнал": "perechisleniya",
+    "card": "karta",
+    "terminal": "karta",
+    "kartaorqali": "karta",
+    "карта": "karta",
+    "картой": "karta",
+    "терминал": "karta"
+  }
+}

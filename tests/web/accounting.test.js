@@ -16,7 +16,7 @@ async function test(){
   if(path.startsWith('/api/supplier-report'))return {stock:[{name:'Tyre A',qty:2,supplier_name:'Factory',point_name:'Vitrina'}],sold:[{name:'Tyre A',qty:1,supplier_name:'Factory',point_name:'Vitrina'}],entries:[],lots:[{id:11,receipt:4,product_name:'Tyre A',point_name:'Vitrina',qty:2,cost:1025,currency:'USD'}],start:'2026-11-01',end:'2026-11-03'};
   throw Error('Unexpected endpoint '+path);
  }};
- vm.createContext(context);
+ vm.createContext(context);require('./localization_helpers')(context);
  const app=fs.readFileSync('web/app.js','utf8');
  vm.runInContext(app.slice(app.indexOf('const field='),app.indexOf('const clientField=')),context);
  vm.runInContext(app.slice(app.indexOf('async function checkout('),app.indexOf('function detail(')),context);
