@@ -439,9 +439,12 @@ class Store(Accounting):
         self.log(uid,'quote_options',ref)
         return ref
 
-    def payment(self,uid,sale,amount,method):
+    @atomic
+    def payment(self,uid,sale,amount,method,expected_paid=None):
         self.user(uid)
-        if self.one('sales',sale)['status']!='active':raise ValueError('sale_cancelled')
+        row=self.one('sales',sale)
+        if row['status']!='active':raise ValueError('sale_cancelled')
+        if expected_paid is not None and row['paid']!=expected_paid:raise ValueError('sale_changed')
         method=normalize_payment(method)
         amount=money(amount,True)
         cur=self.db.execute("UPDATE sales SET paid=paid+? WHERE id=? AND status='active' AND paid+?<=total",(amount,sale,amount))

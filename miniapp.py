@@ -145,6 +145,7 @@ class MiniService:
             uploaded=self.upload_photo(uid,data)
         with self.s.db:
             self.s.db.execute('BEGIN IMMEDIATE');self.s.user(uid);require_command(self.s,uid,cmd)
+            if cmd=='collect_debt':self.s.own(uid,self.s.one('sales',integer(data.get('sale'))))
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()
             if cached:
                 if cached['digest']!=digest:raise ValueError('request_changed')
@@ -248,6 +249,9 @@ class MiniService:
             phone=re.sub(r'[\s()-]','',text(d.get('phone','')))
             if not re.fullmatch(r'\+?\d{9,15}',phone):raise ValueError('phone')
             return self.s.client(uid,text(d.get('name','')),phone,text(d.get('address',''),False),text(d.get('note',''),False))
+        if cmd=='collect_debt':
+            from employee_receipts import collect
+            return collect(self.s,uid,d)
         if cmd=='pay':return self.s.payment(uid,integer(d.get('sale')),str(d.get('amount','')),text(d.get('payment','')))
         if cmd=='debt_due':return self.s.set_debt_due(uid,integer(d.get('sale')),text(d.get('debt_due',''),False))
         if cmd=='cancel_sale':
@@ -343,7 +347,7 @@ class MiniHandler(BaseHTTPRequestHandler):
         if path.startswith(('/director-auth/','/director-api/')):
             from director import handle_http
             handle_http(self,path,write);return
-        static={'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         store=None;user=None
@@ -370,7 +374,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
-                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
+                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','collect_debt','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
@@ -399,7 +403,10 @@ class MiniHandler(BaseHTTPRequestHandler):
             elif path=='/api/my-sales':
                 from employee_sales import history
                 result=history(store,uid,query,employee=uid)
-            elif path=='/api/debts':result=store.debts(uid,query.get('overdue')=='1')
+            elif path=='/api/debts':
+                result=store.debts(uid,query.get('overdue')=='1')
+                for row in result:
+                    for field in ('total','paid','debt'):row[field+'_cents']=str(row[field])
             elif path=='/api/dashboard':
                 result=service.dashboard(uid,query.get('start'),query.get('end'))
                 allowed=permissions(store,uid)

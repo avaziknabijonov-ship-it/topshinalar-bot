@@ -19,3 +19,4 @@ jobs:
       - run: node tests/web/accounting.test.js
 
       - run: node tests/web/director_analytics.test.js
+      - run: node tests/web/employee_debt.test.js
