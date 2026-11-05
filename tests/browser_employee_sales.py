@@ -6,13 +6,14 @@ import tempfile
 import threading
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from browser_helpers import section as open_section
 from core import Store,now
 from miniapp import MiniServer
 from test_miniapp import signed,TOKEN
 
 def main():
  from playwright.sync_api import sync_playwright,expect
- screens=Path(__file__).resolve().parents[1]/'docs'/'screenshots'
+ screens=Path(os.environ.get('SCREENSHOT_DIR',Path(__file__).resolve().parents[1]/'docs'/'screenshots'));screens.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory() as temp:
   path=Path(temp)/'db';s=Store(path);s.configure([10],[20,21])
   with s.db:
@@ -33,7 +34,7 @@ def main():
     result=page.evaluate("async()=>{const r=await fetch('/api/my-sales?sale="+str(other_sale)+"',{headers:{'X-Telegram-Init-Data':Telegram.WebApp.initData}});return r.status;}");assert result==403
     page.locator('[data-close]').click();page.locator('[data-tab="clients"]').click();expect(page.locator('#app')).not_to_contain_text('Maxfiy');page.locator('[data-client-sales]').first.click();expect(page.locator('.es-sale')).to_have_count(1)
     page.locator('[data-close]').click();page.locator('#language').click();page.locator('[data-tab="dashboard"]').click();page.locator('[data-action="sales"]').click();expect(page.locator('#my-sales-view')).to_contain_text('Остаток долга');assert not errors,errors
-    director=context(10);admin=director.new_page();admin.on('pageerror',lambda e:errors.append(str(e)));admin.goto(server.origin+'/director');admin.locator('#workspace').wait_for(state='visible');admin.locator('[data-section="staff"]').click();admin.locator('#content tr[data-id]').filter(has_text='Test menejer').click();admin.locator('#detail-content button').filter(has_text='Xodimning savdo tarixi').click();expect(admin.locator('#staff-sales-view .es-sale')).to_have_count(1);expect(admin.locator('#staff-sales-view')).to_contain_text('200.00 USD');admin.screenshot(path=str(screens/'staff-sales-history.png'),full_page=True)
+    director=context(10);admin=director.new_page();admin.on('pageerror',lambda e:errors.append(str(e)));admin.goto(server.origin+'/director');admin.locator('#workspace').wait_for(state='visible');open_section(admin,'staff');admin.locator('#content tr[data-id]').filter(has_text='Test menejer').click();admin.locator('#detail-content button').filter(has_text='Xodimning savdo tarixi').click();expect(admin.locator('#staff-sales-view .es-sale')).to_have_count(1);expect(admin.locator('#staff-sales-view')).to_contain_text('200.00 USD');admin.screenshot(path=str(screens/'staff-sales-history.png'),full_page=True)
     with s.db:s.db.execute('UPDATE users SET active=0 WHERE id=20')
     page.locator('[data-es-clear]').click();expect(page.locator('#my-sales-view [role="alert"]')).to_be_visible();assert not errors,errors
     browser.close()
