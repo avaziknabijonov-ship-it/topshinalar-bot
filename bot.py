@@ -658,11 +658,18 @@ class Bot(Usability):
             self.schedule_business()
 
     def drain(self,api):
+        # Never send a message about a business write that can still roll back.
+        if self.s.db.in_transaction:return
+        from debt_notifications import may_deliver,finish
         rows=self.s.rows('SELECT * FROM outbox WHERE sent=0 ORDER BY id LIMIT 100')
         failed_chats=set()
         for row in rows:
             if row['chat'] in failed_chats:continue
             try:
+                if not may_deliver(self.s,row['id'],row['chat']):
+                    with self.s.db:
+                        self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],));finish(self.s,row['id'],'skipped')
+                    continue
                 # Access revocation also prevents queued private information delivery.
                 try:self.s.user(row['chat'])
                 except (ValueError,PermissionError):
@@ -677,7 +684,8 @@ class Bot(Usability):
                     if path:api.photo(row['chat'],path.read_bytes(),p.get('caption',''),p.get('reply_markup'))
                     else:api.call('sendPhoto',{'chat_id':row['chat'],**p})
                 else:api.call('sendMessage',{'chat_id':row['chat'],**p})
-                with self.s.db:self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],))
+                with self.s.db:
+                    self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],));finish(self.s,row['id'],'sent')
             except Exception:
                 failed_chats.add(row['chat'])
                 logging.warning('Delivery deferred for outbox record %s',row['id'])
