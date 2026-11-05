@@ -15,7 +15,7 @@ GROUPS={
  'customer_returns':(('Mijozdan qaytarishlar','Возвраты клиентов'),('customer_returns',)),
  'supplier_returns':(('Ta’minotchiga qaytarishlar','Возвраты поставщикам'),('supplier_returns',)),
  'sales':(('Savdolar','Продажи'),('sales','sale_items')),
- 'payments':(('Tushum va refund','Поступления и возвраты'),('payments','refunds')),
+ 'payments':(('Tushum va pul qaytarish','Поступления и возвраты'),('payments','refunds')),
  'debts':(('Mijozlar qarzi · joriy','Долги клиентов · сейчас'),('current_debts',)),
  'stock':(('Ombor / vitrina · joriy','Склад / витрина · сейчас'),('stock','warehouses')),
  'movements':(('Ombor harakatlari','Движения склада'),('movements','product_events')),
@@ -27,7 +27,7 @@ GROUPS={
  'crm':(('CRM: vazifa va qo‘ng‘iroqlar','CRM: задачи и звонки'),('tasks','calls')),
  'quotes':(('KP','КП'),('quotes',)),
  'deliveries':(('Yetkazish','Доставки'),('deliveries',)),
- 'website':(('Sayt katalogi va sync','Каталог сайта и синхронизация'),('website',)),
+ 'website':(('Sayt katalogi va sinxronlash','Каталог сайта и синхронизация'),('website',)),
  'audit':(('Amallar tarixi','История действий'),('audit',)),
 }
 INTERNAL={'employee','id','source_id','ref','actor','owner','client','product','supplier','manager','sale','quote','receipt','receipt_id','lot','item','manager_entry','point_id','approved_by','cancelled_by','accepted_by','revision','priority','photos','gallery','file_id','token','token_hash','password','fingerprint'}

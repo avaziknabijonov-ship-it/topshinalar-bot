@@ -10,10 +10,15 @@ from openpyxl import load_workbook
 from core import money, now
 
 class ExcelError(ValueError):
-    pass
+    def __init__(self,uz,ru=None):
+        self.messages=(uz,ru) if ru is not None else None
+        super().__init__(uz+' / '+ru if ru is not None else uz)
+
+    def localized(self,lang):
+        return self.messages[lang=='ru'] if self.messages else str(self)
 
 def fail(uz,ru):
-    raise ExcelError('Excel: '+uz+' / '+ru)
+    raise ExcelError('Excel: '+uz,'Excel: '+ru)
 
 def normalized(value):
     return re.sub(r'[^\w]','',str(value or '').casefold())

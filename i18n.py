@@ -208,3 +208,14 @@ ERRORS.update({
 ERRORS['client_changed']=('Mijoz ma’lumoti o‘zgargan. Kartani qayta oching.','Данные клиента изменились. Откройте карточку заново.')
 
 ERRORS['debt_changed']=('Qarz o‘zgargan. «Bekor qilish / yangilash»ni bosib yangi qoldiqni tekshiring.', 'Долг изменился. Нажмите «Отмена / обновить» и проверьте новый остаток.')
+
+ERRORS.update({
+'point_kind':('Ombor yoki vitrina turini tanlang.','Выберите склад или витрину.'),
+'manager_day_unsettled':('Kun yopilmaydi: pul qoldig‘i, tasdiq kutilayotgan topshirish yoki tekshirilmagan pul qaytarishi bor.','День не закрыт: есть остаток, неподтверждённая сдача или непроверенный возврат.'),
+'same point':('Manba va qabul qiluvchi joy bir xil bo‘lmasin.','Места отправки и получения должны различаться.'),
+'Stock changed; refresh count':('Qoldiq o‘zgargan. Haqiqiy sonni qayta tekshirib tasdiqlang.','Остаток изменился. Проверьте фактическое количество и подтвердите заново.'),
+})
+
+TEXT['status']=('Holatni tugmalardan tanlang.','Выберите статус кнопкой.')
+TEXT['quote_status']=('Tijorat taklifi holatini tugmalardan tanlang.','Выберите статус коммерческого предложения кнопкой.')
+TEXT['payment']=('To‘lov usulini tanlang: naqd, bank o‘tkazmasi yoki karta.','Выберите способ оплаты: наличные, банковский перевод или карта.')

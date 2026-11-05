@@ -141,7 +141,9 @@ def handle_http(handler,path,write):
     from miniapp import MiniService,AuthError
     from urllib.parse import parse_qsl,urlsplit
     import secrets
-    s=None
+    from ui_text import language,text
+    s=None;user=None
+    ui_lang=language(handler.headers.get('X-UI-Language'))
     try:
         s=Store(handler.server.db_path)
         if write:
@@ -175,6 +177,7 @@ def handle_http(handler,path,write):
             user=auth.telegram_identity(s,telegram_raw,handler.server.bot_token,handler.headers.get('X-Director-Nonce',''));token=None
         else:user,token=auth.identity(s,handler.headers.get('Cookie'),handler.headers.get('X-CSRF-Token'),write)
         uid=user['id']
+        ui_lang=language(handler.headers.get('X-UI-Language'),user['lang'])
         if path=='/director-auth/me' and not write:
             handler.send(200,{'name':user['name'],'lang':user['lang'],'csrf':auth.csrf(token) if token else 'telegram-init-data'});return
         if path=='/director-auth/logout' and write:
@@ -199,7 +202,7 @@ def handle_http(handler,path,write):
             if kind=='import-template':
                 from openpyxl import Workbook
                 import io
-                wb=Workbook();ws=wb.active;ws.title='Kirim';ws.append(['ID','Nomi','Brend','Razmer','Narx USD','Kelgan dona','SKU']);stream=io.BytesIO();wb.save(stream)
+                wb=Workbook();ws=wb.active;ws.title='Приход' if ui_lang=='ru' else 'Kirim';ws.append(['ID',*(['Название','Бренд','Размер','Цена USD','Количество','SKU'] if ui_lang=='ru' else ['Nomi','Brend','Razmer','Narx USD','Kelgan dona','SKU'])]);stream=io.BytesIO();wb.save(stream)
                 handler.send(200,stream.getvalue(),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-kirim-template.xlsx');return
             if kind=='photo':
                 handler.send(200,service.photo(uid,quantity(q.get('product')),quantity(q.get('index',0),zero=True)),'image/jpeg');return
@@ -211,19 +214,19 @@ def handle_http(handler,path,write):
                 from reports import workbook
                 from director_reports import build
                 data=build(s,uid,q)
-                handler.send(200,workbook(data,user['lang'],hide_ids=True),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-director.xlsx');return
+                handler.send(200,workbook(data,ui_lang,hide_ids=True),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-director.xlsx');return
             result=read(service,uid,kind,q)
         handler.send(200,result)
-    except (PermissionError,AuthError):handler.send(403,{'error':'Kirish rad etildi / Доступ запрещён'})
+    except (PermissionError,AuthError):handler.send(403,{'error':text('permission_error',ui_lang)})
     except (ValueError,TypeError,KeyError,__import__('sqlite3').IntegrityError) as exc:
         from i18n import ERRORS
         from excel_import import ExcelError
         if isinstance(exc,ExcelError):
-            handler.send(400,{'error':str(exc)});return
+            handler.send(400,{'error':exc.localized(ui_lang)});return
         messages=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))
-        handler.send(400,{'error':messages[0]+' / '+messages[1]})
+        handler.send(400,{'error':messages[ui_lang=='ru']})
     except Exception:
         __import__('logging').exception('Director request failed: %s',path)
-        handler.send(503,{'error':'Vaqtincha mavjud emas / Временно недоступно'})
+        handler.send(503,{'error':text('not_available',ui_lang)})
     finally:
         if s:s.db.close()

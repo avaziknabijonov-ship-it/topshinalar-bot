@@ -65,7 +65,13 @@ SECTIONS={'manager_days':('Menejer ish kunlari','Рабочие дни мене�
 }
 VALUES={'director':('Direktor','Директор'),'employee':('Xodim','Сотрудник'),'open':('Ochiq','Открыта'),'done':('Bajarilgan','Выполнена'),'draft':('Qoralama','Черновик'),'sent':('Yuborilgan','Отправлено'),'accepted':('Qabul qilingan','Принято'),'rejected':('Rad etilgan','Отклонено'),'new':('Yangi','Новая'),'on_way':('Yo‘lda','В пути'),'delivered':('Yetkazildi','Доставлено'),'cancelled':('Bekor qilingan','Отменено')}
 
-def localized(key,val,lang):
+def localized(key,val,lang,section=None):
+    from ui_text import value,CATALOG,BOOLEANS
+    if key=='kind' and section=='manager_entries':return value('manager_kind',val,lang)
+    if key=='method' and val=='refund':return value(key,val,lang)
+    if key in {'payment','method'}:return payment_label(val,lang)
+    if key in CATALOG['values'] or key in BOOLEANS or key in {'action','last_error'}:
+        return value(key,val,lang)
     if key in {'receipt_status','day_status'}:
         names={'pending':('Tasdiq kutilmoqda','Ожидает подтверждения'),'accepted':('Qabul qilindi','Принято'),'rejected':('Rad etilgan','Отклонено'),'legacy':('Eski yozuv','Прежняя запись'),'open':('Yopilmagan','Не закрыт'),'closed':('Yopilgan','Закрыт'),'reopened':('Qayta tekshirish','Требуется сверка')}
         if val in names:return names[val][lang=='ru']
@@ -109,11 +115,12 @@ def workbook(sections,lang='uz',hide_ids=False):
         if hide_ids:
             from director_reports import INTERNAL
             fields=[k for k in fields if k not in INTERNAL and not k.endswith('_id')] or ['note']
-        ws.append([COLUMNS.get(k,(k,k))[lang=='ru'] for k in fields])
+        from ui_text import text
+        ws.append([COLUMNS[k][lang=='ru'] if k in COLUMNS else text('extra_field',lang) for k in fields])
         for row in rows:
             values=[]
             for key in fields:
-                val=localized(key,row.get(key),lang)
+                val=localized(key,row.get(key),lang,name)
                 if key in PEOPLE.values() and not val:
                     val='Имя не указано' if lang=='ru' else 'Ism kiritilmagan'
                 if key in MONEY and val is not None:
@@ -154,3 +161,7 @@ MONEY.update({'revenue','paid_to_date','debt_to_date'})
 
 SECTIONS['analytics_review']=('Tovar tahlili tekshiruvi','Проверка аналитики товаров')
 COLUMNS['review_sales_count']=('Tekshiriladigan savdolar','Продажи для проверки')
+
+# The same field names/coded values appear in the web cabinet and its exports.
+from ui_text import FIELDS
+COLUMNS.update(FIELDS)

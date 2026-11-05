@@ -16,7 +16,7 @@ MAX_PAGES=5
 MAX_ROWS=100
 LIMIT=threading.BoundedSemaphore(2)
 
-def fail(uz,ru):raise ExcelError(uz+' / '+ru)
+def fail(uz,ru):raise ExcelError(uz,ru)
 
 def run_command(args,deadline):
     seconds=min(15,deadline-time.monotonic())

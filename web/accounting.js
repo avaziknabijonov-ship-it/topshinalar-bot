@@ -1,7 +1,7 @@
 'use strict';
 
-const accountingKind = kind => ({receipt:T('Kirim','Приход'),payment:T('To‘lov','Оплата'),sale_receipt:T('Savdo / qarz to‘lovi','Оплата продажи / долга'),received:T('Qabul qilgan pul','Получено'),customer_refund:T('Mijozga qaytarilgan','Возврат клиенту'),fund:T('Berilgan pul','Выдано'),expense:T('Xarajat','Расход'),return:T('Qaytarish','Возврат')})[kind]||kind;
-const accountingMethod = method => ({cash:T('Naqd','Наличные'),transfer:T('Bank o‘tkazmasi','Банковский перевод'),card:T('Karta','Карта')})[method]||method;
+const accountingKind = kind => WorkspaceText.value('kind',kind,state.me.lang);
+const accountingMethod = method => WorkspaceText.value('method',method,state.me.lang);
 const accountingDate = () => state.dashboard?.date || new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const accountingTimestamp = value => {if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?E(value):new Intl.DateTimeFormat(state.me.lang==='ru'?'ru-RU':'uz-UZ',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date)};
 const accountingFields = () => select('currency',T('Valyuta','Валюта'),[['USD','USD'],['UZS','UZS']],'USD')+field('date',T('Sana','Дата'),'date',accountingDate())+field('note',T('Izoh','Примечание'),'text','',false);
@@ -138,5 +138,5 @@ async function accountingOperations(action,id){
 
 document.addEventListener('click',async event=>{
  const button=event.target.closest('[data-account-action]');if(!button)return;
- try{await accountingOperations(button.dataset.accountAction,Number(button.dataset.id))}catch(error){toast(error.message)}
+ try{await accountingOperations(button.dataset.accountAction,Number(button.dataset.id))}catch(error){toast(WorkspaceText.error(error,state.me?.lang||'uz'))}
 });
