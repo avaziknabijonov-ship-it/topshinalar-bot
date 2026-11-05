@@ -13,7 +13,7 @@ from test_miniapp import TOKEN,signed
 
 def main():
  from playwright.sync_api import sync_playwright,expect
- screens=Path(__file__).resolve().parents[1]/'docs'/'screenshots'
+ screens=Path(os.environ.get('SCREENSHOT_DIR',Path(__file__).resolve().parents[1]/'docs'/'screenshots'));screens.mkdir(parents=True,exist_ok=True)
  with tempfile.TemporaryDirectory() as tmp:
   path=Path(tmp)/'db';s=Store(path);s.configure([10],[20,21])
   with s.db:
