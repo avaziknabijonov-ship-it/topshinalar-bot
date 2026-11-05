@@ -206,3 +206,5 @@ ERRORS.update({
 })
 
 ERRORS['client_changed']=('Mijoz ma’lumoti o‘zgargan. Kartani qayta oching.','Данные клиента изменились. Откройте карточку заново.')
+
+ERRORS['debt_changed']=('Qarz o‘zgargan. «Bekor qilish / yangilash»ni bosib yangi qoldiqni tekshiring.', 'Долг изменился. Нажмите «Отмена / обновить» и проверьте новый остаток.')
