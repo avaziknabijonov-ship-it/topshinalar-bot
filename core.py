@@ -188,6 +188,8 @@ class Store(Accounting):
         migrate_catalog(self)
         from director_auth import migrate as migrate_director
         migrate_director(self)
+        from debt_notifications import migrate as migrate_debt_notifications
+        migrate_debt_notifications(self)
         if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
             self.db.execute('PRAGMA journal_mode=WAL')
         self.db.commit()
@@ -452,6 +454,8 @@ class Store(Accounting):
             raise ValueError('paid')
         ref=self.add('payments',sale=sale,amount=amount,method=method,actor=uid,created=now())
         self.log(uid,'payment',ref)
+        from debt_notifications import enqueue
+        enqueue(self,ref)
         return ref
 
     def start(self,uid):
