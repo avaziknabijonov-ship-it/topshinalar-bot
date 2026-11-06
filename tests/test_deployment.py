@@ -5,7 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from backup import create_backup
+from backup import create_backup, verify_restore
 from core import Store
 
 
@@ -40,6 +40,47 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(first.read_bytes(),original)
         with sqlite3.connect(second) as conn:
             self.assertEqual(conn.execute('SELECT COUNT(*) FROM clients').fetchone()[0],1)
+
+    def test_verified_restore_compares_schema_and_without_rowid_tables(self):
+        with self.s.db:
+            self.s.db.execute('CREATE TABLE composite_fixture(a TEXT,b INTEGER,value BLOB,PRIMARY KEY(a,b)) WITHOUT ROWID')
+            self.s.db.executemany('INSERT INTO composite_fixture VALUES(?,?,?)',[('z',2,b'blob'),('a',1,b'other')])
+            self.s.client(20,'Restore fixture','','','')
+        before=self.source.read_bytes()
+        destination=create_backup(self.source,self.directory,verify=True)
+        counts=verify_restore(destination)
+        self.assertEqual(counts['composite_fixture'],2)
+        self.assertEqual(counts['clients'],1)
+        self.assertEqual(self.source.read_bytes(),before)
+        self.assertEqual(list(self.directory.glob('restore-check-*')),[])
+
+    def test_failed_restore_verification_never_publishes_or_replaces_a_backup(self):
+        from unittest.mock import patch
+        first=create_backup(self.source,self.directory,verify=True)
+        before=first.read_bytes()
+        with patch('backup.verify_restore',side_effect=ValueError('restore failed')):
+            with self.assertRaises(ValueError):create_backup(self.source,self.directory,verify=True)
+        self.assertEqual(first.read_bytes(),before)
+        self.assertEqual(list(self.directory.iterdir()),[first])
+
+    def test_foreign_key_damage_is_rejected_before_publication(self):
+        first=create_backup(self.source,self.directory)
+        original=first.read_bytes()
+        with sqlite3.connect(self.source) as conn:
+            conn.execute("INSERT INTO clients(name,phone,address,note,owner,created) VALUES('Broken','','','',999,'2026-01-01')")
+        with self.assertRaisesRegex(ValueError,'integrity'):create_backup(self.source,self.directory,verify=True)
+        self.assertEqual(first.read_bytes(),original)
+        self.assertEqual(list(self.directory.iterdir()),[first])
+
+    def test_restore_detects_schema_tampering(self):
+        from unittest.mock import patch
+        from storage import snapshot
+        destination=create_backup(self.source,self.directory)
+        def altered(source,target):
+            snapshot(source,target)
+            with sqlite3.connect(target) as conn:conn.execute('CREATE TABLE unexpected_fixture(id INTEGER)')
+        with patch('backup.snapshot',side_effect=altered):
+            with self.assertRaisesRegex(ValueError,'schema'):verify_restore(destination)
 
     def test_missing_source_does_not_create_empty_database(self):
         missing=self.root/'missing.sqlite3'

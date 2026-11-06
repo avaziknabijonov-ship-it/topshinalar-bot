@@ -174,7 +174,7 @@ class UsabilityTests(unittest.TestCase):
         self.assertEqual(self.s.rows('SELECT * FROM sale_items WHERE sale=?',(sale,))[0],old)
 
     def test_cancel_sale_restores_stock_and_records_refund_once(self):
-        sale=self.sale();self.s.payment(21,sale,'500000','karta');self.s.db.commit()
+        sale=self.sale();self.s.payment(10,sale,'500000','karta');self.s.db.commit()
         self.msg('/cancel_sale',10)
         for value in [sale,'Noto‘g‘ri sotuv',tr('refund_yes')]:self.msg(value,10)
         self.assertEqual(self.qty(),18)
@@ -201,7 +201,7 @@ class UsabilityTests(unittest.TestCase):
         sale=self.sale()
         self.msg('/cancel_sale',10)
         for value in [sale,'Mistake',tr('refund_yes')]:self.msg(value,10)
-        with self.s.db:self.s.payment(21,sale,'1000','naqd')
+        with self.s.db:self.s.payment(10,sale,'1000','naqd')
         self.msg(tr('confirm'),10)
         self.assertEqual(self.s.one('sales',sale)['status'],'active')
         self.assertIn('to‘lov o‘zgargan',self.outputs(10)[-1]['text'])

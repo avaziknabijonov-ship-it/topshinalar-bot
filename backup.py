@@ -20,12 +20,18 @@ def verify_restore(backup):
         with closing(readonly(backup)) as original,closing(readonly(restored)) as restored_db:
             if restored_db.execute('PRAGMA integrity_check').fetchone()[0]!='ok' or restored_db.execute('PRAGMA foreign_key_check').fetchall():
                 raise ValueError('Restore integrity check failed')
+            schema="SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name"
+            if original.execute(schema).fetchall()!=restored_db.execute(schema).fetchall():
+                raise ValueError('Restore schema differs')
             tables=[r[0] for r in original.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
             result={}
             for table in tables:
                 quoted='"'+table.replace('"','""')+'"'
-                source=original.execute(f'SELECT * FROM {quoted} ORDER BY rowid')
-                target=restored_db.execute(f'SELECT * FROM {quoted} ORDER BY rowid')
+                # Composite primary keys also support WITHOUT ROWID tables.
+                primary=sorted((r[5],r[1]) for r in original.execute(f'PRAGMA table_info({quoted})') if r[5])
+                order=','.join('"'+name.replace('"','""')+'"' for _,name in primary) if primary else 'rowid'
+                source=original.execute(f'SELECT * FROM {quoted} ORDER BY {order}')
+                target=restored_db.execute(f'SELECT * FROM {quoted} ORDER BY {order}')
                 count=0
                 while True:
                     a=source.fetchmany(500);b=target.fetchmany(500)
@@ -36,7 +42,7 @@ def verify_restore(backup):
             return result
 
 
-def create_backup(source, directory):
+def create_backup(source, directory, verify=False):
     source=Path(source).resolve()
     directory=Path(directory).resolve()
     directory.mkdir(parents=True,exist_ok=True,mode=0o700)
@@ -52,6 +58,9 @@ def create_backup(source, directory):
         with closing(sqlite3.connect(temporary)) as conn:
             conn.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             conn.execute('PRAGMA journal_mode=DELETE')
+            if conn.execute('PRAGMA integrity_check').fetchone()[0]!='ok' or conn.execute('PRAGMA foreign_key_check').fetchone():
+                raise ValueError('Backup integrity check failed')
+        if verify:verify_restore(temporary)
         os.replace(temporary,destination)
     finally:
         temporary.unlink(missing_ok=True)
@@ -68,8 +77,7 @@ def main():
     args=parser.parse_args()
     directory=args.directory or str(Path(args.source).resolve().parent/'backups')
     try:
-        result=create_backup(args.source,directory)
-        if args.verify_restore:verify_restore(result)
+        result=create_backup(args.source,directory,verify=args.verify_restore)
     except (OSError,ValueError,sqlite3.Error):
         parser.exit(1,'Backup failed; source and earlier backups were not replaced.\n')
     print(result)

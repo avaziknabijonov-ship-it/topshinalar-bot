@@ -445,6 +445,7 @@ class Store(Accounting):
     def payment(self,uid,sale,amount,method,expected_paid=None):
         self.user(uid)
         row=self.one('sales',sale)
+        self.own(uid,row)
         if row['status']!='active':raise ValueError('sale_cancelled')
         if expected_paid is not None and row['paid']!=expected_paid:raise ValueError('sale_changed')
         method=normalize_payment(method)

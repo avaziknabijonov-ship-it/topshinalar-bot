@@ -133,7 +133,7 @@ class MiniAppTests(unittest.TestCase):
         other=Store(str(self.path));bot=Bot(other)
         try:
             self.assertEqual(other.stock(20)[0]['qty'],8)
-            with other.db:other.payment(21,1,'4000000','karta')
+            with other.db:other.payment(10,1,'4000000','karta')
             self.assertEqual(self.s.debts(10),[])
             self.assertEqual(self.service.dashboard(20)['received'],100000000)
             self.assertEqual(self.service.dashboard(10)['received'],500000000)
@@ -187,11 +187,10 @@ class MiniAppTests(unittest.TestCase):
             with request('/mobile.js') as response:
                 self.assertIn('javascript',response.headers['Content-Type']);self.assertIn(b'keyboard-toolbar',response.read())
             with request('/company') as response:
-                page=response.read().decode();self.assertIn('/company/registration.pdf',page);self.assertIn('/company/vat.pdf',page);self.assertIn('+998 97 478 86 06',page)
-            for path,asset in [('/company/registration.pdf','company-registration.pdf'),('/company/vat.pdf','vat-registration.pdf')]:
-                with request(path) as response:
-                    self.assertEqual(response.headers['Content-Type'],'application/pdf')
-                    self.assertEqual(response.read(),(Path('assets/quotation-attachments')/asset).read_bytes())
+                page=response.read().decode();self.assertNotIn('/company/registration.pdf',page);self.assertNotIn('/company/vat.pdf',page);self.assertIn('+998 97 478 86 06',page)
+            for path in ('/company/registration.pdf','/company/vat.pdf'):
+                with self.assertRaises(HTTPError) as error:request(path)
+                self.assertEqual(error.exception.code,403)
             for uid,origin in [(None,None),(999,None),(20,'https://evil.example')]:
                 with self.assertRaises(HTTPError) as error:request('/api/catalog',uid,origin)
                 self.assertEqual(error.exception.code,403)

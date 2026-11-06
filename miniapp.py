@@ -19,6 +19,7 @@ from i18n import ERRORS
 from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
 from staff import StaffAccess, permissions, require_command
+import company_documents
 from excel_import import InventoryExcel, ExcelError
 import document_import
 
@@ -145,7 +146,7 @@ class MiniService:
             uploaded=self.upload_photo(uid,data)
         with self.s.db:
             self.s.db.execute('BEGIN IMMEDIATE');self.s.user(uid);require_command(self.s,uid,cmd)
-            if cmd=='collect_debt':self.s.own(uid,self.s.one('sales',integer(data.get('sale'))))
+            if cmd in {'collect_debt','pay'}:self.s.own(uid,self.s.one('sales',integer(data.get('sale'))))
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()
             if cached:
                 if cached['digest']!=digest:raise ValueError('request_changed')
@@ -350,7 +351,7 @@ class MiniHandler(BaseHTTPRequestHandler):
         if not write and path=='/ui-text.js':
             from ui_text import browser_script
             self.send(200,browser_script().encode(),'text/javascript; charset=utf-8');return
-        static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         from ui_text import language,text
@@ -384,6 +385,13 @@ class MiniHandler(BaseHTTPRequestHandler):
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
+            if path in company_documents.ROUTES:
+                require_command(store,uid,'pdf')
+                try:
+                    payload,filename=company_documents.read_document(path)
+                except OSError:
+                    self.send(404,{'error':text('not_found',ui_lang)});return
+                self.send(200,payload,'application/pdf',filename);return
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))
             read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
             require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))

@@ -4,3 +4,5 @@ data
 __pycache__
 *.sqlite3*
 tests
+assets/quotation-attachments/*.pdf
+private-documents

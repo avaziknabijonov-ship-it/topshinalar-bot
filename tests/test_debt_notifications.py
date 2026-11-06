@@ -37,8 +37,8 @@ class DebtNotificationTests(unittest.TestCase):
   rows=self.notifications();self.assertEqual([r['chat'] for r in rows],[11]);text=json.loads(rows[0]['payload'])['text'];self.assertIn('Клиент погасил долг',text);self.assertIn('Оплачено: 200.00 USD',text);self.assertIn('после оплаты: 0.00 USD',text);self.assertIn('Кто принял: Seller A',text)
  def test_actual_cross_collector_not_invoice_seller_original_currency(self):
   with self.s.db:
-   self.s.db.execute("UPDATE sales SET currency='UZS' WHERE id=?",(self.sale,));self.s.payment(21,self.sale,'10','bank transfer')
-  text=json.loads(self.notifications()[0]['payload'])['text'];self.assertIn('Kim tomonidan: Collector B',text);self.assertIn('10.00 UZS',text);self.assertNotIn('USD',text);self.assertIn('Usul: Bank',text)
+   self.s.db.execute("UPDATE users SET name='Other director' WHERE id=11");self.s.db.execute("UPDATE sales SET currency='UZS' WHERE id=?",(self.sale,));self.s.payment(11,self.sale,'10','bank transfer')
+  text=json.loads(self.notifications()[0]['payload'])['text'];self.assertIn('Kim tomonidan: Other director',text);self.assertIn('10.00 UZS',text);self.assertNotIn('USD',text);self.assertIn('Usul: Bank',text)
  def test_replay_repeat_enqueue_and_cleanup_do_not_duplicate_or_reroute(self):
   first=self.collect();self.assertEqual(self.collect(),first)
   with self.s.db:enqueue(self.s,first['payment'])
@@ -96,5 +96,6 @@ class DebtNotificationTests(unittest.TestCase):
   self.assertEqual({t:self.s.rows('SELECT * FROM '+t+' ORDER BY rowid') for t in tables},before);self.assertEqual(self.notifications(),[])
   self.s.db.close();self.s=Store(self.path);self.assertEqual({t:self.s.rows('SELECT * FROM '+t+' ORDER BY rowid') for t in tables},before);self.assertEqual(self.s.rows('PRAGMA foreign_key_check'),[])
  def test_legacy_bot_command_uses_same_single_notification_path(self):
-  with self.s.db:self.bot.execute(21,'pay',dict(sale=self.sale,amount='10',payment='card'))
-  self.assertEqual(len(self.notifications()),1);self.assertIn('Kim tomonidan: Collector B',json.loads(self.notifications()[0]['payload'])['text'])
+  with self.s.db:
+   self.s.db.execute("UPDATE users SET name='Other director' WHERE id=11");self.bot.execute(11,'pay',dict(sale=self.sale,amount='10',payment='card'))
+  self.assertEqual(len(self.notifications()),1);self.assertIn('Kim tomonidan: Other director',json.loads(self.notifications()[0]['payload'])['text'])

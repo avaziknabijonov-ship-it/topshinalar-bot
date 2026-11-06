@@ -43,8 +43,8 @@ class ManagerMoneyTests(unittest.TestCase):
     def test_later_payment_belongs_to_collector_and_receipt_date(self):
         sale=self.sell('10')
         with self.s.db:self.s.db.execute("UPDATE sales SET created='2026-01-01T08:00:00+05:00' WHERE id=?",(sale,))
-        self.write('pay',dict(sale=sale,amount='20',payment='card'),uid=21)
-        self.assertEqual(self.balance(20)['received'],1000);self.assertEqual(self.balance(21)['received'],2000)
+        self.write('pay',dict(sale=sale,amount='20',payment='card'),uid=10)
+        self.assertEqual(self.balance(20)['received'],1000);self.assertEqual(self.balance(10)['received'],2000)
         data=director.read(self.api,10,'managers',{'start':self.today,'end':self.today})
         self.assertEqual(sum(r['amount'] for r in data['entries'] if r['source']=='payment'),3000)
 

@@ -23,6 +23,17 @@ class EmployeeReceiptTests(unittest.TestCase):
   before_stock=self.s.rows('SELECT * FROM stock');r=self.collect()['id'];self.assertEqual((r['amount_cents'],r['remaining_cents'],r['currency']),('5025','14975','USD'));self.assertEqual(self.s.one('sales',self.sale)['paid'],10025);self.assertEqual(self.s.rows('SELECT * FROM stock'),before_stock)
   p=self.s.rows('SELECT * FROM payments WHERE id=?',(r['payment'],))[0];self.assertEqual(p['actor'],20);self.assertEqual(p['amount'],5025);self.assertTrue(self.s.rows("SELECT * FROM audit WHERE action='payment' AND ref=?",(r['payment'],)))
   a=self.s.manager_account(10,20);self.assertEqual(a['balances'][0]['received'],10025);self.assertEqual(self.s.rows('SELECT * FROM manager_received'),[])
+ def test_legacy_pay_and_core_cannot_collect_other_employee_sale(self):
+  before={table:self.s.rows('SELECT * FROM '+table) for table in ('sales','payments','audit','outbox')}
+  with self.assertRaises(PermissionError):
+   self.api.write(20,'legacy-pay-denied-001','pay',dict(sale=self.other,amount='1',payment='cash'))
+  with self.assertRaises(PermissionError),self.s.db:
+   self.s.payment(20,self.other,'1','cash')
+  for table,rows in before.items():self.assertEqual(self.s.rows('SELECT * FROM '+table),rows)
+  self.api.write(10,'legacy-pay-director-1','pay',dict(sale=self.other,amount='1',payment='cash'))
+  with self.s.db:self.s.db.execute("UPDATE users SET role='employee' WHERE id=10")
+  with self.assertRaises(PermissionError):
+   self.api.write(10,'legacy-pay-director-1','pay',dict(sale=self.other,amount='1',payment='cash'))
  def test_retries_same_key_never_double_receive(self):
   a=self.collect();self.assertEqual(self.collect(),a);self.assertEqual(len(self.s.rows('SELECT * FROM payments WHERE sale=?',(self.sale,))),2)
   with self.assertRaisesRegex(ValueError,'request_changed'):self.collect(amount='49')

@@ -49,9 +49,18 @@ async function test(){
  assert.match(html,/-5 USD/);assert.match(html,/&lt;taxi&gt;/);
  await context.supplierReport({start:'2026-11-01',end:'2026-11-03'});
  assert.match(html,/Vitrinadagi joriy qoldiq/);assert.match(html,/Davrda vitrindan sotilgan/);
- // The standalone point-kind action was removed in PR #18. Verify the
- // retained receipt-location selector in Russian instead.
- state.me.lang='ru';await context.accountingOperations('income');assert.match(captured[2],/Витрина/);
+ // An unsupported action must not leave a previous form masquerading as a
+ // successful result (the main-branch failure asserted against stale HTML).
+ captured=undefined;
+ assert.equal(await context.accountingOperations('point-kind'),false);
+ assert.equal(captured,undefined);
+ for(const [lang,warehouse,showcase] of [['uz','Sklad','Vitrina'],['ru','Склад','Витрина']]){
+  state.me.lang=lang;captured=undefined;
+  assert.equal(await context.accountingOperations('income'),true);
+  assert.equal(captured[1],'supplier_income');
+  assert.match(captured[2],new RegExp(warehouse));assert.match(captured[2],new RegExp(showcase));
+  assert.match(captured[2],/name="first_point"/);assert.match(captured[2],/name="second_point"/);
+ }
  console.log('Accounting UI: split receipts, per-line locations, manager scope, supplier returns, reports and escaping passed');
 }
 test().catch(error=>{console.error(error);process.exitCode=1});
