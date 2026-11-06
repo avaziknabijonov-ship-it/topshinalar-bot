@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 data/
 *.sqlite3*
+
+# Company certificates belong in private deployment storage, never in Git.
+assets/quotation-attachments/
+private-documents/

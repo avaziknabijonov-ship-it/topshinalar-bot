@@ -16,7 +16,7 @@ async function test(){
   if(path.startsWith('/api/supplier-report'))return {stock:[{name:'Tyre A',qty:2,supplier_name:'Factory',point_name:'Vitrina'}],sold:[{name:'Tyre A',qty:1,supplier_name:'Factory',point_name:'Vitrina'}],entries:[],lots:[{id:11,receipt:4,product_name:'Tyre A',point_name:'Vitrina',qty:2,cost:1025,currency:'USD'}],start:'2026-11-01',end:'2026-11-03'};
   throw Error('Unexpected endpoint '+path);
  }};
- vm.createContext(context);
+ vm.createContext(context);require('./localization_helpers')(context);
  const app=fs.readFileSync('web/app.js','utf8');
  vm.runInContext(app.slice(app.indexOf('const field='),app.indexOf('const clientField=')),context);
  vm.runInContext(app.slice(app.indexOf('async function checkout('),app.indexOf('function detail(')),context);
@@ -49,7 +49,18 @@ async function test(){
  assert.match(html,/-5 USD/);assert.match(html,/&lt;taxi&gt;/);
  await context.supplierReport({start:'2026-11-01',end:'2026-11-03'});
  assert.match(html,/Vitrinadagi joriy qoldiq/);assert.match(html,/Davrda vitrindan sotilgan/);
- state.me.lang='ru';await context.accountingOperations('point-kind');assert.match(captured[2],/Витрина/);
+ // An unsupported action must not leave a previous form masquerading as a
+ // successful result (the main-branch failure asserted against stale HTML).
+ captured=undefined;
+ assert.equal(await context.accountingOperations('point-kind'),false);
+ assert.equal(captured,undefined);
+ for(const [lang,warehouse,showcase] of [['uz','Sklad','Vitrina'],['ru','Склад','Витрина']]){
+  state.me.lang=lang;captured=undefined;
+  assert.equal(await context.accountingOperations('income'),true);
+  assert.equal(captured[1],'supplier_income');
+  assert.match(captured[2],new RegExp(warehouse));assert.match(captured[2],new RegExp(showcase));
+  assert.match(captured[2],/name="first_point"/);assert.match(captured[2],/name="second_point"/);
+ }
  console.log('Accounting UI: split receipts, per-line locations, manager scope, supplier returns, reports and escaping passed');
 }
 test().catch(error=>{console.error(error);process.exitCode=1});

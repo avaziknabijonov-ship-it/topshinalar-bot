@@ -152,6 +152,11 @@ class AccountingTests(unittest.TestCase):
         with self.s.db:
             self.s.manager_record(10,21,'fund','50')
             self.s.manager_record(10,20,'fund','1000',currency='UZS')
+        pending=self.s.manager_account(20)
+        self.assertEqual(next(r for r in pending['balances'] if r['currency']=='USD')['pending_return'],1000)
+        self.assertEqual(next(r for r in pending['balances'] if r['currency']=='USD')['balance'],7500)
+        ref=next(r['id'] for r in pending['entries'] if r['kind']=='return')
+        self.api.write(10,'accept-manager-ret-1','manager_accept_return',dict(entry=ref))
         balances=self.s.manager_account(20)['balances']
         usd=next(r for r in balances if r['currency']=='USD')
         self.assertEqual((usd['given'],usd['expenses'],usd['returned'],usd['balance']),(10000,2500,1000,6500))

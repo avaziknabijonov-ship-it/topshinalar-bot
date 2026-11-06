@@ -126,8 +126,8 @@ def quotation_pdf(store,uid,ref):
         picture=image_cache[reference] or p('Нет фото' if ru else 'Rasm mavjud emas')
         data.append([picture,p(i['name']),p(fmt(unit_price))])
     table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
-    # Available A4 width is about 519 points.
-    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+    # Available A4 width is about 519 points. Centre item text beside its photo.
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,0),'TOP'),('VALIGN',(0,1),(-1,-1),'MIDDLE'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
     from payments import normalize_fulfillment
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment_value=q.get('fulfillment','')
@@ -149,7 +149,7 @@ def quotation_pdf(store,uid,ref):
     term=lambda text: Paragraph(escape(str(text)),styles['TermsUnicode'])
     terms=[
         term('1. Срок действия цены — 3 дня со дня даты исходящего письма.' if ru else '1. Narx amal qilish muddati — xat sanasidan boshlab 3 kun.'),
-        term('2. Гарантия на товар — 1 месяц с даты счёта-фактуры при правильной эксплуатации товара.' if ru else '2. Tovar kafolati — to‘g‘ri ishlatilganda hisob-faktura sanasidan boshlab 1 oy.'),
+        term('2. Условия гарантии — по согласованию.' if ru else '2. Kafolat shartlari — kelishilgan holda.'),
         term('3. Приложение к гарантии вручается при покупке товара и является официальным документом компании.' if ru else '3. Kafolat ilovasi tovar xarid qilinganda beriladi va kompaniyaning rasmiy hujjati hisoblanadi.'),
         term('Надеемся на долгосрочное и доверительное сотрудничество.' if ru else 'Uzoq muddatli va ishonchli hamkorlikka umid qilamiz.'),
         term('Для дополнительной информации обращайтесь по номеру:' if ru else 'Qo‘shimcha ma’lumot uchun quyidagi raqamga murojaat qiling:'),

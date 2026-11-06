@@ -16,7 +16,7 @@ MAX_PAGES=5
 MAX_ROWS=100
 LIMIT=threading.BoundedSemaphore(2)
 
-def fail(uz,ru):raise ExcelError(uz+' / '+ru)
+def fail(uz,ru):raise ExcelError(uz,ru)
 
 def run_command(args,deadline):
     seconds=min(15,deadline-time.monotonic())
@@ -103,7 +103,12 @@ def extract(encoded):
             text='\n'.join(texts)
             if len(text)>100000:fail('Hujjat juda uzun.','Документ слишком длинный.')
             rows,unmatched=parse_rows(text)
-            return {'rows':rows,'text':text,'unmatched':unmatched[:100],'pages':len(texts),'review_required':True}
+            currency_review=bool(re.search(r"(?i)\bUZS\b|\bso[‘’ʻʼ']?m\b|\bс[уў]м(?:ов|а)?\b",text))
+            if currency_review:
+                # A recognized UZS price is never pre-filled as USD. Preserve the
+                # source for review and require an explicit USD value from the user.
+                for row in rows:row['source_price']=row['price'];row['price']=''
+            return {'rows':rows,'text':text,'unmatched':unmatched[:100],'pages':len(texts),'review_required':True,'currency_review_required':currency_review}
     finally:LIMIT.release()
 
 

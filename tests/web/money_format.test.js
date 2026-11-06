@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const source=fs.readFileSync('web/app.js','utf8');
+const context={state:{me:{lang:'uz'}}};
+vm.createContext(context);
+vm.runInContext(source.slice(source.indexOf('const money='),source.indexOf('\nconst icon='))+'\nglobalThis.formatMoney=money;',context);
+assert.equal(context.formatMoney(12500),'125.00');
+assert.equal(context.formatMoney(1),'0.01');
+assert.equal(context.formatMoney(0),'0.00');
+assert.equal(context.formatMoney(-12501),'-125.01');
+assert.equal(context.formatMoney('900719925474099312345').replace(/\s/g,''),'9007199254740993123.45');
+for(const missing of [null,undefined,NaN,Infinity,'12.5',9007199254740992])assert.equal(context.formatMoney(missing),'—');
+context.state.me.lang='ru';
+assert.equal(context.formatMoney(12500),'125.00');
+console.log('MiniApp money: exact cents, two decimals, legacy large integers and unknown values passed');

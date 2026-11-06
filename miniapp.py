@@ -19,6 +19,7 @@ from i18n import ERRORS
 from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
 from staff import StaffAccess, permissions, require_command
+import company_documents
 from excel_import import InventoryExcel, ExcelError
 import document_import
 
@@ -100,7 +101,7 @@ class MiniService:
         today=now()[:10];start=start or today;end=end or today
         data=self.s.report(uid,start,end);sales=[r for r in data['sales'] if r['status']=='active']
         debt=self.s.debts(uid)
-        legacy_count=sum(r.get('currency')=='UZS' for rows in (sales,data['payments'],debt) for r in rows)
+        legacy_count=sum(r.get('currency')=='UZS' for rows in (sales,data['payments'],data['refunds'],debt) for r in rows)
         sales=[r for r in sales if r['currency']=='USD']
         debt=[r for r in debt if r['currency']=='USD']
         data['payments']=[r for r in data['payments'] if r['currency']=='USD']
@@ -112,7 +113,9 @@ class MiniService:
         scope='' if self.s.user(uid)['role']=='director' else ' WHERE r.actor=?'
         rows=self.s.rows(f'SELECT r.*,c.name client_name FROM {kind} r JOIN clients c ON c.id=r.client'+scope+' ORDER BY r.id DESC LIMIT 100',() if not scope else (uid,))
         if kind=='sales':
-            for row in rows:row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
+            for row in rows:
+                row['debt']=row['total']-row['paid'] if row['status']=='active' else 0
+                row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
         return rows
 
     def write(self,uid,key,cmd,data):
@@ -143,6 +146,7 @@ class MiniService:
             uploaded=self.upload_photo(uid,data)
         with self.s.db:
             self.s.db.execute('BEGIN IMMEDIATE');self.s.user(uid);require_command(self.s,uid,cmd)
+            if cmd in {'collect_debt','pay'}:self.s.own(uid,self.s.one('sales',integer(data.get('sale'))))
             cached=self.s.db.execute('SELECT digest,result FROM mini_requests WHERE actor=? AND request_key=?',(uid,key)).fetchone()
             if cached:
                 if cached['digest']!=digest:raise ValueError('request_changed')
@@ -185,6 +189,21 @@ class MiniService:
 
     def action(self,uid,cmd,d):
         require_command(self.s,uid,cmd)
+        if cmd=='director_client_save':
+            from director_business import save_client
+            return save_client(self.s,uid,d)
+        if cmd in {'manager_reject_return','manager_received','manager_request_return','manager_accept_return','manager_accept_cash','manager_assign_refund','manager_close_day'}:
+            import manager_money
+            action={'manager_reject_return':'reject_return','manager_received':'receive','manager_request_return':'request_return','manager_accept_return':'accept_return','manager_accept_cash':'accept_cash','manager_assign_refund':'assign_refund','manager_close_day':'close_day'}[cmd]
+            return getattr(manager_money,action)(self.s,uid,d)
+        if cmd in {'website_save','website_retry','stock_transfer','inventory_count'}:
+            self.s.director(uid)
+            if cmd=='website_save':return __import__('catalog_sync').save_settings(self.s,uid,d)
+            if cmd=='website_retry':
+                product=integer(d.get('product'));self.s.one('products',product)
+                self.s.db.execute('UPDATE catalog_outbox SET version=version+1,attempts=0,next_attempt=0 WHERE product=?',(product,))
+                self.s.log(uid,'website_retry',product);return product
+            return getattr(__import__('director'),'transfer' if cmd=='stock_transfer' else 'count_stock')(self.s,uid,d)
         if cmd=='supplier_save':return self.s.supplier_save(uid,text(d.get('name','')),text(d.get('phone',''),False,100),text(d.get('note',''),False),integer(d['supplier']) if d.get('supplier') else None)
         if cmd=='supplier_income':return self.s.receive(uid,integer(d.get('product')),integer(d.get('supplier')),d.get('cost'),d.get('allocations'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),d.get('payments',[]),telegram_id(d['manager']) if d.get('manager') else None)
         if cmd=='supplier_payment':return self.s.supplier_pay(uid,integer(d.get('supplier')),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),telegram_id(d['manager']) if d.get('manager') else None,d.get('method',''))
@@ -193,7 +212,7 @@ class MiniService:
         if cmd=='point_kind':return self.s.point_kind(uid,integer(d.get('point')),d.get('kind'))
         if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
         if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
-        if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching. / Закройте приложение и откройте заново через /app.')
+        if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching.','Excel: Закройте приложение и откройте заново через /app.')
         if cmd=='excel_preview':return InventoryExcel(self.s).preview(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100))
         if cmd=='excel_import':return InventoryExcel(self.s).apply(uid,d.get('file'),integer(d.get('point')),text(d.get('sheet',''),False,100),d.get('fingerprint'))
         if cmd=='staff_role':return StaffAccess(self.s).assign_role(uid,telegram_id(d.get('employee')),d.get('role'))
@@ -231,6 +250,9 @@ class MiniService:
             phone=re.sub(r'[\s()-]','',text(d.get('phone','')))
             if not re.fullmatch(r'\+?\d{9,15}',phone):raise ValueError('phone')
             return self.s.client(uid,text(d.get('name','')),phone,text(d.get('address',''),False),text(d.get('note',''),False))
+        if cmd=='collect_debt':
+            from employee_receipts import collect
+            return collect(self.s,uid,d)
         if cmd=='pay':return self.s.payment(uid,integer(d.get('sale')),str(d.get('amount','')),text(d.get('payment','')))
         if cmd=='debt_due':return self.s.set_debt_due(uid,integer(d.get('sale')),text(d.get('debt_due',''),False))
         if cmd=='cancel_sale':
@@ -313,6 +335,8 @@ class MiniHandler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','no-referrer')
         self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; object-src 'none'; base-uri 'none'")
+        for value in getattr(self,'extra_cookies',[]):self.send_header('Set-Cookie',value)
+        self.extra_cookies=[]
         if filename:self.send_header('Content-Disposition','attachment; filename="'+filename+'"')
         self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
 
@@ -321,18 +345,33 @@ class MiniHandler(BaseHTTPRequestHandler):
 
     def handle_request(self,write):
         target=urlsplit(self.path);path=target.path
-        static={'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/company/registration.pdf':('assets/quotation-attachments/company-registration.pdf','application/pdf'),'/company/vat.pdf':('assets/quotation-attachments/vat-registration.pdf','application/pdf'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        if path.startswith(('/director-auth/','/director-api/')):
+            from director import handle_http
+            handle_http(self,path,write);return
+        if not write and path=='/ui-text.js':
+            from ui_text import browser_script
+            self.send(200,browser_script().encode(),'text/javascript; charset=utf-8');return
+        static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
+        from ui_text import language,text
         store=None;user=None
+        ui_lang=language(self.headers.get('X-UI-Language'))
         try:
             origin=self.headers.get('Origin')
             if origin and self.server.origin and origin!=self.server.origin:raise AuthError()
-            signed=authenticate(self.headers.get('X-Telegram-Init-Data',''),self.server.bot_token)
             store=Store(self.server.db_path);service=MiniService(store,self.server.bot_token)
+            if self.headers.get('X-Telegram-Init-Data'):
+                signed=authenticate(self.headers.get('X-Telegram-Init-Data',''),self.server.bot_token)
+            else:
+                from director_auth import identity
+                if write and (not self.server.origin or origin!=self.server.origin):raise AuthError()
+                cookie_user,_=identity(store,self.headers.get('Cookie'),self.headers.get('X-CSRF-Token'),write)
+                signed={'id':cookie_user['id']}
             try:user=store.user(signed['id'])
             except (ValueError,PermissionError):raise AuthError() from None
             uid=user['id']
+            ui_lang=language(self.headers.get('X-UI-Language'),user['lang'])
             name=' '.join(str(signed.get(k,'')).strip() for k in ('first_name','last_name')).strip()
             if name:
                 with store.db:store.db.execute('UPDATE users SET name=? WHERE id=?',(name[:150],uid))
@@ -342,12 +381,19 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
-                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
+                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','collect_debt','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
+            if path in company_documents.ROUTES:
+                require_command(store,uid,'pdf')
+                try:
+                    payload,filename=company_documents.read_document(path)
+                except OSError:
+                    self.send(404,{'error':text('not_found',ui_lang)});return
+                self.send(200,payload,'application/pdf',filename);return
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))
-            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
+            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
             require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
@@ -363,11 +409,18 @@ class MiniHandler(BaseHTTPRequestHandler):
                     if brand.casefold() not in seen:result.append(brand);seen.add(brand.casefold())
             elif path=='/api/clients':
                 q=' '.join(query.get('q','').casefold().split())[:200]
-                rows=store.rows('SELECT id,name,phone,address,note FROM clients ORDER BY name,id')
+                scope=" WHERE owner=? OR EXISTS(SELECT 1 FROM sales s WHERE s.client=clients.id AND s.actor=?)" if query.get('scope')=='mine' and user['role']!='director' else ''
+                rows=store.rows('SELECT id,name,phone,address,note FROM clients'+scope+' ORDER BY name,id',(uid,uid) if scope else ())
                 digits=re.sub(r'\D','',q)
                 rows=[r for r in rows if q in ' '.join((r['name']+' '+r['phone']).casefold().split()) or (digits and re.fullmatch(r'[+\d\s()-]+',q) and digits in re.sub(r'\D','',r['phone']))]
                 result={'items':rows[page*20:(page+1)*20],'total':len(rows)}
-            elif path=='/api/debts':result=store.debts(uid,query.get('overdue')=='1')
+            elif path=='/api/my-sales':
+                from employee_sales import history
+                result=history(store,uid,query,employee=uid)
+            elif path=='/api/debts':
+                result=store.debts(uid,query.get('overdue')=='1')
+                for row in result:
+                    for field in ('total','paid','debt'):row[field+'_cents']=str(row[field])
             elif path=='/api/dashboard':
                 result=service.dashboard(uid,query.get('start'),query.get('end'))
                 allowed=permissions(store,uid)
@@ -391,16 +444,16 @@ class MiniHandler(BaseHTTPRequestHandler):
             elif re.fullmatch(r'/api/photo/\d+(?:/\d+)?',path):
                 parts=path.strip('/').split('/')
                 self.send(200,service.photo(uid,int(parts[2]),int(parts[3]) if len(parts)>3 else 0),'image/jpeg');return
-            else:self.send(404,{'error':'Not found'});return
+            else:self.send(404,{'error':text('not_found',language(self.headers.get('X-UI-Language'),user['lang']))});return
             self.send(200,result)
-        except (AuthError,PermissionError):self.send(403,{'error':'Telegram orqali kiring / Откройте через Telegram'})
+        except (AuthError,PermissionError):self.send(403,{'error':text('permission_error',language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz'))})
         except (ValueError,TypeError,KeyError,sqlite3.IntegrityError) as exc:
-            lang=user['lang'] if user else 'uz';message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
-            if isinstance(exc,ExcelError):message=str(exc)
+            lang=language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz');message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
+            if isinstance(exc,ExcelError):message=exc.localized(lang)
             self.send(400,{'error':message})
         except Exception:
             logging.exception('Mini App request failed: %s %s','POST' if write else 'GET',path)
-            self.send(503,{'error':'Vaqtincha ulanish yo‘q / Временно недоступно'})
+            self.send(503,{'error':text('not_available',ui_lang)})
         finally:
             if store:store.db.close()
 
