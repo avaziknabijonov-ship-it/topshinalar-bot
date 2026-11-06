@@ -30,6 +30,11 @@ Ochiq tarqatish uchun alohida tasdiq qayd etilmaganligi sabab yopiq hujjat
 sifatida boshqarildi. Hujjat matni, shaxsiy ma’lumot yoki original PDF test
 fixturelariga/ushbu hisobotga ko‘chirilmagan.
 
+Ularning `company-registration.png` va `vat-registration.png` nusxalari ham
+shu katalogda topildi va olib tashlandi. Faqat PDFni o‘chirish hujjat mazmunini
+yopmagan bo‘lardi. Butun `assets/quotation-attachments` katalogi Git va Docker
+ignore’iga kiritildi; image smoke sinovi unda hech qanday fayl yo‘qligini tekshiradi.
+
 Eski yo‘llar: `/company/registration.pdf`, `/company/vat.pdf`.
 Ular endi public static fayllar emas. Telegram imzosi yoki haqiqiy direktor
 sessiyasi tekshiriladi; noma’lum/deaktiv hisob, buzilgan/eskirgan imzo va
@@ -56,6 +61,7 @@ Bu o‘zgarish hujjatni barcha mijozlarga avtomatik yubormaydi.
 
 Original fayllar Git tarixida `934e177` commitida paydo bo‘lgan. Auditda
 main va ko‘plab tarixiy branchlar bu commitni saqlayotgani tasdiqlandi.
+Tarixni tozalash doirasi shu ikki PDF bilan birga ikkala PNG nusxasini ham qamrasin.
 Keyingi majburiy choralar:
 
 1. Egasi har hujjatning tarqatish tasnifini tasdiqlaydi; kimda nusxa borligini baholaydi.

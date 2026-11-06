@@ -91,7 +91,8 @@ class CompanyDocumentTests(unittest.TestCase):
             with patch.dict(os.environ, {'COMPANY_DOCUMENTS_DIR':directory}):
                 self.assertEqual(self.get(uid=20)[0], 404)
         for name in documents.ROUTES.values():
-            self.assertFalse((ROOT/'assets/quotation-attachments'/name).exists())
+            for suffix in ('.pdf','.png'):
+                self.assertFalse((ROOT/'assets/quotation-attachments'/Path(name).with_suffix(suffix)).exists())
 
     def test_symlink_non_pdf_and_oversized_files_are_rejected(self):
         filename = self.directory/'company-registration.pdf'

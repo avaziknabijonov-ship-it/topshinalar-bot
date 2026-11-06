@@ -18,4 +18,4 @@ jobs:
       - run: python -m unittest discover -s tests -q
       - run: node --test tests/web/*.test.js
       - run: docker build -t topshinalar-ci .
-      - run: docker run --rm --network none topshinalar-ci python -c "import core, miniapp, director, backup, company_documents; from ui_text import browser_script; assert browser_script().startswith('window.WorkspaceTextData=')"
+      - run: docker run --rm --network none topshinalar-ci python -c "import core, miniapp, director, backup, company_documents; from ui_text import browser_script; from pathlib import Path; assert browser_script().startswith('window.WorkspaceTextData='); assert not list(Path('assets/quotation-attachments').glob('*'))"
