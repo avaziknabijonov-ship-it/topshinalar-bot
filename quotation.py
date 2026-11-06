@@ -126,8 +126,8 @@ def quotation_pdf(store,uid,ref):
         picture=image_cache[reference] or p('Нет фото' if ru else 'Rasm mavjud emas')
         data.append([picture,p(i['name']),p(fmt(unit_price))])
     table=Table(data,colWidths=[120,260,doc.width-380],repeatRows=1,hAlign='LEFT')
-    # Available A4 width is about 519 points.
-    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+    # Available A4 width is about 519 points. Centre item text beside its photo.
+    table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f2f2f2')),('VALIGN',(0,0),(-1,0),'TOP'),('VALIGN',(0,1),(-1,-1),'MIDDLE'),('LINEBELOW',(0,0),(-1,0),0.8,colors.HexColor('#E6332A')),('LINEBELOW',(0,1),(-1,-1),0.3,colors.HexColor('#dedede')),('LEFTPADDING',(0,0),(-1,-1),7),('RIGHTPADDING',(0,0),(-1,-1),7),('TOPPADDING',(0,0),(-1,-1),5),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
     from payments import normalize_fulfillment
     payment='Любая форма оплаты' if ru else 'Istalgan to‘lov usuli'
     fulfillment_value=q.get('fulfillment','')
