@@ -149,7 +149,7 @@ def quotation_pdf(store,uid,ref):
     term=lambda text: Paragraph(escape(str(text)),styles['TermsUnicode'])
     terms=[
         term('1. Срок действия цены — 3 дня со дня даты исходящего письма.' if ru else '1. Narx amal qilish muddati — xat sanasidan boshlab 3 kun.'),
-        term('2. Гарантия на товар — 1 месяц с даты счёта-фактуры при правильной эксплуатации товара.' if ru else '2. Tovar kafolati — to‘g‘ri ishlatilganda hisob-faktura sanasidan boshlab 1 oy.'),
+        term('2. Условия гарантии — по согласованию.' if ru else '2. Kafolat shartlari — kelishilgan holda.'),
         term('3. Приложение к гарантии вручается при покупке товара и является официальным документом компании.' if ru else '3. Kafolat ilovasi tovar xarid qilinganda beriladi va kompaniyaning rasmiy hujjati hisoblanadi.'),
         term('Надеемся на долгосрочное и доверительное сотрудничество.' if ru else 'Uzoq muddatli va ishonchli hamkorlikka umid qilamiz.'),
         term('Для дополнительной информации обращайтесь по номеру:' if ru else 'Qo‘shimcha ma’lumot uchun quyidagi raqamga murojaat qiling:'),
