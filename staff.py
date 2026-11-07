@@ -21,7 +21,7 @@ PERMISSIONS = {
 COMMANDS = {
  "stock":"catalog", "photo":"catalog", "catalog":"catalog", "product_photo":"catalog", "product_photo_delete":"catalog",
  "sell":"sales", "sales":"sales", "clients":"clients", "newclient":"clients", "client":"clients", "card":"clients",
- "pay":"debts", "debt_due":"debts", "debts":"debts", "overdue":"debts",
+ "collect_debt":"debts", "pay":"debts", "debt_due":"debts", "debts":"debts", "overdue":"debts",
  "quote":"quotes", "quotes":"quotes", "pdf":"quotes", "quote_options":"quotes", "quote_status":"quotes",
  "call":"calls", "task":"tasks", "tasks":"tasks", "done":"tasks",
  "delivery":"delivery", "delivery_status":"delivery",
@@ -37,7 +37,7 @@ def permissions(store, uid):
 
 def require_command(store, uid, cmd):
     store.user(uid)
-    if cmd in {'supplier_save','supplier_new','supplier_edit','suppliers','supplier_report','supplier_return','point_kind','transfer','manager_fund','document_extract','document_preview','document_import','excel_preview','excel_import','staff','staff_invite','staff_set','staff_cancel_invite','staff_role','newpoint','point','newproduct','product','editproduct','minimum','opening_stock','fine','writeoff','cancel_sale','lowstock'}:
+    if cmd in {'director_client_save','supplier_save','supplier_new','supplier_edit','suppliers','supplier_report','supplier_return','point_kind','transfer','manager_fund','document_extract','document_preview','document_import','excel_preview','excel_import','staff','staff_invite','staff_set','staff_cancel_invite','staff_role','newpoint','point','newproduct','product','editproduct','minimum','opening_stock','fine','writeoff','cancel_sale','lowstock'}:
         store.director(uid)
     permission=COMMANDS.get(cmd)
     if permission and permission not in permissions(store,uid): raise PermissionError()

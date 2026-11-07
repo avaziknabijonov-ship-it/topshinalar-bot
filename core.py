@@ -182,6 +182,14 @@ class Store(Accounting):
         self.db.execute('CREATE UNIQUE INDEX IF NOT EXISTS products_catalog_sku ON products(catalog_sku) WHERE catalog_sku IS NOT NULL')
         self.db.commit()
         migrate_accounting(self)
+        from manager_money import migrate as migrate_manager_money
+        migrate_manager_money(self)
+        from catalog_sync import migrate as migrate_catalog
+        migrate_catalog(self)
+        from director_auth import migrate as migrate_director
+        migrate_director(self)
+        from debt_notifications import migrate as migrate_debt_notifications
+        migrate_debt_notifications(self)
         if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
             self.db.execute('PRAGMA journal_mode=WAL')
         self.db.commit()
@@ -333,6 +341,11 @@ class Store(Accounting):
         self.log(uid,kind,ref)
         return ref
 
+    def transfer(self,uid,product,source,destination,qty,note=''):
+        # Retained /transfer command uses the same audited cabinet transaction.
+        from director import transfer
+        return transfer(self,uid,{'product':product,'source':source,'target':destination,'qty':qty,'reason':note})
+
     def opening_stock(self,uid,product,point,qty,note=''):
         self.director(uid);self.one('products',product);self.one('points',point)
         if isinstance(qty,bool) or not re.fullmatch(r'\d+',str(qty)):
@@ -428,9 +441,13 @@ class Store(Accounting):
         self.log(uid,'quote_options',ref)
         return ref
 
-    def payment(self,uid,sale,amount,method):
+    @atomic
+    def payment(self,uid,sale,amount,method,expected_paid=None):
         self.user(uid)
-        if self.one('sales',sale)['status']!='active':raise ValueError('sale_cancelled')
+        row=self.one('sales',sale)
+        self.own(uid,row)
+        if row['status']!='active':raise ValueError('sale_cancelled')
+        if expected_paid is not None and row['paid']!=expected_paid:raise ValueError('sale_changed')
         method=normalize_payment(method)
         amount=money(amount,True)
         cur=self.db.execute("UPDATE sales SET paid=paid+? WHERE id=? AND status='active' AND paid+?<=total",(amount,sale,amount))
@@ -438,6 +455,8 @@ class Store(Accounting):
             raise ValueError('paid')
         ref=self.add('payments',sale=sale,amount=amount,method=method,actor=uid,created=now())
         self.log(uid,'payment',ref)
+        from debt_notifications import enqueue
+        enqueue(self,ref)
         return ref
 
     def start(self,uid):
@@ -534,7 +553,7 @@ class Store(Accounting):
             if r['point_id'] is None:continue
             unknown=bool(r['catalog_sku'] and not r['stock_set'])
             row={k:r[k] for k in ('id','name','brand','size','point')}
-            row.update(currency=r['currency'],qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
+            row.update(point_id=r['point_id'],currency=r['currency'],qty=None if unknown else r['qty'],price=None if r['price_pending'] else r['price'],stock_status='unknown' if unknown else 'known',as_of=stamp)
             row['stock_value']=None if unknown or r['price_pending'] else r['qty']*r['price']
             rows.append(row)
             w=warehouses.setdefault((r['point_id'],r['currency']),{'warehouse_name':r['point'],'currency':r['currency'],'qty':0,'stock_value':0,'unknown_stock':0,'unknown_price':0,'as_of':stamp})
@@ -545,12 +564,14 @@ class Store(Accounting):
         return {'stock':rows,'warehouses':list(warehouses.values())}
 
     def client_card(self,uid,ref):
-        self.user(uid)
-        result={'client':[self.one('clients',ref)]}
+        user=self.user(uid);client=self.one('clients',ref);own=user['role']!='director'
+        if own and client['owner']!=uid and not any(self.db.execute('SELECT 1 FROM '+t+' WHERE client=? AND actor=?',(ref,uid)).fetchone() for t in ('sales','quotes','calls','tasks','deliveries')):raise PermissionError()
+        result={'client':[client]}
         for table in ('sales','quotes','calls','tasks','deliveries'):
-            result[table]=self.rows(f'SELECT * FROM {table} WHERE client=? ORDER BY id DESC',(ref,))
-        result['refunds']=self.rows('SELECT r.* FROM refunds r JOIN sales s ON s.id=r.sale WHERE s.client=? ORDER BY r.id DESC',(ref,))
+            result[table]=self.rows(f'SELECT * FROM {table} WHERE client=?'+(' AND actor=?' if own else '')+' ORDER BY id DESC',(ref,uid) if own else (ref,))
+        result['refunds']=self.rows('SELECT r.* FROM refunds r JOIN sales s ON s.id=r.sale WHERE s.client=?'+(' AND s.actor=?' if own else '')+' ORDER BY r.id DESC',(ref,uid) if own else (ref,))
         return result
+
 
 
 def csv_report(sections):

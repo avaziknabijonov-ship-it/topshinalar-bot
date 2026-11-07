@@ -105,11 +105,11 @@ class Bot(Usability):
 
     def keyboard(self,uid):
         u=self.s.user(uid)
-        keys=[k for k in MENU if (u['role']=='director' or k not in DIRECTOR_ONLY) and self.command_allowed(uid,k)]
+        keys=[k for k in MENU if k not in DIRECTOR_ONLY and self.command_allowed(uid,k)]
         rows=[[{'text':label(k,u['lang'])} for k in keys[i:i+2]] for i in range(0,len(keys),2)]
         url=os.environ.get('PUBLIC_APP_URL','')
         if url.startswith('https://'):
-            rows.insert(0,[{'text':'📱 '+('Ilovani ochish' if u['lang']=='uz' else 'Открыть приложение')}])
+            rows.insert(0,[{'text':('📊 Direktor kabineti' if u['lang']=='uz' else '📊 Кабинет директора') if u['role']=='director' else '📱 '+('Ilovani ochish' if u['lang']=='uz' else 'Открыть приложение')}])
         return {'keyboard':rows,'resize_keyboard':True}
 
     def queue(self,uid,text=None,document=None,filename=None,photo=None,keyboard=None):
@@ -196,6 +196,19 @@ class Bot(Usability):
 
     def route(self,uid,message):
         lang=self.lang(uid); text=message.get('text','').strip()
+        if text.startswith('/cabinet_login '):
+            from director_auth import approve
+            self.s.director(uid)
+            try:approve(self.s,uid,text.split(' ',1)[1])
+            except (ValueError,PermissionError):
+                self.queue(uid,'Kod eskirgan yoki urinishlar chegarasi oshgan / Код истёк или превышен лимит попыток');return
+            self.queue(uid,'Kirish tasdiqlandi. Brauzerga qayting. / Вход подтверждён. Вернитесь в браузер.');return
+        if text in {'📊 Direktor kabineti','📊 Кабинет директора'} or text.split(' ')[0]=='/cabinet':
+            self.s.director(uid);url=os.environ.get('PUBLIC_APP_URL','').rstrip('/')
+            caption=self.words(uid,'📊 Direktor kabineti','📊 Кабинет директора')
+            if url.startswith('https://'):self.queue(uid,caption,keyboard={'inline_keyboard':[[{'text':caption,'web_app':{'url':url+'/director'}}]]})
+            else:self.queue(uid,self.words(uid,'Serverda kabinet manzilini sozlash kerak.','Необходимо настроить адрес кабинета на сервере.'))
+            return
         if '_callback' in message:
             self.ui_callback(uid,message['_callback']);return
         if text in {'/cancel',tr('cancel',lang)}:
@@ -302,6 +315,10 @@ class Bot(Usability):
                 buttons=[[{'text':name}] for name in payment_labels(lang)]+buttons
             if fields[state['step']][0]=='fulfillment':
                 buttons=[[{'text':name}] for name in fulfillment_labels(lang)]+buttons
+            if fields[state['step']][0]=='status':
+                from ui_text import value
+                codes=['new','on_way','delivered','cancelled'] if state['cmd']=='delivery_status' else ['draft','sent','accepted','rejected']
+                buttons=[[{'text':value('status',code,lang)}] for code in codes]+buttons
             if fields[state['step']][0]=='settlement':
                 buttons=[[{'text':tr('refund_yes',lang)}]]+buttons
             prompt_text=tr(fields[state['step']][1],lang)
@@ -334,6 +351,9 @@ class Bot(Usability):
                 else:
                     if key=='payment':val=payment_label(val,lang)
                     if key=='fulfillment':val=fulfillment_label(val,lang)
+                    if key in {'status','kind','role'}:
+                        from ui_text import value
+                        val=value(key,val,lang)
                     if key not in dict(fields):continue
                     prompt_key=dict(fields)[key]
                     title=tr(prompt_key,lang).split('\n')[0].split(':')[0]
@@ -472,6 +492,8 @@ class Bot(Usability):
             except ValueError:raise ValueError('date') from None
         if key=='status':
             allowed={'new','on_way','delivered','cancelled'} if cmd=='delivery_status' else {'draft','sent','accepted','rejected'}
+            from ui_text import CATALOG
+            text=next((code for code in allowed if text.casefold() in {code,*(v.casefold() for v in CATALOG['values']['status'][code])}),text)
             if text not in allowed:raise ValueError('status')
         return '' if text=='-' else text
 
@@ -543,8 +565,14 @@ class Bot(Usability):
         else:self.show_records(uid,cmd,query)
 
     def pretty_row(self,row,lang):
-        from reports import COLUMNS, localized
-        return ' | '.join(f'{COLUMNS.get(k,(k,k))[lang=="ru"]}: {fmt(v)+" "+row.get("currency","USD") if k=="total" else localized(k,v,lang)}' for k,v in row.items())
+        from reports import COLUMNS,localized,MONEY
+        from ui_text import text
+        parts=[]
+        for key,item in row.items():
+            label=COLUMNS[key][lang=='ru'] if key in COLUMNS else text('extra_field',lang)
+            shown=(fmt(item)+' '+row.get('currency','USD')) if key in MONEY and isinstance(item,int) else ('—' if item is None else localized(key,item,lang))
+            parts.append(f'{label}: {shown}')
+        return ' | '.join(parts)
 
     def pdf(self,uid,ref):
         from quotation import quotation_pdf
@@ -614,6 +642,7 @@ class Bot(Usability):
         data['manager_entries']=[row for row in manager_report['entries'] if start<=row['date']<=end]
         data['manager_balances']=manager_report['balances']
         if self.s.user(uid)['role']=='director':
+            data['manager_days']=__import__('manager_money').days(self.s,uid,start,end)
             supplier_report=self.s.supplier_report(uid,start,end)
             data.update({
                 'supplier_stock':supplier_report['stock'],
@@ -645,11 +674,18 @@ class Bot(Usability):
             self.schedule_business()
 
     def drain(self,api):
+        # Never send a message about a business write that can still roll back.
+        if self.s.db.in_transaction:return
+        from debt_notifications import may_deliver,finish
         rows=self.s.rows('SELECT * FROM outbox WHERE sent=0 ORDER BY id LIMIT 100')
         failed_chats=set()
         for row in rows:
             if row['chat'] in failed_chats:continue
             try:
+                if not may_deliver(self.s,row['id'],row['chat']):
+                    with self.s.db:
+                        self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],));finish(self.s,row['id'],'skipped')
+                    continue
                 # Access revocation also prevents queued private information delivery.
                 try:self.s.user(row['chat'])
                 except (ValueError,PermissionError):
@@ -664,7 +700,8 @@ class Bot(Usability):
                     if path:api.photo(row['chat'],path.read_bytes(),p.get('caption',''),p.get('reply_markup'))
                     else:api.call('sendPhoto',{'chat_id':row['chat'],**p})
                 else:api.call('sendMessage',{'chat_id':row['chat'],**p})
-                with self.s.db:self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],))
+                with self.s.db:
+                    self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],));finish(self.s,row['id'],'sent')
             except Exception:
                 failed_chats.add(row['chat'])
                 logging.warning('Delivery deferred for outbox record %s',row['id'])

@@ -7,8 +7,8 @@ const apiSource=source.slice(source.indexOf('async function api('),source.indexO
 async function check(){
  let replies=[],calls=[];
  const response=(status,body,json=true)=>({ok:status===200,status,headers:{get:()=>json?'application/json':'text/html'},json:async()=>{if(!json)throw Error('HTML');return body}});
- const context={T:(_,ru)=>ru,tg:{initData:'signed-test'},setTimeout:callback=>callback(),fetch:async(path,request)=>{calls.push({path,request});const value=replies.shift();if(value instanceof Error)throw value;return value}};
- vm.createContext(context);vm.runInContext(apiSource,context);
+ const context={state:{me:{lang:'ru'}},T:(_,ru)=>ru,tg:{initData:'signed-test'},setTimeout:callback=>callback(),fetch:async(path,request)=>{calls.push({path,request});const value=replies.shift();if(value instanceof Error)throw value;return value}};
+ vm.createContext(context);require('./localization_helpers')(context);vm.runInContext(apiSource,context);
  const options={method:'POST',headers:{'Idempotency-Key':'same-quote-key'},body:{cmd:'quote',data:{contact_phone:'+998770690007'}}};
  replies=[response(502,null,false),response(200,{ok:true,id:7})];
  assert.equal((await context.api('/api/action',options)).id,7);
@@ -27,6 +27,10 @@ async function check(){
  await assert.rejects(context.api('/other',{method:'POST',body:{}}),/Связь/);assert.equal(calls.length,1);
  calls=[];replies=[response(502,null,false),response(502,null,false),response(502,null,false)];
  await assert.rejects(context.api('/api/dashboard'),error=>/HTTP 502/.test(error.message)&&!error.message.includes('КП'));assert.equal(calls.length,3);
- console.log('API retry checks passed (7 scenarios)');
+ calls=[];replies=[response(200,null,false),response(200,{items:[]})];
+ assert.deepEqual(await context.api('/api/catalog'),{items:[]});assert.equal(calls.length,2);
+ calls=[];replies=[response(200,null,false),response(200,null,false),response(200,null,false)];
+ await assert.rejects(context.api('/api/catalog'),error=>/Связь/.test(error.message)&&!error.message.includes('Unexpected'));assert.equal(calls.length,3);
+ console.log('API retry checks passed (9 scenarios, including malformed successful responses)');
 }
 check().catch(error=>{console.error(error);process.exitCode=1});

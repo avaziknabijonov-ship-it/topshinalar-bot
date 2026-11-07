@@ -324,7 +324,11 @@ class Usability:
             actions=[]
             if kind=='tasks' and row['status']=='open':actions=[[(self.words(uid,'✅ Bajarildi','✅ Выполнено'),{'op':'form_ref','cmd':'done','id':row['id']})]]
             if kind=='quotes':actions=[[(self.words(uid,'📄 PDF olish','📄 Скачать PDF'),{'op':'form_ref','cmd':'pdf','id':row['id']}),(self.words(uid,'✏️ Shartlar','✏️ Условия'),{'op':'form_ref','cmd':'quote_options','id':row['id']})]]
-            self.queue(uid,self.pretty_row(row,lang),keyboard=self.inline(uid,actions) if actions else None)
+            if kind=='sales':
+                from employee_sales import bot_sale_text
+                text=bot_sale_text(self.s,uid,row,lang)
+            else:text=self.pretty_row(row,lang)
+            self.queue(uid,text,keyboard=self.inline(uid,actions) if actions else None)
         nav=[]
         if page:nav.append((tr('previous',lang),{'op':'records','kind':kind,'query':query,'page':page-1}))
         if (page+1)*6<len(rows):nav.append((tr('next',lang),{'op':'records','kind':kind,'query':query,'page':page+1}))

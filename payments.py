@@ -3,7 +3,7 @@ import re
 
 PAYMENTS = {
     'naqd': ('NAQD', 'НАЛИЧНЫЕ'),
-    'perechisleniya': ('PERECHISLENIYA', 'ПЕРЕЧИСЛЕНИЕ'),
+    'perechisleniya': ('BANK O‘TKAZMASI', 'ПЕРЕЧИСЛЕНИЕ'),
     'karta': ('KARTA ORQALI TO‘LOV', 'ОПЛАТА КАРТОЙ'),
 }
 
@@ -16,7 +16,7 @@ for code, names in PAYMENTS.items():
         ALIASES[payment_key(name)] = code
 for code, names in {
     'naqd': ['naxt', 'naht', 'cash', 'nal', 'нал', 'наличными'],
-    'perechisleniya': ['perchesleniya', 'perechesleniya', 'перечислением',
+    'perechisleniya': ['transfer', 'bank', 'perchesleniya', 'perechesleniya', 'перечислением',
                       'o‘tkazma', "o'tkazma", 'otkazma', 'bank transfer',
                       'bank_transfer', 'bank orqali', 'перевод', 'безнал'],
     'karta': ['card', 'terminal', 'karta orqali tolov', 'karta orqali',

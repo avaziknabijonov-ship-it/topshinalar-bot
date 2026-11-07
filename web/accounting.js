@@ -1,7 +1,7 @@
 'use strict';
 
-const accountingKind = kind => ({receipt:T('Kirim','Приход'),payment:T('To‘lov','Оплата'),fund:T('Berilgan pul','Выдано'),expense:T('Xarajat','Расход'),return:T('Qaytarish','Возврат')})[kind]||kind;
-const accountingMethod = method => ({cash:T('Naqd','Наличные'),transfer:T('Bank o‘tkazmasi','Банковский перевод'),card:T('Karta','Карта')})[method]||method;
+const accountingKind = kind => WorkspaceText.value('kind',kind,state.me.lang);
+const accountingMethod = method => WorkspaceText.value('method',method,state.me.lang);
 const accountingDate = () => state.dashboard?.date || new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const accountingTimestamp = value => {if(!value)return '—';const date=new Date(value);return Number.isNaN(date.getTime())?E(value):new Intl.DateTimeFormat(state.me.lang==='ru'?'ru-RU':'uz-UZ',{timeZone:'Asia/Tashkent',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(date)};
 const accountingFields = () => select('currency',T('Valyuta','Валюта'),[['USD','USD'],['UZS','UZS']],'USD')+field('date',T('Sana','Дата'),'date',accountingDate())+field('note',T('Izoh','Примечание'),'text','',false);
@@ -90,7 +90,7 @@ async function supplierReport(data){
 
 async function managerPanel(){
  const data=await api('/api/manager-account');
- modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button><button data-action="supplier-payment">${T('Yetkazib beruvchiga to‘lov','Оплата поставщику')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan − xarajat − qaytarilgan','Выдано − расход − возврат')}: ${money(b.given)} − ${money(b.expenses)} − ${money(b.returned)}</p></article>`).join('')}<h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
+ modal(T('Menejer pul hisobi','Деньги менеджера'),`<div class="row-actions">${state.me.role==='director'?`<button data-action="manager-fund">${T('Pul berish','Выдать деньги')}</button>`:''}<button data-action="manager-expense">${T('Xarajat','Расход')}</button><button data-action="manager-return">${T('Pul qaytarish','Возврат денег')}</button><button data-action="supplier-payment">${T('Yetkazib beruvchiga to‘lov','Оплата поставщику')}</button></div>${data.balances.map(b=>`<article class="list-card"><h3>${E(b.manager_name)} · ${money(b.balance)} ${E(b.currency)}</h3><p>${T('Berilgan + qabul qilgan − xarajat − qabul qilingan','Выдано + получено − расходы − принято')}: ${money(b.given)} + ${money(b.received||0)} − ${money(b.expenses)} − ${money(b.returned)}<br>${T('Mijozga qaytarilgan','Возвращено клиенту')}: ${money(b.refunds||0)}<br>${T('Tasdiq kutilmoqda','Ожидает подтверждения')}: ${money(b.pending_return||0)}</p></article>`).join('')}<p class="help">${T('Kassaga topshirish direktor tasdiqlamaguncha qarzni kamaytirmaydi.','Сдача в кассу не уменьшает долг до подтверждения директором.')}</p><h3>${T('Yozuvlar','Операции')}</h3>${accountingHistory(data.entries)}`);
 }
 
 async function accountingOperations(action,id){
@@ -138,5 +138,5 @@ async function accountingOperations(action,id){
 
 document.addEventListener('click',async event=>{
  const button=event.target.closest('[data-account-action]');if(!button)return;
- try{await accountingOperations(button.dataset.accountAction,Number(button.dataset.id))}catch(error){toast(error.message)}
+ try{await accountingOperations(button.dataset.accountAction,Number(button.dataset.id))}catch(error){toast(WorkspaceText.error(error,state.me?.lang||'uz'))}
 });

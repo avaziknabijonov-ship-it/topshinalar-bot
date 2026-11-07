@@ -76,10 +76,10 @@ class TestCRM(unittest.TestCase):
 
     def test_payment_and_overpayment(self):
         ref=self.sale()
-        with self.s.db:self.s.payment(21,ref,'500000','terminal')
+        with self.s.db:self.s.payment(10,ref,'500000','terminal')
         self.assertEqual(self.s.one('sales',ref)['paid'],150000000)
         with self.assertRaises(ValueError):
-            with self.s.db:self.s.payment(21,ref,'999999999','naqd')
+            with self.s.db:self.s.payment(10,ref,'999999999','naqd')
         self.assertEqual(self.s.one('sales',ref)['paid'],150000000)
 
     def test_staff_cannot_create_product(self):
