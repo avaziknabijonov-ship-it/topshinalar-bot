@@ -24,19 +24,28 @@ COMMANDS = {
  "collect_debt":"debts", "pay":"debts", "debt_due":"debts", "debts":"debts", "overdue":"debts",
  "quote":"quotes", "quotes":"quotes", "pdf":"quotes", "quote_options":"quotes", "quote_status":"quotes",
  "call":"calls", "task":"tasks", "tasks":"tasks", "done":"tasks",
- "delivery":"delivery", "delivery_status":"delivery",
+ "delivery":"delivery", "delivery_status":"delivery", "delivery_fee_collect":"delivery", "driver_deliveries":"delivery",
  "startwork":"attendance", "endwork":"attendance", "report":"reports", "summary":"reports",
  "income":"income", "return":"income", "supplier_income":"income", "supplier_payment":"income",
 }
 DEFAULT_PERMISSIONS = list(PERMISSIONS)
 
 def permissions(store, uid):
+    user=store.user(uid);role=effective_role(store,uid)
+    if role=='driver':return ['delivery']
+    return [key for key in PERMISSIONS if role!='director' or key!='attendance']
+
+
+def effective_role(store,uid):
     user=store.user(uid)
-    return [key for key in PERMISSIONS if user['role']!='director' or key!='attendance']
+    row=store.db.execute('SELECT managed_role FROM staff_access WHERE user_id=?',(uid,)).fetchone()
+    return row['managed_role'] if row and row['managed_role'] in ('director','employee','driver') else user['role']
 
 
 def require_command(store, uid, cmd):
     store.user(uid)
+    if effective_role(store,uid)=='driver' and cmd not in {'language','delivery_status','delivery_fee_collect','driver_deliveries'}:
+        raise PermissionError()
     if cmd in {'director_client_save','supplier_save','supplier_new','supplier_edit','suppliers','supplier_report','supplier_return','point_kind','transfer','manager_fund','document_extract','document_preview','document_import','excel_preview','excel_import','staff','staff_invite','staff_set','staff_cancel_invite','staff_role','newpoint','point','newproduct','product','editproduct','minimum','opening_stock','fine','writeoff','cancel_sale','lowstock'}:
         store.director(uid)
     permission=COMMANDS.get(cmd)
@@ -57,10 +66,10 @@ class StaffAccess:
 
     def team(self, uid):
         self.s.director(uid)
-        return {'employees': self.s.rows("SELECT id,name,active,role FROM users ORDER BY active DESC,role,name,id"), 'invites': self.pending(), 'limit': None}
+        return {'employees': self.s.rows("SELECT u.id,u.name,u.active,CASE WHEN sa.managed_role IN ('employee','director','driver') THEN sa.managed_role ELSE u.role END role FROM users u LEFT JOIN staff_access sa ON sa.user_id=u.id ORDER BY u.active DESC,role,u.name,u.id"), 'invites': self.pending(), 'limit': None}
 
     def validate_role(self,role):
-        if role not in ('employee','director'):raise ValueError('staff_target')
+        if role not in ('employee','director','driver'):raise ValueError('staff_target')
 
     def director_capacity(self,exclude=None):
         active=self.s.db.execute("SELECT COUNT(*) FROM users WHERE active=1 AND role='director' AND id<>?",(exclude or -1,)).fetchone()[0]
@@ -70,10 +79,11 @@ class StaffAccess:
     def assign_role(self,uid,employee,role):
         self.s.director(uid);self.validate_role(role)
         target=self.s.one('users',employee)
-        if employee==uid and role!=target['role']:raise ValueError('staff_self')
-        if role=='director' and target['role']!='director' and target['active']:self.director_capacity()
+        old_role=effective_role(self.s,employee)
+        if employee==uid and role!=old_role:raise ValueError('staff_self')
+        if role=='director' and old_role!='director' and target['active']:self.director_capacity()
         self.s.db.execute('INSERT INTO staff_access(user_id,active,managed_role) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET managed_role=excluded.managed_role',(employee,target['active'],role))
-        self.s.db.execute('UPDATE users SET role=? WHERE id=?',(role,employee))
+        self.s.db.execute('UPDATE users SET role=? WHERE id=?',('employee' if role=='driver' else role,employee))
         self.s.db.execute('DELETE FROM sessions WHERE user_id=?',(employee,))
         self.s.db.execute('DELETE FROM ui_views WHERE user_id=?',(employee,))
         self.s.log(uid,'staff_role',employee)
@@ -130,7 +140,7 @@ class StaffAccess:
         if row['role']=='director':
             # This invitation already reserves its director seat.
             if self.s.db.execute("SELECT COUNT(*) FROM users WHERE active=1 AND role='director'").fetchone()[0]>=3:raise ValueError('director_limit')
-        self.s.add('users', id=uid, role=row['role'], name=(name.strip() or str(uid))[:150])
+        self.s.add('users', id=uid, role='employee' if row['role']=='driver' else row['role'], name=(name.strip() or str(uid))[:150])
         self.s.add('staff_access', user_id=uid, active=1, managed_role=row['role'])
         self.s.db.execute("UPDATE staff_invites SET status='used',joined_by=? WHERE id=?", (uid, row['id']))
         self.s.log(uid, 'staff_join', row['id'])

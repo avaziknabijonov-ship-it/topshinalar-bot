@@ -18,7 +18,7 @@ from core import Store,integer as core_integer,money,now,exchange_rate,normalize
 from i18n import ERRORS
 from usability import matches_product,size_parts
 from catalog import import_catalog, local_photo
-from staff import StaffAccess, permissions, require_command
+from staff import StaffAccess, effective_role, permissions, require_command
 import company_documents
 from excel_import import InventoryExcel, ExcelError
 import document_import
@@ -286,8 +286,9 @@ class MiniService:
         if cmd=='done':self.s.complete_task(uid,integer(d.get('ref')));return int(d['ref'])
         if cmd=='fine':return self.s.fine(uid,telegram_id(d.get('employee')),str(d.get('amount','')),text(d.get('reason','')))
         if cmd=='delivery':
-            return self.s.delivery(uid,integer(d.get('client')),integer(d['sale']) if d.get('sale') else None,text(d.get('driver','')),text(d.get('address','')),str(d.get('fee','')),str(d.get('paid','0')))
+            return self.s.delivery(uid,integer(d.get('client')),integer(d['sale']) if d.get('sale') else None,text(d.get('driver','')),text(d.get('address','')),str(d.get('fee','')),str(d.get('paid','0')),integer(d['assigned_driver']) if d.get('assigned_driver') else None)
         if cmd=='delivery_status':self.s.delivery_status(uid,integer(d.get('ref')),text(d.get('status','')));return int(d['ref'])
+        if cmd=='delivery_fee_collect':return self.s.delivery_fee_collect(uid,integer(d.get('ref')))
         if cmd=='language':
             lang=d.get('lang')
             if lang not in {'uz','ru'}:raise ValueError('language')
@@ -393,9 +394,11 @@ class MiniHandler(BaseHTTPRequestHandler):
                     self.send(404,{'error':text('not_found',ui_lang)});return
                 self.send(200,payload,'application/pdf',filename);return
             query=dict(parse_qsl(target.query));page=min(10000,max(0,int(query.get('page',0))))
-            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers'}
-            require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
-            if path=='/api/me':result={**{k:user[k] for k in ('id','name','role','lang')},'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
+            if effective_role(store,uid)=='driver' and path not in {'/api/me','/api/dashboard','/api/driver-deliveries'}:raise PermissionError()
+            read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers','/api/drivers':'delivery','/api/driver-deliveries':'driver_deliveries'}
+            if not (effective_role(store,uid)=='driver' and path in {'/api/me','/api/dashboard'}):
+                require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
+            if path=='/api/me':result={**{k:user[k] for k in ('id','name','lang')},'role':effective_role(store,uid),'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
             elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points ORDER BY name,id')
             elif path=='/api/suppliers':result=store.suppliers(uid,query.get('picker')=='1')
@@ -422,15 +425,18 @@ class MiniHandler(BaseHTTPRequestHandler):
                 for row in result:
                     for field in ('total','paid','debt'):row[field+'_cents']=str(row[field])
             elif path=='/api/dashboard':
-                result=service.dashboard(uid,query.get('start'),query.get('end'))
+                result={'role':'driver'} if effective_role(store,uid)=='driver' else service.dashboard(uid,query.get('start'),query.get('end'))
                 allowed=permissions(store,uid)
                 if 'sales' not in allowed:
                     for key in ('sales','total','received','refunds'):result[key]=0
                 if 'debts' not in allowed:result['debt']=result['overdue']=0
                 if 'calls' not in allowed:result['calls']=0
                 if 'tasks' not in allowed:result['tasks']=0
+            elif path=='/api/driver-deliveries':result=store.driver_deliveries(uid)
+            elif path=='/api/drivers':
+                result=store.rows("SELECT u.id,u.name FROM users u JOIN staff_access sa ON sa.user_id=u.id WHERE u.active=1 AND sa.active=1 AND sa.managed_role='driver' ORDER BY u.name,u.id")
             elif path=='/api/staff':
-                store.director(uid);result=store.rows('SELECT id,name,role FROM users WHERE active=1 ORDER BY name,id')
+                store.director(uid);result=store.rows("SELECT u.id,u.name,CASE WHEN sa.managed_role IN ('employee','director','driver') THEN sa.managed_role ELSE u.role END role FROM users u LEFT JOIN staff_access sa ON sa.user_id=u.id WHERE u.active=1 ORDER BY u.name,u.id")
             elif path=='/api/team':result=StaffAccess(store).team(uid)
             elif path in {'/api/sales','/api/quotes','/api/tasks'}:result=service.history(uid,path.split('/')[-1])
             elif path=='/api/report':

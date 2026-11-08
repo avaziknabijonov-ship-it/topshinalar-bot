@@ -8,7 +8,7 @@ import unittest
 from core import Store
 from bot import Bot
 from miniapp import MiniService, initialize
-from staff import StaffAccess
+from staff import StaffAccess, effective_role, permissions
 
 
 class StaffTests(unittest.TestCase):
@@ -130,6 +130,29 @@ class StaffTests(unittest.TestCase):
         self.service.write(10,'enable-full-staff1','staff_set',{'employee':20,'active':True})
         with self.assertRaisesRegex(ValueError,'staff_target'):self.service.write(10,'boolean-staff-0001','staff_set',{'employee':21,'active':'false'})
         self.assertTrue(self.s.user(21)['active'])
+
+    def test_driver_role_is_delivery_only_and_can_only_update_assigned_delivery(self):
+        invitation=self.service.write(10,'driver-invite-0001','staff_invite',{'label':'Driver','role':'driver'})['id']
+        self.join(invitation['url'])
+        self.assertEqual(self.s.user(100)['role'],'employee')
+        self.assertEqual(effective_role(self.s,100),'driver')
+        self.assertEqual(permissions(self.s,100),['delivery'])
+        with self.s.db:
+            client=self.s.client(20,'Delivery client','+998901234567','','')
+            ref=self.s.delivery(20,client,None,'Driver','Tashkent street 1','15','0',assigned_driver=100)
+        self.assertEqual([r['id'] for r in self.s.driver_deliveries(100)],[ref])
+        with self.s.db:
+            self.s.delivery_status(100,ref,'on_way')
+            self.s.delivery_fee_collect(100,ref)
+        self.assertEqual(self.s.one('deliveries',ref)['paid'],1500)
+        self.assertEqual(self.s.one('deliveries',ref)['status'],'on_way')
+        with self.assertRaises(PermissionError):
+            with self.s.db:self.s.delivery_status(100,ref,'cancelled')
+        with self.assertRaises(PermissionError):
+            self.service.write(100,'driver-no-cash-0001','manager_record',{'kind':'return','amount':'15'})
+        self.s.configure([10],[20])
+        self.assertEqual(effective_role(self.s,100),'driver')
+        self.assertEqual(self.s.user(100)['role'],'employee')
 
     def test_http_team_is_director_only_and_suspension_revokes_existing_login(self):
         from miniapp import MiniServer

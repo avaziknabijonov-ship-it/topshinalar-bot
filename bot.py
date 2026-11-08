@@ -174,8 +174,10 @@ class Bot(Usability):
                 self.s.db.execute('UPDATE users SET name=? WHERE id=?',(name[:150],uid))
                 self.route(uid,message)
                 if invite:
-                    role=self.s.user(uid)['role']
-                    self.queue(uid,('Direktor sifatida qo‘shildingiz.\nВы добавлены как директор.' if role=='director' else 'Xodim sifatida qo‘shildingiz.\nВы добавлены как сотрудник.')+'\n/app')
+                    from staff import effective_role
+                    role=effective_role(self.s,uid)
+                    label={'director':('Direktor','Директор'),'driver':('Haydovchi','Водитель')}.get(role,('Xodim','Сотрудник'))
+                    self.queue(uid,f'{label[0]} sifatida qo‘shildingiz.\nВы добавлены: {label[1]}.\n/app')
                 self.s.add('updates',id=update['update_id'],created=now())
         except (ValueError,PermissionError,sqlite3.IntegrityError) as exc:
             with self.s.db:

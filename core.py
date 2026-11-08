@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, client INTEGER NOT NULL
 CREATE TABLE IF NOT EXISTS shifts(id INTEGER PRIMARY KEY, actor INTEGER NOT NULL REFERENCES users(id), started TEXT NOT NULL, ended TEXT, report TEXT);
 CREATE UNIQUE INDEX IF NOT EXISTS one_open_shift ON shifts(actor) WHERE ended IS NULL;
 CREATE TABLE IF NOT EXISTS fines(id INTEGER PRIMARY KEY, actor INTEGER NOT NULL REFERENCES users(id), amount INTEGER NOT NULL CHECK(amount>0), reason TEXT NOT NULL, approved_by INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL);
-CREATE TABLE IF NOT EXISTS deliveries(id INTEGER PRIMARY KEY, client INTEGER NOT NULL REFERENCES clients(id), sale INTEGER REFERENCES sales(id), actor INTEGER NOT NULL REFERENCES users(id), driver TEXT NOT NULL, address TEXT NOT NULL, fee INTEGER NOT NULL CHECK(fee>=0), paid INTEGER NOT NULL CHECK(paid>=0 AND paid<=fee), status TEXT NOT NULL DEFAULT 'new', created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS deliveries(id INTEGER PRIMARY KEY, client INTEGER NOT NULL REFERENCES clients(id), sale INTEGER REFERENCES sales(id), actor INTEGER NOT NULL REFERENCES users(id), driver TEXT NOT NULL, assigned_driver INTEGER REFERENCES users(id), address TEXT NOT NULL, fee INTEGER NOT NULL CHECK(fee>=0), paid INTEGER NOT NULL CHECK(paid>=0 AND paid<=fee), status TEXT NOT NULL DEFAULT 'new', created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY, actor INTEGER NOT NULL, action TEXT NOT NULL, ref INTEGER, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS updates(id INTEGER PRIMARY KEY, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -153,6 +153,7 @@ class Store(Accounting):
         for table, fields in {
             'staff_access':{'position_id':'INTEGER REFERENCES positions(id)','managed_role':'TEXT'},
             'staff_invites':{'position_id':'INTEGER REFERENCES positions(id)','role':"TEXT NOT NULL DEFAULT 'employee'"},
+            'deliveries':{'assigned_driver':'INTEGER REFERENCES users(id)'},
             'products':{'brand':"TEXT NOT NULL DEFAULT ''",'size':"TEXT NOT NULL DEFAULT ''",'catalog_sku':'TEXT','price_pending':'INTEGER NOT NULL DEFAULT 0'},
             'sales':{'status':"TEXT NOT NULL DEFAULT 'active'",'debt_due':"TEXT NOT NULL DEFAULT ''",'cancel_reason':"TEXT NOT NULL DEFAULT ''",'cancelled_by':'INTEGER','cancelled_at':"TEXT NOT NULL DEFAULT ''"},
         }.items():
@@ -249,7 +250,7 @@ class Store(Accounting):
                     self.db.execute('INSERT INTO users(id,role,name) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET role=excluded.role,active=1',(uid,role,str(uid)))
             # Panel-managed access survives either service restarting. An explicit
             # panel suspension also overrides legacy EMPLOYEE_IDS entries.
-            self.db.execute("UPDATE users SET active=(SELECT active FROM staff_access WHERE user_id=users.id),role=COALESCE((SELECT managed_role FROM staff_access WHERE user_id=users.id),role) WHERE id IN (SELECT user_id FROM staff_access)")
+            self.db.execute("UPDATE users SET active=(SELECT active FROM staff_access WHERE user_id=users.id),role=CASE WHEN (SELECT managed_role FROM staff_access WHERE user_id=users.id)='driver' THEN 'employee' ELSE COALESCE((SELECT managed_role FROM staff_access WHERE user_id=users.id),role) END WHERE id IN (SELECT user_id FROM staff_access)")
 
     def product(self, uid, name, price, photo=None):
         self.director(uid)
@@ -505,7 +506,7 @@ class Store(Accounting):
         self.log(uid,'call',ref)
         return ref
 
-    def delivery(self,uid,client,sale,driver,address,fee,paid):
+    def delivery(self,uid,client,sale,driver,address,fee,paid,assigned_driver=None):
         self.user(uid); self.one('clients',client)
         if sale:
             s=self.one('sales',sale)
@@ -514,14 +515,41 @@ class Store(Accounting):
         fee=money(fee); paid=money(paid)
         if paid>fee:
             raise ValueError('paid')
-        ref=self.add('deliveries',client=client,sale=sale,actor=uid,driver=driver,address=address,fee=fee,paid=paid,created=now())
+        if assigned_driver:
+            from staff import effective_role
+            target=self.user(assigned_driver)
+            if target['active']!=1 or effective_role(self,assigned_driver)!='driver':raise ValueError('driver')
+            driver=driver.strip() or target['name']
+        ref=self.add('deliveries',client=client,sale=sale,actor=uid,driver=driver,assigned_driver=assigned_driver,address=address,fee=fee,paid=paid,created=now())
         self.log(uid,'delivery',ref)
         return ref
 
+    def driver_deliveries(self,uid):
+        from staff import effective_role
+        self.user(uid)
+        if effective_role(self,uid)!='driver':raise PermissionError()
+        return self.rows("SELECT d.id,d.client,d.sale,d.driver,d.address,d.fee,d.paid,d.status,d.created,c.name client_name,c.phone client_phone FROM deliveries d JOIN clients c ON c.id=d.client WHERE d.assigned_driver=? AND d.status<>'cancelled' ORDER BY CASE d.status WHEN 'new' THEN 0 WHEN 'on_way' THEN 1 ELSE 2 END,d.id DESC",(uid,))
+
+    def delivery_fee_collect(self,uid,ref):
+        from staff import effective_role
+        self.user(uid)
+        if effective_role(self,uid)!='driver':raise PermissionError()
+        row=self.one('deliveries',ref)
+        if row['assigned_driver']!=uid:raise PermissionError()
+        if row['fee']<=0 or row['paid']>=row['fee']:raise ValueError('delivery_paid')
+        self.db.execute('UPDATE deliveries SET paid=fee WHERE id=? AND assigned_driver=?',(ref,uid))
+        self.log(uid,'delivery_fee_collect',ref)
+        return ref
+
     def delivery_status(self,uid,ref,status):
-        row=self.one('deliveries',ref); self.own(uid,row)
+        row=self.one('deliveries',ref)
+        from staff import effective_role
+        if effective_role(self,uid)=='driver':
+            if row['assigned_driver']!=uid:raise PermissionError()
+        else:self.own(uid,row)
         if status not in {'new','on_way','delivered','cancelled'}:
             raise ValueError('status')
+        if effective_role(self,uid)=='driver' and status not in {'on_way','delivered'}:raise PermissionError()
         self.db.execute('UPDATE deliveries SET status=? WHERE id=?',(status,ref))
         self.log(uid,'delivery_status',ref)
 
