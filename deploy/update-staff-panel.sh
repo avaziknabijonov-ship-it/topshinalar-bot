@@ -5,7 +5,7 @@ source_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 target=/opt/topshinalar
 backup_dir=/var/lib/topshinalar/backups
 [[ "$EUID" == 0 ]] || { echo 'sudo bilan ishga tushiring.'; exit 1; }
-for file in core.py excel_import.py staff.py bot.py miniapp.py i18n.py reports.py web/app.js web/app.css tests/test_staff.py tests/test_miniapp.py tests/test_excel_import.py tests/test_positions.py tests/test_bot.py usability.py; do
+for file in core.py excel_import.py staff.py bot.py miniapp.py i18n.py reports.py locales/uz-ru.json web/app.js web/app.css tests/test_staff.py tests/test_miniapp.py tests/test_excel_import.py tests/test_positions.py tests/test_bot.py usability.py; do
   [[ -f "$source_dir/$file" ]] || { echo "Yangilash fayli yo‘q: $file"; exit 1; }
 done
 [[ "$source_dir" != "$target" ]] || { echo 'Arxivni alohida papkaga oching.'; exit 1; }
@@ -36,7 +36,7 @@ files=()
 while IFS= read -r -d '' path; do files+=("${path#./}"); done < <(
   cd "$source_dir"
   find . -maxdepth 1 -type f \( -name '*.py' -o -name '*.md' -o -name 'requirements.txt' \) -print0
-  find web assets tests -type f ! -name '*.pyc' ! -path '*/__pycache__/*' -print0
+  find web assets tests locales -type f ! -name '*.pyc' ! -path '*/__pycache__/*' -print0
 )
 # Validate an isolated candidate while both production services stay online.
 # Never run the suite in the downtime window or against production configuration.
