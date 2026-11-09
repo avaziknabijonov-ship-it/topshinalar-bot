@@ -252,8 +252,11 @@ class Store(Accounting):
             # panel suspension also overrides legacy EMPLOYEE_IDS entries.
             self.db.execute("UPDATE users SET active=(SELECT active FROM staff_access WHERE user_id=users.id),role=CASE WHEN (SELECT managed_role FROM staff_access WHERE user_id=users.id)='driver' THEN 'employee' ELSE COALESCE((SELECT managed_role FROM staff_access WHERE user_id=users.id),role) END WHERE id IN (SELECT user_id FROM staff_access)")
 
-    def product(self, uid, name, price, photo=None):
-        self.director(uid)
+    def product(self, uid, name, price, photo=None, allow_income=False):
+        if allow_income:
+            from staff import require_command
+            require_command(self,uid,'income_product')
+        else:self.director(uid)
         ref = self.add('products',name=name,price=money(price),photo=photo)
         self.log(uid,'product',ref)
         return ref

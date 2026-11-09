@@ -150,6 +150,14 @@ class MiniAppTests(unittest.TestCase):
         self.service.write(10,'large-user-000001','task',{'client':self.client,'assignee':1234567890,'due':'2030-01-01T10:00','note':'Follow up'})
         self.assertEqual(self.s.one('tasks',1)['actor'],1234567890)
 
+    def test_employee_with_income_permission_can_add_new_product_for_receipt(self):
+        data={'name':'New arrival','brand':'New brand','size':'315/80 R22.5','price':'125000'}
+        product=self.service.write(20,'income-product-000001','income_product',data)['id']
+        row=self.s.one('products',product)
+        self.assertEqual((row['brand'],row['size'],row['price']),('New brand','315/80 R22.5',12500000))
+        self.service.write(20,'income-new-stock-000001','income',{'product':product,'point':self.point,'qty':'3','note':'New arrival'})
+        self.assertEqual(self.s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,self.point)).fetchone()[0],3)
+
     def test_product_photo_permission_and_idempotent_write(self):
         with patch.object(self.service,'upload_photo',return_value='verified-file-id') as upload:
             self.service.write(20,'photo-request-0001','product_photo',{'product':self.product,'image':'test'})
@@ -158,6 +166,16 @@ class MiniAppTests(unittest.TestCase):
         photos=self.s.rows('SELECT * FROM product_photos WHERE product=?',(self.product,))
         self.assertEqual(len(photos),1)
         self.assertEqual(photos[0]['file_id'],'verified-file-id')
+
+    def test_product_photo_delete_accepts_zero_based_first_photo_index(self):
+        with self.s.db:
+            self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(self.product,0,'first-photo'))
+            self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(self.product,1,'second-photo'))
+            self.s.db.execute('UPDATE products SET photo=? WHERE id=?',('first-photo',self.product))
+        self.service.write(10,'photo-delete-first-0001','product_photo_delete',{'product':self.product,'index':0})
+        photos=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(self.product,))
+        self.assertEqual(photos,[{'position':0,'file_id':'second-photo'}])
+        self.assertEqual(self.s.one('products',self.product)['photo'],'second-photo')
 
     def test_launcher_button_only_with_configured_https_url(self):
         with patch.dict('os.environ',{'PUBLIC_APP_URL':'https://bot.example.uz'}):

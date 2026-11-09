@@ -29,8 +29,12 @@ ROOT=Path(__file__).resolve().parent
 class AuthError(Exception):pass
 
 
-def integer(value):
+def integer(value,zero=False):
     if type(value) is not int and not (isinstance(value,str) and re.fullmatch(r'\d+',value)):raise ValueError('quantity')
+    if zero:
+        value=int(value)
+        if value>1000000:raise ValueError('quantity')
+        return value
     return core_integer(value)
 
 
@@ -157,7 +161,7 @@ class MiniService:
                 self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(ref,count,uploaded))
                 self.s.log(uid,'product_photo',ref)
             elif cmd=='product_photo_delete':
-                ref=integer(data.get('product'));index=integer(data.get('index'))
+                ref=integer(data.get('product'));index=integer(data.get('index'),zero=True)
                 self.s.one('products',ref)
                 rows=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(ref,))
                 if index>=len(rows):raise ValueError('photo')
@@ -260,6 +264,10 @@ class MiniService:
         if cmd=='cancel_sale':
             if type(d.get('expected_paid')) is not int:raise ValueError('sale_changed')
             return self.s.cancel_sale(uid,integer(d.get('sale')),text(d.get('reason','')),d.get('settlement') is True,d['expected_paid'])
+        if cmd=='income_product':
+            ref=self.s.product(uid,text(d.get('name','')),str(d.get('price','')),allow_income=True)
+            self.s.db.execute('UPDATE products SET brand=?,size=? WHERE id=?',(text(d.get('brand',''),False,150),text(d.get('size',''),False,150),ref))
+            return ref
         if cmd=='product':
             self.s.director(uid)
             ref=self.s.product(uid,text(d.get('name','')),str(d.get('price','')))
@@ -384,7 +392,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 if not 0<length<=6*1024*1024:raise ValueError('text')
                 body=json.loads(self.rfile.read(length))
                 if path!='/api/action' or not isinstance(body,dict):raise ValueError('command')
-                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','collect_debt','product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
+                if body.get('cmd') in {'supplier_income','supplier_payment','manager_record','sell','quote','pay','collect_debt','product','income_product','editproduct','fine','delivery','excel_preview','excel_import','document_extract','document_preview','document_import'} and body.get('money_version')!=2:
                     raise ValueError('currency_reload')
                 result=service.write(uid,self.headers.get('Idempotency-Key',''),body.get('cmd'),body.get('data'))
                 self.send(200,result);return
