@@ -205,6 +205,7 @@ class MiniService:
                 self.s.log(uid,'website_retry',product);return product
             return getattr(__import__('director'),'transfer' if cmd=='stock_transfer' else 'count_stock')(self.s,uid,d)
         if cmd=='supplier_save':return self.s.supplier_save(uid,text(d.get('name','')),text(d.get('phone',''),False,100),text(d.get('note',''),False),integer(d['supplier']) if d.get('supplier') else None)
+        if cmd=='supplier_archive':return self.s.supplier_set_active(uid,integer(d.get('supplier')),d.get('active'))
         if cmd=='supplier_income':return self.s.receive(uid,integer(d.get('product')),integer(d.get('supplier')),d.get('cost'),d.get('allocations'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),d.get('payments',[]),telegram_id(d['manager']) if d.get('manager') else None)
         if cmd=='supplier_payment':return self.s.supplier_pay(uid,integer(d.get('supplier')),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),telegram_id(d['manager']) if d.get('manager') else None,d.get('method',''))
         if cmd=='supplier_return':return self.s.supplier_return(uid,integer(d.get('lot')),d.get('qty'),text(d.get('note',''),False),d.get('date'))
@@ -401,7 +402,12 @@ class MiniHandler(BaseHTTPRequestHandler):
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','lang')},'role':effective_role(store,uid),'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
             elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points ORDER BY name,id')
-            elif path=='/api/suppliers':result=store.suppliers(uid,query.get('picker')=='1')
+            elif path=='/api/suppliers':
+                result=store.suppliers(uid,query.get('picker')=='1')
+                if query.get('picker')!='1':
+                    active_ids={r['id'] for r in result['suppliers'] if r.get('active',1)}
+                    result['suppliers']=[r for r in result['suppliers'] if r['id'] in active_ids]
+                    result['balances']=[r for r in result['balances'] if r['supplier'] in active_ids]
             elif path=='/api/supplier-report':result=store.supplier_report(uid,query.get('start',now()[:10]),query.get('end',now()[:10]),integer(query['supplier']) if query.get('supplier') else None)
             elif path=='/api/supplier-ledger':result=store.supplier_ledger(uid,integer(query['supplier']))
             elif path=='/api/manager-account':result=store.manager_account(uid,telegram_id(query['manager']) if query.get('manager') else None)
