@@ -29,8 +29,12 @@ ROOT=Path(__file__).resolve().parent
 class AuthError(Exception):pass
 
 
-def integer(value):
+def integer(value,zero=False):
     if type(value) is not int and not (isinstance(value,str) and re.fullmatch(r'\d+',value)):raise ValueError('quantity')
+    if zero:
+        value=int(value)
+        if value>1000000:raise ValueError('quantity')
+        return value
     return core_integer(value)
 
 
