@@ -81,6 +81,7 @@ def read(service,uid,kind,q):
         if q.get('payment_status')=='paid':rows=[r for r in rows if r['status']=='active' and r['debt']==0]
         return page(rows,q)
     if kind=='lowstock':return page(s.rows('SELECT p.id,p.name,t.name point_name,l.minimum,st.qty FROM stock_limits l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point JOIN stock st ON st.product=l.product AND st.point=l.point WHERE p.active=1 AND l.minimum>0 AND st.qty<=l.minimum ORDER BY st.qty,p.id'),q)
+    if kind=='points':return page(s.rows('SELECT id,name,kind,active FROM points WHERE active=? ORDER BY name,id',(int(q.get('active','1')=='1'),)),q)
     if kind=='stock':return page(s.inventory_report(uid)['stock'],q)
     if kind=='lots':return page(s.rows('SELECT l.*,p.name product_name,t.name point_name,r.supplier,r.cost,r.currency FROM inventory_lots l JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point LEFT JOIN receipts r ON r.id=l.receipt ORDER BY l.id DESC'),q)
 
@@ -134,7 +135,7 @@ def read(service,uid,kind,q):
         product=quantity(q.get('product'));point=quantity(q.get('point'));s.one('products',product);s.one('points',point)
         row=s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,point)).fetchone()
         return {'qty':row['qty'] if row else 0,'known':bool(row)}
-    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers WHERE active=1')}
+    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points WHERE active=1'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers WHERE active=1')}
     raise ValueError('route')
 
 
