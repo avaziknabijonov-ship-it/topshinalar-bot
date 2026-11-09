@@ -211,6 +211,7 @@ ERRORS['debt_changed']=('Qarz o‘zgargan. «Bekor qilish / yangilash»ni bosib 
 
 ERRORS.update({
 'point_kind':('Ombor yoki vitrina turini tanlang.','Выберите склад или витрину.'),
+'point_not_empty':('Bu joyda qoldiq bor. Avval mahsulotlarni boshqa joyga ko‘chiring.','В этом месте есть остаток. Сначала переместите товары.'),
 'manager_day_unsettled':('Kun yopilmaydi: pul qoldig‘i, tasdiq kutilayotgan topshirish yoki tekshirilmagan pul qaytarishi bor.','День не закрыт: есть остаток, неподтверждённая сдача или непроверенный возврат.'),
 'same point':('Manba va qabul qiluvchi joy bir xil bo‘lmasin.','Места отправки и получения должны различаться.'),
 'Stock changed; refresh count':('Qoldiq o‘zgargan. Haqiqiy sonni qayta tekshirib tasdiqlang.','Остаток изменился. Проверьте фактическое количество и подтвердите заново.'),

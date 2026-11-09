@@ -555,7 +555,7 @@ class Store(Accounting):
 
     def stock(self,uid):
         self.user(uid)
-        return self.rows('SELECT p.id,p.name,p.brand,p.size,p.price,p.price_pending,p.currency,p.catalog_sku,p.photo,t.id point_id,t.name point,COALESCE(s.qty,0) qty,s.qty IS NOT NULL stock_set FROM products p LEFT JOIN points t ON 1=1 LEFT JOIN stock s ON s.product=p.id AND s.point=t.id WHERE p.active=1 ORDER BY t.id,p.id')
+        return self.rows('SELECT p.id,p.name,p.brand,p.size,p.price,p.price_pending,p.currency,p.catalog_sku,p.photo,t.id point_id,t.name point,COALESCE(s.qty,0) qty,s.qty IS NOT NULL stock_set FROM products p LEFT JOIN points t ON 1=1 AND t.active=1 LEFT JOIN stock s ON s.product=p.id AND s.point=t.id WHERE p.active=1 ORDER BY t.id,p.id')
 
     def report(self,uid,start,end):
         self.user(uid)

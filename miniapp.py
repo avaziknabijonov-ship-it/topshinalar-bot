@@ -211,6 +211,7 @@ class MiniService:
         if cmd=='supplier_return':return self.s.supplier_return(uid,integer(d.get('lot')),d.get('qty'),text(d.get('note',''),False),d.get('date'))
         if cmd=='manager_record':return self.s.manager_record(uid,telegram_id(d.get('manager',uid)),d.get('kind'),d.get('amount'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'))
         if cmd=='point_kind':return self.s.point_kind(uid,integer(d.get('point')),d.get('kind'))
+        if cmd=='point_archive':return self.s.point_set_active(uid,integer(d.get('point')),d.get('active'))
         if cmd=='document_preview':return document_import.preview(self.s,uid,integer(d.get('point')),d.get('rows'))
         if cmd=='document_import':return document_import.apply(self.s,uid,integer(d.get('point')),d.get('rows'),d.get('fingerprint'),d.get('confirmed'))
         if cmd in {'excel_preview','excel_import'} and d.get('mode')!='income':raise ExcelError('Excel: Ilovani yopib /app orqali qayta oching.','Excel: Закройте приложение и откройте заново через /app.')
@@ -401,7 +402,7 @@ class MiniHandler(BaseHTTPRequestHandler):
                 require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','lang')},'role':effective_role(store,uid),'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
-            elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points ORDER BY name,id')
+            elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points WHERE active=1 ORDER BY name,id')
             elif path=='/api/suppliers':
                 result=store.suppliers(uid,query.get('picker')=='1')
                 if query.get('picker')!='1':
