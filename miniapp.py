@@ -402,7 +402,12 @@ class MiniHandler(BaseHTTPRequestHandler):
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','lang')},'role':effective_role(store,uid),'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
             elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points ORDER BY name,id')
-            elif path=='/api/suppliers':result=store.suppliers(uid,query.get('picker')=='1')
+            elif path=='/api/suppliers':
+                result=store.suppliers(uid,query.get('picker')=='1')
+                if query.get('picker')!='1':
+                    active_ids={r['id'] for r in result['suppliers'] if r.get('active',1)}
+                    result['suppliers']=[r for r in result['suppliers'] if r['id'] in active_ids]
+                    result['balances']=[r for r in result['balances'] if r['supplier'] in active_ids]
             elif path=='/api/supplier-report':result=store.supplier_report(uid,query.get('start',now()[:10]),query.get('end',now()[:10]),integer(query['supplier']) if query.get('supplier') else None)
             elif path=='/api/supplier-ledger':result=store.supplier_ledger(uid,integer(query['supplier']))
             elif path=='/api/manager-account':result=store.manager_account(uid,telegram_id(query['manager']) if query.get('manager') else None)
