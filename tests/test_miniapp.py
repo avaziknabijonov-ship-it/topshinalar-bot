@@ -159,6 +159,16 @@ class MiniAppTests(unittest.TestCase):
         self.assertEqual(len(photos),1)
         self.assertEqual(photos[0]['file_id'],'verified-file-id')
 
+    def test_product_photo_delete_accepts_zero_based_first_photo_index(self):
+        with self.s.db:
+            self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(self.product,0,'first-photo'))
+            self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(self.product,1,'second-photo'))
+            self.s.db.execute('UPDATE products SET photo=? WHERE id=?',('first-photo',self.product))
+        self.service.write(10,'photo-delete-first-0001','product_photo_delete',{'product':self.product,'index':0})
+        photos=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(self.product,))
+        self.assertEqual(photos,[{'position':0,'file_id':'second-photo'}])
+        self.assertEqual(self.s.one('products',self.product)['photo'],'second-photo')
+
     def test_launcher_button_only_with_configured_https_url(self):
         with patch.dict('os.environ',{'PUBLIC_APP_URL':'https://bot.example.uz'}):
             keyboard=self.service.b.keyboard(20)
