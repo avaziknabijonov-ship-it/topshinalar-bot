@@ -94,6 +94,10 @@ def read(service,uid,kind,q):
             from director_business import supplier_card
             return supplier_card(s,uid,quantity(q['id']),start,end)
         result=s.suppliers(uid)
+        if q.get('active') in ('0','1'):
+            result['suppliers']=[r for r in result['suppliers'] if str(r.get('active',1))==q['active']]
+        else:
+            result['suppliers']=[r for r in result['suppliers'] if r.get('active',1)]
         balances=result['balances']
         if q.get('currency'):balances=[r for r in balances if r['currency']==q['currency']]
         state=q.get('balance_status')
@@ -130,7 +134,7 @@ def read(service,uid,kind,q):
         product=quantity(q.get('product'));point=quantity(q.get('point'));s.one('products',product);s.one('points',point)
         row=s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,point)).fetchone()
         return {'qty':row['qty'] if row else 0,'known':bool(row)}
-    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers')}
+    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers WHERE active=1')}
     raise ValueError('route')
 
 
