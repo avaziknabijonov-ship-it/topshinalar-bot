@@ -150,6 +150,14 @@ class MiniAppTests(unittest.TestCase):
         self.service.write(10,'large-user-000001','task',{'client':self.client,'assignee':1234567890,'due':'2030-01-01T10:00','note':'Follow up'})
         self.assertEqual(self.s.one('tasks',1)['actor'],1234567890)
 
+    def test_employee_with_income_permission_can_add_new_product_for_receipt(self):
+        data={'name':'New arrival','brand':'New brand','size':'315/80 R22.5','price':'125000'}
+        product=self.service.write(20,'income-product-000001','income_product',data)['id']
+        row=self.s.one('products',product)
+        self.assertEqual((row['brand'],row['size'],row['price']),('New brand','315/80 R22.5',12500000))
+        self.service.write(20,'income-new-stock-000001','income',{'product':product,'point':self.point,'qty':'3','note':'New arrival'})
+        self.assertEqual(self.s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,self.point)).fetchone()[0],3)
+
     def test_product_photo_permission_and_idempotent_write(self):
         with patch.object(self.service,'upload_photo',return_value='verified-file-id') as upload:
             self.service.write(20,'photo-request-0001','product_photo',{'product':self.product,'image':'test'})
