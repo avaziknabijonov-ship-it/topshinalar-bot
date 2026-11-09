@@ -114,6 +114,7 @@ def migrate(store):
                 ('sale_items', 'location_kind', "TEXT CHECK(location_kind IN ('sklad','vitrina'))"),
                 ('supplier_entries', 'method', "TEXT NOT NULL DEFAULT ''"),
                 ('suppliers', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
+                ('points', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
             ):
                 if column not in {r[1] for r in store.db.execute(f'PRAGMA table_info({table})')}:
                     store.db.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
@@ -171,6 +172,21 @@ class Accounting:
         self.db.execute('UPDATE points SET kind=? WHERE id=?', (kind, point))
         self.log(uid, 'point_kind:' + old['kind'] + ':' + kind, point)
         return point
+
+    @atomic
+    def point_set_active(self, uid, point, active):
+        self.director(uid)
+        if type(active) is not bool:
+            raise ValueError('point_status')
+        row = self.one('points', point)
+        if not active:
+            stock_qty = self.db.execute('SELECT COALESCE(SUM(qty),0) FROM stock WHERE point=?', (row['id'],)).fetchone()[0]
+            lot_qty = self.db.execute('SELECT COALESCE(SUM(qty),0) FROM inventory_lots WHERE point=?', (row['id'],)).fetchone()[0]
+            if stock_qty or lot_qty:
+                raise ValueError('point_not_empty')
+        self.db.execute('UPDATE points SET active=? WHERE id=?', (int(active), row['id']))
+        self.log(uid, 'point_restore' if active else 'point_archive', row['id'])
+        return row['id']
 
     def _unassigned_lot(self, product, point, qty):
         from core import now
