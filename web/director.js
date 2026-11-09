@@ -1,6 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id),esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let lang=localStorage.getItem('director-lang')==='ru'?'ru':'uz',section='overview',page=0,csrf='',lookups={},rows=[],timer,loginAttempt=0,loginPolling=false;
+let lang=localStorage.getItem('director-lang')==='ru'?'ru':'uz',section='overview',page=0,csrf='',lookups={},rows=[],timer,loginAttempt=0,loginPolling=false,showArchivedSuppliers=false;
 const extraNames={lowstock:['Kam qolgan mahsulotlar','Товары с низким остатком'],quotes:['KP / PDF','КП / PDF'],payments:['Tushgan pul','Поступления'],refunds:['Qaytarilgan pul','Возвраты денег'],debts:['Mijozlar qarzi · joriy','Долги клиентов · сейчас'],overdue:['Kechikkan qarz · joriy','Просроченные долги · сейчас']};
 const names={overview:['Asosiy ekran','Обзор'],sales:['Savdolar','Продажи'],products:['Mahsulotlar','Товары'],stock:['Ombor / vitrina','Склад / витрина'],receipts:['Xaridlar / tovar kirimi','Закупки / приход товара'],payments:['Savdo tushumlari','Поступления от продаж'],customer_returns:['Mijozdan qaytarishlar','Возвраты клиентов'],supplier_returns:['Ta’minotchiga qaytarishlar','Возвраты поставщикам'],expenses:['Xarajatlar','Расходы'],quotes:['KP / PDF','КП / PDF'],clients:['Mijozlar','Клиенты'],suppliers:['Ta’minotchilar','Поставщики'],managers:['Menejer puli','Деньги менеджера'],staff:['Xodimlar','Сотрудники'],reports:['Hisobotlar','Отчёты'],website:['Sayt katalogi','Каталог сайта'],audit:['Amallar tarixi','История действий']};
 const tr=(uz,ru)=>lang==='ru'?ru:uz;
@@ -66,6 +66,7 @@ function form(title,fields,submit){dialog(`<h2>${esc(title)}</h2><form id="opera
 function actions(){
  $('actions').innerHTML='';
  if(section==='reports'){button(tr('KP / PDF ro‘yxati','Список КП / PDF'),()=>{section='quotes';page=0;nav();load();});button(tr('Excel yuklash','Скачать Excel'),()=>downloadDirectorReport());}
+ if(section==='suppliers')button(showArchivedSuppliers?tr('Faol ta’minotchilar','Активные поставщики'):tr('Arxivlanganlar','Архивированные'),()=>{showArchivedSuppliers=!showArchivedSuppliers;page=0;load();});
 
  if(section==='stock'){
   button('↑ Excel / PDF',()=>openDirectorImport());
@@ -93,13 +94,13 @@ function actions(){
  if(section==='staff')button(tr('Xodim taklif qilish','Пригласить сотрудника'),()=>form(tr('Taklif','Приглашение'),input('label',tr('Ism','Имя'),'text','','required')+select('role',[{id:'employee',name:tr('Xodim','Сотрудник')},{id:'driver',name:tr('Haydovchi','Водитель')},{id:'director',name:tr('Direktor','Директор')}],tr('Rol','Роль')),async f=>{const r=await command('staff_invite',Object.fromEntries(f));showDirectorInvite(r.id);}));
 
 }
-function query(){const q=new URLSearchParams({start:$('start').value,end:$('end').value,q:$('search').value,page});for(const [k,v] of Object.entries(directorFilterState[section]||{}))if(v)q.set(k,v);return q;}
+function query(){const q=new URLSearchParams({start:$('start').value,end:$('end').value,q:$('search').value,page});for(const [k,v] of Object.entries(directorFilterState[section]||{}))if(v)q.set(k,v);if(section==='suppliers')q.set('active',showArchivedSuppliers?'0':'1');return q;}
 let directorLoadVersion=0;
 async function load(resetActions=true){const requestVersion=++directorLoadVersion,requestedSection=section;syncPeriodButtons();$('eyebrow').textContent=tr('DIREKTOR KABINETI','КАБИНЕТ ДИРЕКТОРА');$('title').textContent=(names[section]||extraNames[section])?.[lang==='ru'?1:0]||section;$('status').classList.remove('load-error');$('status').textContent=tr('Yuklanmoqda…','Загрузка…');$('content').setAttribute('aria-busy','true');$('content').innerHTML='<div class="workspace-loading" aria-hidden="true"><span></span><span></span><span></span><span></span></div>';if(resetActions){actions();renderSectionFilters();}$('prev').disabled=$('next').disabled=true;try{
  if(section==='reports'){await renderReportCategories();$('status').textContent='';document.querySelector('.pagination').hidden=true;return;}
  const data=await api('/director-api/'+section+'?'+query());if(requestVersion!==directorLoadVersion||section!==requestedSection)return;rows=data.items||[];let html='';
  if(section==='overview'){html=renderDirectorOverview(data);
- }else if(section==='suppliers'){rows=data.suppliers;html=table(rows,['id','name','phone','note'])+'<h2>'+tr('Joriy saldo','Текущее сальдо')+'</h2>'+table(data.balances,['supplier_name','currency','balance'],false);}
+ }else if(section==='suppliers'){rows=data.suppliers;html=table(rows,['id','name','phone','note','active'])+'<h2>'+tr('Joriy saldo','Текущее сальдо')+'</h2>'+table(data.balances,['supplier_name','currency','balance'],false);}
  else if(section==='managers'){
   html='<p class="note">'+tr('Naqd, karta va bank tushumlari pulni olgan xodimga avtomatik yoziladi. Mijoz qarzi bu summaga kirmaydi. Joriy topshirilmagan pul = berilgan + qabul qilgan − xarajat − kassaga qabul qilingan − tasdiqlangan pul qaytarish.','Наличные, карта и банковские поступления автоматически относятся к получившему сотруднику. Долг клиента сюда не входит. Не сдано = выдано + получено − расходы − принято в кассу − подтверждённые возвраты.')+'</p>'+table(data.balances,['manager_name','currency','received','returned','balance','given','expenses','pending_return','refunds'],false);
   if(data.balances.some(b=>b.historical_received||b.legacy_returned))html+='<p class="note">'+tr('Eski tushumlar asl to‘lovlardan hisoblandi. Ilgari yozilmagan topshirishlar bo‘lsa tekshiring; eski qaytarishlarni qayta kiritmang.','Старые поступления рассчитаны из исходных оплат. Проверьте ранее не записанные сдачи; не вносите старые возвраты повторно.')+'</p>';
@@ -121,7 +122,7 @@ async function detail(row){try{
  if(section==='products'){editDirectorProduct(row);return;}
  if(section==='website'){websiteForm(row);return;}
  if(section==='quotes'){const r=await authenticatedFetch('/director-api/quote?id='+row.id);if(!r.ok)throw Error(tr('PDF hisobotini yuklab bo‘lmadi','Не удалось скачать PDF'));const a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download='TOPSHINALAR-KP-'+row.id+'.pdf';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);return;}
- let data=row;if(['payments','refunds','debts','overdue'].includes(section)){const sale=await api('/director-api/sales?'+new URLSearchParams({start:'2000-01-01',end:'2100-01-01',id:String(row.sale||row.id)}));data={operation:row,sales:sale.items.filter(x=>x.id===(row.sale||row.id))};}if(section==='clients'||section==='suppliers'){data=await api('/director-api/'+section+'?'+new URLSearchParams({...Object.fromEntries(query()),id:row.id}));showDebtCard(data,row);return;}
+ let data=row;if(['payments','refunds','debts','overdue'].includes(section)){const sale=await api('/director-api/sales?'+new URLSearchParams({start:'2000-01-01',end:'2100-01-01',id:String(row.sale||row.id)}));data={operation:row,sales:sale.items.filter(x=>x.id===(row.sale||row.id))};}if(section==='clients'||section==='suppliers'){data=await api('/director-api/'+section+'?'+new URLSearchParams({...Object.fromEntries(query()),id:row.id}));showDebtCard(data,row);if(section==='suppliers'){const archived=!Boolean(row.active),toggle=document.createElement('button');toggle.textContent=archived?tr('Qayta faollashtirish','Восстановить'):tr('O‘chirish / arxivlash','Удалить / архивировать');$('detail-content').append(toggle);toggle.onclick=()=>form(archived?tr('Ta’minotchini qayta faollashtirish','Восстановить поставщика'):tr('Ta’minotchini arxivlash','Архивировать поставщика'),'<p>'+esc(row.name)+'</p><p>'+esc(tr('Kirim va saldo tarixi saqlanadi. Ta’minotchi yangi kirimlarda chiqmaydi.','История прихода и сальдо сохраняются. Поставщик не будет доступен для новых приходов.'))+'</p><label class="wide checks"><input type="checkbox" required>'+esc(tr('Tasdiqlayman','Подтверждаю'))+'</label>',()=>command('supplier_archive',{supplier:row.id,active:archived}));}return;}
  dialog('<h2>'+esc(row.name||tr('Tafsilotlar','Подробности'))+'</h2>'+jsonDetail(data));
 
  if(section==='sales'&&row.status==='active'){
