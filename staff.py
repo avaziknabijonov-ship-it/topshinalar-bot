@@ -46,7 +46,7 @@ def require_command(store, uid, cmd):
     store.user(uid)
     if effective_role(store,uid)=='driver' and cmd not in {'language','delivery_status','delivery_fee_collect','driver_deliveries'}:
         raise PermissionError()
-    if cmd in {'director_client_save','supplier_save','supplier_new','supplier_edit','suppliers','supplier_report','supplier_return','point_kind','transfer','manager_fund','document_extract','document_preview','document_import','excel_preview','excel_import','staff','staff_invite','staff_set','staff_cancel_invite','staff_role','newpoint','point','newproduct','product','editproduct','minimum','opening_stock','fine','writeoff','cancel_sale','lowstock'}:
+    if cmd in {'director_client_save','supplier_save','supplier_archive','supplier_new','supplier_edit','suppliers','supplier_report','supplier_return','point_kind','transfer','manager_fund','document_extract','document_preview','document_import','excel_preview','excel_import','staff','staff_invite','staff_set','staff_cancel_invite','staff_role','newpoint','point','newproduct','product','editproduct','minimum','opening_stock','fine','writeoff','cancel_sale','lowstock'}:
         store.director(uid)
     permission=COMMANDS.get(cmd)
     if permission and permission not in permissions(store,uid): raise PermissionError()
