@@ -44,7 +44,7 @@ def company_contact_qr(size=84):
     return drawing
 
 
-def product_image(reference,max_height=120,max_width=125):
+def product_image(reference,max_height=120,max_width=100):
     """Read the selected product's saved reference; never substitute another model."""
     from catalog import local_photo
     import json
@@ -115,7 +115,7 @@ def quotation_pdf(store,uid,ref):
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
     # Reserve room for author and terms on a four/five-product A4 proposal.
-    photo_height=min(100,max(56,440/len(lines)-13)) if lines and len(lines)<=8 else 64
+    photo_height=min(76,max(56,320/len(lines)-6)) if lines and len(lines)<=8 else 64
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
