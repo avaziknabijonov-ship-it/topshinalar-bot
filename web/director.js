@@ -70,6 +70,8 @@ function actions(){
 
  if(section==='stock'){
   button('↑ Excel / PDF',()=>openDirectorImport());
+  button(tr('Joyni o‘chirish / arxivlash','Удалить / архивировать место'),()=>form(tr('Joyni arxivlash','Архивировать место'),select('point',lookups.points,tr('Joy','Место'))+'<label class="wide checks"><input type="checkbox" required>'+esc(tr('Joyda qoldiq yo‘qligini tasdiqlayman. Tarix saqlanadi.','Подтверждаю, что остатка в месте нет. История сохранится.'))+'</label>',f=>command('point_archive',{point:+f.get('point'),active:false})));
+  button(tr('Arxivlangan joyni tiklash','Восстановить место'),async()=>{const archived=await api('/director-api/points?active=0');if(!archived.items.length){$('status').textContent=tr('Arxivlangan joy topilmadi.','Архивированных мест нет.');return;}form(tr('Joyni tiklash','Восстановить место'),select('point',archived.items,tr('Joy','Место'))+'<label class="wide checks"><input type="checkbox" required>'+esc(tr('Joyni yana ishlatishga ruxsat beraman.','Разрешаю снова использовать это место.'))+'</label>',f=>command('point_archive',{point:+f.get('point'),active:true}));});
   button(tr('Yangi joy','Новое место'),()=>form(tr('Saqlash joyi','Место хранения'),input('name',tr('Nom','Название'),'text','','required')+select('kind',[{id:'sklad',name:tr('Ombor','Склад')},{id:'vitrina',name:tr('Vitrina','Витрина')}],tr('Turi','Тип')),f=>command('point',Object.fromEntries(f))));
   button(tr('Joy turi','Тип места'),()=>form(tr('Joy turi','Тип места'),select('point',lookups.points,tr('Mavjud joy','Существующее место'))+select('kind',[{id:'sklad',name:tr('Ombor','Склад')},{id:'vitrina',name:tr('Vitrina','Витрина')}],tr('Turi','Тип')),f=>command('point_kind',{point:+f.get('point'),kind:f.get('kind')})));
 
