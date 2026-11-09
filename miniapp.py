@@ -157,7 +157,7 @@ class MiniService:
                 self.s.db.execute('INSERT INTO product_photos(product,position,file_id) VALUES(?,?,?)',(ref,count,uploaded))
                 self.s.log(uid,'product_photo',ref)
             elif cmd=='product_photo_delete':
-                ref=integer(data.get('product'));index=integer(data.get('index'))
+                ref=integer(data.get('product'));index=integer(data.get('index'),zero=True)
                 self.s.one('products',ref)
                 rows=self.s.rows('SELECT position,file_id FROM product_photos WHERE product=? ORDER BY position',(ref,))
                 if index>=len(rows):raise ValueError('photo')
