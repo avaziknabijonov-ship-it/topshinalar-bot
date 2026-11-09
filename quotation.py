@@ -115,7 +115,7 @@ def quotation_pdf(store,uid,ref):
     from decimal import Decimal, ROUND_HALF_UP
     image_cache={}
     # Reserve room for author and terms on a four/five-product A4 proposal.
-    photo_height=min(76,max(56,320/len(lines)-6)) if lines and len(lines)<=8 else 64
+    photo_height=min(68,max(64,280/len(lines))) if lines and len(lines)<=8 else 64
     for i in lines:
         unit_price=(Decimal(i['price'])*(100-i['discount'])/100).quantize(Decimal('1'),rounding=ROUND_HALF_UP)
         reference=i.get('photo','')
