@@ -66,7 +66,7 @@ function form(title,fields,submit){dialog(`<h2>${esc(title)}</h2><form id="opera
 function actions(){
  $('actions').innerHTML='';
  if(section==='reports'){button(tr('KP / PDF ro‘yxati','Список КП / PDF'),()=>{section='quotes';page=0;nav();load();});button(tr('Excel yuklash','Скачать Excel'),()=>downloadDirectorReport());}
- if(section==='suppliers')button(showArchivedSuppliers?tr('Faol ta’minotchilar','Активные поставщики'):tr('Arxivlanganlar','Архивированные'),()=>{showArchivedSuppliers=!showArchivedSuppliers;page=0;load();});
+ if(section==='suppliers')button(showArchivedSuppliers?tr('Faol ta’minotchilar','Активные поставщики'):tr('Arxivlanganlar','Архивированные'),()=>{showArchivedSuppliers=!showArchivedSuppliers;if(directorFilterState.suppliers)directorFilterState.suppliers.active='';page=0;load();});
 
  if(section==='stock'){
   button('↑ Excel / PDF',()=>openDirectorImport());
