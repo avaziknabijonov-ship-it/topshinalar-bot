@@ -1,6 +1,6 @@
 'use strict';
 const tg=window.Telegram?.WebApp;
-const state={me:null,tab:'catalog',cart:[],catalog:[],points:[],clients:[],page:0,q:'',brand:'',point:'',overdue:false,showArchivedStaff:false,modal:null};
+const state={me:null,tab:'catalog',cart:[],catalog:[],points:[],clients:[],page:0,q:'',brand:'',point:'',overdue:false,showArchivedStaff:false,showArchivedSuppliers:false,modal:null};
 const $=id=>document.getElementById(id);
 const T=(uz,ru)=>state.me?.lang==='ru'?ru:uz;
 const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
