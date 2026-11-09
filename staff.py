@@ -26,7 +26,7 @@ COMMANDS = {
  "call":"calls", "task":"tasks", "tasks":"tasks", "done":"tasks",
  "delivery":"delivery", "delivery_status":"delivery", "delivery_fee_collect":"delivery", "driver_deliveries":"delivery",
  "startwork":"attendance", "endwork":"attendance", "report":"reports", "summary":"reports",
- "income":"income", "return":"income", "supplier_income":"income", "supplier_payment":"income",
+ "income":"income", "income_product":"income", "return":"income", "supplier_income":"income", "supplier_payment":"income",
 }
 DEFAULT_PERMISSIONS = list(PERMISSIONS)
 
