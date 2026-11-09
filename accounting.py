@@ -69,7 +69,7 @@ def clean_note(value, required=False, limit=1500):
 TABLES = (
     '''CREATE TABLE IF NOT EXISTS suppliers(
         id INTEGER PRIMARY KEY, name TEXT NOT NULL, phone TEXT NOT NULL,
-        note TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL)''',
+        note TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)))''',
     '''CREATE TABLE IF NOT EXISTS receipts(
         id INTEGER PRIMARY KEY, supplier INTEGER NOT NULL REFERENCES suppliers(id),
         product INTEGER NOT NULL REFERENCES products(id), qty INTEGER NOT NULL CHECK(qty>0),
@@ -113,6 +113,7 @@ def migrate(store):
                 ('sale_items', 'point', 'INTEGER REFERENCES points(id)'),
                 ('sale_items', 'location_kind', "TEXT CHECK(location_kind IN ('sklad','vitrina'))"),
                 ('supplier_entries', 'method', "TEXT NOT NULL DEFAULT ''"),
+                ('suppliers', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
             ):
                 if column not in {r[1] for r in store.db.execute(f'PRAGMA table_info({table})')}:
                     store.db.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
@@ -144,10 +145,20 @@ class Accounting:
             self.log(uid, 'supplier_edit:' + json.dumps({'before':old, 'after':data}, ensure_ascii=False, sort_keys=True), ref)
         return ref
 
+    @atomic
+    def supplier_set_active(self, uid, supplier, active):
+        self.director(uid)
+        if type(active) is not bool:
+            raise ValueError('supplier_status')
+        row = self.supplier_row(supplier)
+        self.db.execute('UPDATE suppliers SET active=? WHERE id=?', (int(active), row['id']))
+        self.log(uid, 'supplier_restore' if active else 'supplier_archive', row['id'])
+        return row['id']
+
     def suppliers(self, uid, for_receipt=False):
         self.user(uid)
         if for_receipt:
-            return self.rows('SELECT id,name FROM suppliers ORDER BY name,id')
+            return self.rows('SELECT id,name FROM suppliers WHERE active=1 ORDER BY name,id')
         self.director(uid)
         return {'suppliers':self.rows('SELECT * FROM suppliers ORDER BY name,id'), 'balances':self.rows("SELECT supplier,currency,SUM(CASE WHEN kind='receipt' THEN amount ELSE -amount END) balance FROM supplier_entries GROUP BY supplier,currency")}
 
