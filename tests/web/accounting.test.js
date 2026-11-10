@@ -11,7 +11,7 @@ async function test(){
   if(path==='/api/catalog')return {items:[{id:7,name:'Tyre A'}]};
   if(path==='/api/staff')return [{id:10,name:'Director',role:'director'},{id:20,name:'Manager',role:'employee'}];
   if(path==='/api/suppliers?picker=1')return [{id:3,name:'Factory'}];
-  if(path==='/api/suppliers?include_archived=1')return {suppliers:[{id:3,name:'<script>alert(1)</script>',note:'<bad>',phone:'123'}],balances:[{supplier:3,currency:'USD',balance:2050}]};
+  if(path==='/api/suppliers')return {suppliers:[{id:3,name:'<script>alert(1)</script>',note:'<bad>',phone:'123'}],balances:[{supplier:3,currency:'USD',balance:2050}]};
   if(path==='/api/manager-account')return {entries:[{kind:'expense',amount:500,currency:'USD',date:'2026-11-03',actor_name:'Manager',note:'<taxi>'}],balances:[{manager_name:'Manager',given:0,expenses:500,returned:0,balance:-500,currency:'USD'}]};
   if(path.startsWith('/api/supplier-report'))return {stock:[{name:'Tyre A',qty:2,supplier_name:'Factory',point_name:'Vitrina'}],sold:[{name:'Tyre A',qty:1,supplier_name:'Factory',point_name:'Vitrina'}],entries:[],lots:[{id:11,receipt:4,product_name:'Tyre A',point_name:'Vitrina',qty:2,cost:1025,currency:'USD'}],start:'2026-11-01',end:'2026-11-03'};
   throw Error('Unexpected endpoint '+path);
