@@ -413,7 +413,7 @@ class MiniHandler(BaseHTTPRequestHandler):
             elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points WHERE active=1 ORDER BY name,id')
             elif path=='/api/suppliers':
                 result=store.suppliers(uid,query.get('picker')=='1')
-                if query.get('picker')!='1' and query.get('include_archived')!='1':
+                if query.get('picker')!='1':
                     active_ids={r['id'] for r in result['suppliers'] if r.get('active',1)}
                     result['suppliers']=[r for r in result['suppliers'] if r['id'] in active_ids]
                     result['balances']=[r for r in result['balances'] if r['supplier'] in active_ids]
