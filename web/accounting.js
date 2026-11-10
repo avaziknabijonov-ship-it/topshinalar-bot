@@ -42,8 +42,8 @@ function accountingPayload(cmd,data){
 }
 
 async function supplierPanel(){
- const data=await api('/api/suppliers');state.suppliers=data.suppliers;
- modal(T('Yetkazib beruvchilar','Поставщики'),`<button class="primary full" data-action="supplier-new">+ ${T('Yetkazib beruvchi','Поставщик')}</button><button class="secondary full" data-action="supplier-report">${T('Vitrina va saldo hisoboti','Витрина и взаиморасчёты')}</button>${data.suppliers.map(r=>`<article class="list-card"><h3>${E(r.name)}</h3><p>${E(r.phone)}<br>${E(r.note)}</p>${data.balances.filter(b=>b.supplier===r.id).map(b=>`<p>${T('Saldo','Сальдо')}: ${money(b.balance)} ${E(b.currency)}</p>`).join('')}<button class="secondary full" data-account-action="supplier-detail" data-id="${r.id}">${T('Kirim va to‘lovlar tarixi','История поступлений и оплат')}</button><button class="secondary" data-account-action="supplier-edit" data-id="${r.id}">${T('Tahrirlash','Изменить')}</button></article>`).join('')}`);
+ const data=await api('/api/suppliers?include_archived=1');state.suppliers=data.suppliers;
+ modal(T('Yetkazib beruvchilar','Поставщики'),`<button class="primary full" data-action="supplier-new">+ ${T('Yetkazib beruvchi','Поставщик')}</button><button class="secondary full" data-action="supplier-report">${T('Vitrina va saldo hisoboti','Витрина и взаиморасчёты')}</button>${data.suppliers.map(r=>`<article class="list-card"><h3>${E(r.name)}${r.active===0?' · '+T('Arxivda','В архиве'):''}</h3><p>${E(r.phone)}<br>${E(r.note)}</p>${data.balances.filter(b=>b.supplier===r.id).map(b=>`<p>${T('Saldo','Сальдо')}: ${money(b.balance)} ${E(b.currency)}</p>`).join('')}<button class="secondary full" data-account-action="supplier-detail" data-id="${r.id}">${T('Kirim va to‘lovlar tarixi','История поступлений и оплат')}</button><button class="secondary" data-account-action="supplier-edit" data-id="${r.id}">${T('Tahrirlash','Изменить')}</button><button class="secondary" data-account-action="supplier-archive" data-id="${r.id}">${r.active===0?T('Qayta faollashtirish','Восстановить'):T('O‘chirish','Удалить')}</button></article>`).join('')}`);
 }
 
 
@@ -95,9 +95,20 @@ async function managerPanel(){
 async function accountingOperations(action,id){
  const director=state.me.role==='director';
  if(action==='suppliers'){await supplierPanel();return true}
+ if(action==='supplier-archive'){
+  const supplier=state.suppliers.find(r=>r.id===id);
+  if(!supplier)return true;
+  const active=supplier.active===0;
+  const title=active?T('Qayta faollashtirish','Восстановить'):T('O‘chirish','Удалить');
+  const message=active
+   ? T('Yetkazib beruvchi yangi kirimlarda yana chiqadi.','Поставщик снова будет доступен для новых приходов.')
+   : T('Yetkazib beruvchi yangi kirimlarda chiqmaydi. Kirim, to‘lov va qarz tarixi saqlanadi.','Поставщик исчезнет из списка новых приходов. История поступлений, оплат и долга сохранится.');
+  form(title+' · '+supplier.name,'supplier_archive',`<p>${E(message)}</p>`,{supplier:id,active});
+  return true;
+ }
  if(action==='supplier-detail'){await supplierDetail(id);return true}
  if(action==='supplier-debts'){
-  const data=await api('/api/suppliers');
+  const data=await api('/api/suppliers?include_archived=1');
   const balances=(data.balances||[]).filter(r=>Number(r.balance)>0);
   modal(T('Yetkazib beruvchilarga qarz','Долги поставщикам'),`<div class="list">${balances.map(r=>{const supplier=data.suppliers.find(s=>s.id===r.supplier);return `<article class="list-card"><h3>${E(supplier?.name||r.supplier_name||T('Yetkazib beruvchi','Поставщик'))}</h3><p>${T('Qolgan qarz','Остаток долга')}: ${money(r.balance)} ${E(r.currency||'USD')}</p><button class="secondary full" data-account-action="supplier-detail" data-id="${r.supplier}">${T('Tarixni ko‘rish','История')}</button></article>`}).join('')||empty(T('Yetkazib beruvchilarga qarz yo‘q.','Долгов поставщикам нет.'))}</div>`);
   return true;
@@ -114,7 +125,7 @@ async function accountingOperations(action,id){
   form(T('Mahsulot kirimi','Приход товара'),'supplier_income',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(p=>[p.id,p.name]))+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+select('first_point',T('Kirim manzili','Место прихода'),points)+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+field('paid_cash',T('Naqd to‘landi','Оплачено наличными'),'number','0',false)+field('paid_transfer',T('Bank o‘tkazmasi bilan to‘landi','Оплачено банковским переводом'),'number','0',false)+field('paid_card',T('Karta bilan to‘landi','Оплачено картой'),'number','0',false)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+accountingFields()+`<p class="help">${T('To‘lovlarni usuli bo‘yicha kiriting. To‘lanmagan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Укажите оплату по способам. Неоплаченный остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
  }
  if(action==='supplier-report'){
-  const data=await api('/api/suppliers');
+  const data=await api('/api/suppliers?include_archived=1');
   form(T('Yetkazib beruvchi hisoboti','Отчёт по поставщикам'),'supplier-report-view',select('supplier',T('Yetkazib beruvchi (bo‘sh — barchasi)','Поставщик (пусто — все)'),data.suppliers.map(r=>[r.id,r.name]),'',false)+field('start',T('Boshlanish','С даты'),'date',accountingDate())+field('end',T('Tugash','По дату'),'date',accountingDate()));return true;
  }
  if(['manager-fund','manager-expense','manager-return'].includes(action)){
