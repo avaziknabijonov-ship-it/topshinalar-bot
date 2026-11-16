@@ -19,13 +19,12 @@ function accountingPayload(cmd,data){
   }
   if(!allocations.length)throw Error(T('Kirim miqdorini kiriting','Введите количество прихода'));
   data.allocations=allocations;
-  const payments=[];
-  for(const method of ['cash','transfer','card']){
-   const amount=Number(data['paid_'+method]||0);
-   if(!Number.isFinite(amount)||amount<0)throw Error(T('To‘lov summasini tekshiring','Проверьте сумму оплаты'));
-   payments.push({method,amount:String(amount)});
-   delete data['paid_'+method];
-  }
+  const method=data.payment_method;
+  const amount=Number(data.paid_amount||0);
+  if(!['cash','transfer'].includes(method)||!Number.isFinite(amount)||amount<0)throw Error(T('To‘lov usuli yoki summasini tekshiring','Проверьте способ оплаты или сумму'));
+  delete data.payment_method;
+  delete data.paid_amount;
+  const payments=[{method,amount:String(amount)}];
   if(data.cost!==undefined&&data.cost!==''){
    const unitCost=Number(data.cost);
    const total=Math.round(unitCost*100)*allocations.reduce((sum,row)=>sum+row.qty,0);
@@ -111,7 +110,7 @@ async function accountingOperations(action,id){
   const [products,suppliers]=await Promise.all([api('/api/catalog'),api('/api/suppliers?picker=1')]);state.productPick=products.items;
   const points=state.points.map(p=>[p.id,p.name+' · '+(p.kind==='vitrina'?T('Vitrina','Витрина'):T('Sklad','Склад'))]);
   const staff=director?(await api('/api/staff')).filter(r=>r.role==='employee'):[];
-  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(p=>[p.id,p.name]))+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+select('first_point',T('Kirim manzili','Место прихода'),points)+(director?`<button type="button" class="secondary" data-receipt-point-archive>${T('Tanlangan manzilni o‘chirish','Удалить выбранное место')}</button>`:'')+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+field('paid_cash',T('Naqd to‘landi','Оплачено наличными'),'number','0',false)+field('paid_transfer',T('Bank o‘tkazmasi bilan to‘landi','Оплачено банковским переводом'),'number','0',false)+field('paid_card',T('Karta bilan to‘landi','Оплачено картой'),'number','0',false)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+accountingFields()+`<p class="help">${T('To‘lovlarni usuli bo‘yicha kiriting. To‘lanmagan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Укажите оплату по способам. Неоплаченный остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
+  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',`<label>${T('Mahsulotni qidirish','Поиск товара')}<input id="picker-product" type="search"></label>`+select('product',T('Mahsulot','Товар'),products.items.map(p=>[p.id,p.name]))+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+select('first_point',T('Kirim manzili','Место прихода'),points)+(director?`<button type="button" class="secondary" data-receipt-point-archive>${T('Tanlangan manzilni o‘chirish','Удалить выбранное место')}</button>`:'')+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+select('payment_method',T('To‘lov usuli','Способ оплаты'),[['cash',T('Naqd','Наличные')],['transfer',T('Bank o‘tkazmasi','Банковский перевод')]])+field('paid_amount',T('To‘langan summa','Оплаченная сумма'),'number','0',false)+(director?select('manager',T('Menejer puli (bo‘sh — direktor puli)','Деньги менеджера (пусто — директора)'),staff.map(r=>[r.id,r.name]),'',false):'')+accountingFields()+`<p class="help">${T('To‘lovlarni usuli bo‘yicha kiriting. To‘lanmagan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Укажите оплату по способам. Неоплаченный остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
  }
  if(action==='supplier-report'){
   const data=await api('/api/suppliers');
