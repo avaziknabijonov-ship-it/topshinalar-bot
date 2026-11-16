@@ -21,12 +21,12 @@ async function test(){
  vm.runInContext(app.slice(app.indexOf('const field='),app.indexOf('const clientField=')),context);
  vm.runInContext(app.slice(app.indexOf('async function checkout('),app.indexOf('function detail(')),context);
  vm.runInContext(fs.readFileSync('web/accounting.js','utf8'),context);
- const payload=context.accountingPayload('supplier_income',{product:'7',supplier:'3',cost:'10.25',first_point:'1',first_qty:'5',second_point:'2',second_qty:'3',currency:'USD'});
+ const payload=context.accountingPayload('supplier_income',{payment_method:'cash',paid_amount:'0',product:'7',supplier:'3',cost:'10.25',first_point:'1',first_qty:'5',second_point:'2',second_qty:'3',currency:'USD'});
  assert.deepEqual(JSON.parse(JSON.stringify(payload.allocations)),[{point:1,qty:5},{point:2,qty:3}]);
  assert.equal(payload.first_qty,undefined);assert.equal(payload.cost,'10.25');
- for(const qty of ['1.5','-1','NaN'])assert.throws(()=>context.accountingPayload('supplier_income',{first_point:'1',first_qty:qty,second_qty:'0'}));
- assert.throws(()=>context.accountingPayload('supplier_income',{first_point:'1',first_qty:'0',second_qty:'0'}));
- const one=context.accountingPayload('supplier_income',{first_point:'2',first_qty:'3',second_point:'',second_qty:'0'});
+ for(const qty of ['1.5','-1','NaN'])assert.throws(()=>context.accountingPayload('supplier_income',{payment_method:'cash',paid_amount:'0',first_point:'1',first_qty:qty,second_qty:'0'}));
+ assert.throws(()=>context.accountingPayload('supplier_income',{payment_method:'cash',paid_amount:'0',first_point:'1',first_qty:'0',second_qty:'0'}));
+ const one=context.accountingPayload('supplier_income',{payment_method:'cash',paid_amount:'0',first_point:'2',first_qty:'3',second_point:'',second_qty:'0'});
  assert.equal(one.allocations.length,1);assert.equal(one.allocations[0].point,2);
  await context.checkout();
  assert.equal(captured[1],'sell');assert.match(captured[2],/name="item_point_0"/);assert.match(captured[2],/name="item_point_1"/);
