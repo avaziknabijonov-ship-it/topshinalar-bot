@@ -498,6 +498,7 @@ class MiniHandler(BaseHTTPRequestHandler):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
     token=os.environ.get('BOT_TOKEN','')
     if not re.fullmatch(r'\d+:[A-Za-z0-9_-]+',token):raise SystemExit('BOT_TOKEN is required')
     path=os.path.abspath(os.environ.get('DB_PATH','data/topshinalar.sqlite3'))

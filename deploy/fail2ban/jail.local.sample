@@ -1,0 +1,12 @@
+# Append to /etc/fail2ban/jail.local, then: sudo systemctl restart fail2ban
+# Works on the systemd journal; no log files are needed.
+[topshinalar-miniapp]
+enabled  = true
+backend  = systemd
+journalmatch = _SYSTEMD_UNIT=topshinalar-miniapp.service
+filter   = topshinalar-miniapp
+port     = http,https
+# 30 refused requests in 5 minutes from one address -> 1 hour ban. Office NAT: raise maxretry, add its IP to ignoreip.
+maxretry = 30
+findtime = 300
+bantime  = 3600

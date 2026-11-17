@@ -71,3 +71,15 @@ Bot xatolik bilan to‘xtasa 10 soniyadan keyin qayta ishga tushadi; VPS qayta y
 - Kelishilgan vaqtda VPSni qayta yoqib xizmat va timer boshlanishini tekshirish.
 
 Jarima avtomatik hisoblanmaydi; direktor qo‘lda kiritadi. Avtomatik qoidalar buyurtmachi ularni belgilagach qo‘shiladi.
+
+## 5. Xavfsizlik ro‘yxati (server administratori uchun)
+
+Quyidagilar kod emas, serverning o‘z sozlamasi; har birini bir marta tekshiring:
+
+- `/etc/topshinalar.env` — egasi `root`, ruxsati `600` (`sudo chmod 600 /etc/topshinalar.env`). Bot tokenini hech qachon chatga, gitga yoki buyruq qatoriga yozmang. Token oshkor bo‘lsa, BotFather orqali darhol almashtiring.
+- Xavfsizlik devori: faqat 22 (SSH), 80, 443 ochiq. `sudo ufw default deny incoming && sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable`. 8080 portni tashqariga ochmang.
+- SSH: faqat kalit bilan kirish (`PasswordAuthentication no`, `PermitRootLogin no`), `unattended-upgrades` yoqilgan.
+- Brute-force: `deploy/fail2ban/topshinalar-miniapp.conf` ni `/etc/fail2ban/filter.d/` ga, `jail.local.sample` mazmunini `/etc/fail2ban/jail.local` ga qo‘shing (`sudo apt-get install fail2ban`).
+- Zaxira: kunlik nusxa serverning o‘zida turadi, shuning uchun uni tashqariga (boshqa server yoki shifrlangan saqlash) ko‘chiring. Disk to‘lmasligi uchun `topshinalar-backup.service` dagi `ExecStart` oxiriga `--keep 60` qo‘shish mumkin (eng yangi 60 nusxa qoladi; boshqa fayllarga tegilmaydi). Standart holatda hech narsa o‘chirilmaydi.
+- Sog‘liq: `curl -s http://127.0.0.1:8080/healthz` → `{"ok":true}`.
+- Yangilashdan oldin doim zaxira oling va avval `nginx -t`, `systemd-analyze verify` bilan tekshiring.
