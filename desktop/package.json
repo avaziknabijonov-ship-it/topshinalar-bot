@@ -1,0 +1,38 @@
+{
+  "name": "topshinalar-desktop",
+  "productName": "TOPSHINALAR",
+  "version": "1.0.0",
+  "description": "TOPSHINALAR Windows ilovasi: Mini App bilan bir xil server va baza",
+  "main": "main.js",
+  "private": true,
+  "author": "TOPSHINALAR",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "prebuild": "node scripts/write-default-config.js",
+    "build": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "uz.topshinalar.desktop",
+    "productName": "TOPSHINALAR",
+    "copyright": "TOPSHINALAR",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "config.js", "pages/**/*", "build/icon.ico", "package.json"],
+    "extraResources": [{ "from": "build/config.default.json", "to": "config.default.json" }],
+    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.ico", "forceCodeSigning": false },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TOPSHINALAR",
+      "artifactName": "TOPSHINALAR-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

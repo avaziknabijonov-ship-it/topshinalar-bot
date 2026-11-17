@@ -380,10 +380,13 @@ class MiniHandler(BaseHTTPRequestHandler):
                 self.send(200,{'ok':True})
             except sqlite3.Error:self.send(503,{'ok':False})
             return
+        if path.startswith('/desktop-auth/'):
+            from desktop_auth import handle_http as desktop_http
+            desktop_http(self,path,write);return
         if not write and path=='/ui-text.js':
             from ui_text import browser_script
             self.send(200,browser_script().encode(),'text/javascript; charset=utf-8');return
-        static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
+        static={'/workspace.css':('web/workspace.css','text/css; charset=utf-8'),'/workspace-shell.js':('web/workspace-shell.js','text/javascript; charset=utf-8'),'/employee-debt.js':('web/employee-debt.js','text/javascript; charset=utf-8'),'/director-analytics.js':('web/director-analytics.js','text/javascript; charset=utf-8'),'/employee-sales.js':('web/employee-sales.js','text/javascript; charset=utf-8'),'/employee-sales.css':('web/employee-sales.css','text/css; charset=utf-8'),'/director-business.js':('web/director-business.js','text/javascript; charset=utf-8'),'/director-overview.js':('web/director-overview.js','text/javascript; charset=utf-8'),'/director-import.js':('web/director-import.js','text/javascript; charset=utf-8'),'/desktop.js':('web/desktop.js','text/javascript; charset=utf-8'),'/desktop.css':('web/desktop.css','text/css; charset=utf-8'),'/director':('web/director.html','text/html; charset=utf-8'),'/director.js':('web/director.js','text/javascript; charset=utf-8'),'/director.css':('web/director.css','text/css; charset=utf-8'),'/mobile.js':('web/mobile.js','text/javascript; charset=utf-8'),'/company':('web/company.html','text/html; charset=utf-8'),'/company.css':('web/company.css','text/css; charset=utf-8'),'/document-import.js':('web/document-import.js','text/javascript; charset=utf-8'),'/':('web/index.html','text/html; charset=utf-8'),'/accounting.js':('web/accounting.js','text/javascript; charset=utf-8'),'/app.js':('web/app.js','text/javascript; charset=utf-8'),'/app.css':('web/app.css','text/css; charset=utf-8'),'/logo.png':('assets/topshinalar-logo.png','image/png')}
         if not write and path in static:
             file,kind=static[path];self.send(200,(ROOT/file).read_bytes(),kind);return
         from ui_text import language,text
@@ -397,8 +400,10 @@ class MiniHandler(BaseHTTPRequestHandler):
                 signed=authenticate(self.headers.get('X-Telegram-Init-Data',''),self.server.bot_token)
             else:
                 from director_auth import identity
+                from desktop_auth import identity as desktop_identity
                 if write and (not self.server.origin or origin!=self.server.origin):raise AuthError()
-                cookie_user,_=identity(store,self.headers.get('Cookie'),self.headers.get('X-CSRF-Token'),write)
+                try:cookie_user,_=desktop_identity(store,self.headers.get('Cookie'),self.headers.get('X-CSRF-Token'),write)
+                except PermissionError:cookie_user,_=identity(store,self.headers.get('Cookie'),self.headers.get('X-CSRF-Token'),write)
                 signed={'id':cookie_user['id']}
             try:user=store.user(signed['id'])
             except (ValueError,PermissionError):raise AuthError() from None

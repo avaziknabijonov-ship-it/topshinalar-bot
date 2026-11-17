@@ -189,6 +189,8 @@ class Store(Accounting):
         migrate_catalog(self)
         from director_auth import migrate as migrate_director
         migrate_director(self)
+        from desktop_auth import migrate as migrate_desktop
+        migrate_desktop(self)
         from debt_notifications import migrate as migrate_debt_notifications
         migrate_debt_notifications(self)
         if self.db.execute('PRAGMA journal_mode').fetchone()[0]!='wal':
