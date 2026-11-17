@@ -205,6 +205,13 @@ class Bot(Usability):
             except (ValueError,PermissionError):
                 self.queue(uid,'Kod eskirgan yoki urinishlar chegarasi oshgan / Код истёк или превышен лимит попыток');return
             self.queue(uid,'Kirish tasdiqlandi. Brauzerga qayting. / Вход подтверждён. Вернитесь в браузер.');return
+        if text.startswith('/desktop_login '):
+            from desktop_auth import approve
+            self.s.user(uid)
+            try:approve(self.s,uid,text.split(' ',1)[1])
+            except (ValueError,PermissionError):
+                self.queue(uid,'Kod eskirgan yoki urinishlar chegarasi oshgan / Код истёк или превышен лимит попыток');return
+            self.queue(uid,'Kirish tasdiqlandi. Windows ilovasiga qayting. Kodni o‘zingiz ochmagan bo‘lsangiz, hech kimga yubormang. / Вход подтверждён. Вернитесь в приложение Windows. Не отправляйте код, который открыли не вы.');return
         if text in {'📊 Direktor kabineti','📊 Кабинет директора'} or text.split(' ')[0]=='/cabinet':
             self.s.director(uid);url=os.environ.get('PUBLIC_APP_URL','').rstrip('/')
             caption=self.words(uid,'📊 Direktor kabineti','📊 Кабинет директора')
