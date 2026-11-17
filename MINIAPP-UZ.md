@@ -18,7 +18,7 @@ Avval `deploy/VPS-UZ.md` bo‘yicha bot, direktor/xodim IDlari, doimiy baza, zax
 2. `web/`, `miniapp.py` va qolgan yangilangan kodni `/opt/topshinalar`ga joylashtiring. Bot va Mini App aynan bitta bazani ochishi kerak.
 3. `/etc/topshinalar.env`ga `PUBLIC_APP_URL=https://SIZNING-DOMEN` qo‘shing. URL faqat origin bo‘lsin, oxirida sahifa yo‘li bo‘lmasin. Tokenni shu maxfiy faylda saqlang.
 4. `deploy/topshinalar-miniapp.service`ni `/etc/systemd/system/`ga o‘rnating. `systemctl daemon-reload`, keyin `systemctl enable --now topshinalar-miniapp` buyrug‘ini bajaring. Xizmat 127.0.0.1:8080da ishlaydi.
-5. Nginx o‘rnating; `deploy/miniapp.nginx.conf`dagi namunaviy domenni o‘zgartiring, konfiguratsiyani yoqing va `nginx -t` bilan tekshiring. Certbot bilan haqiqiy domenga HTTPS sertifikati oling. Faqat 80/443 portlar ochiladi; 8080ni tashqariga ochmang.
+5. Nginx o‘rnating; `deploy/topshinalar-proxy.inc` faylini `/etc/nginx/topshinalar-proxy.inc` sifatida nusxalang (ilova mijoz IP manzilini faqat shu proksidan oladi). `deploy/miniapp.nginx.conf`dagi namunaviy domenni o‘zgartiring (u so‘rovlar chastotasini cheklaydi va server versiyasini yashiradi), konfiguratsiyani yoqing va `nginx -t` bilan tekshiring. Certbot bilan haqiqiy domenga HTTPS sertifikati oling. Faqat 80/443 portlar ochiladi; 8080ni tashqariga ochmang.
 6. Chat-bot xizmatini qayta ishga tushiring. `/start` yoki `/app`dan Mini App tugmasi chiqadi. Ixtiyoriy: BotFather Menu Button URL manziliga shu HTTPS URLni belgilang.
 7. Har bir ruxsatli xodim o‘z Telegram hisobida ochib tekshiradi. Ruxsatsiz odam ilovadagi ma’lumotni ko‘ra olmaydi. Ilova ochiq holda bir soatdan oshsa, qayta ochish kerak bo‘lishi mumkin.
 
@@ -29,3 +29,7 @@ Docker varianti: `.env`ni to‘ldirib `docker compose up -d --build` bajaring. `
 VPSda xodim va direktor bilan: kirish ruxsati, rasm, razmer qidirish, sotuv/qoldiq, qisman to‘lov/qarz, КП PDF, Excel, eslatma va tilni tekshiring. Telegramdagi haqiqiy telefonlarda tugmalar va klaviatura qulayligini tekshiring. Bot/VPS qayta ishga tushganda ma’lumot saqlanishini va xizmatlar avtomatik ko‘tarilishini tekshiring.
 
 Avtomatik sinovlar: `python -m unittest discover -s tests -v`. Batafsil natijalar `TEST-HOLATI.md`da. Bu paketda token, haqiqiy savdo bazasi va brauzer sinovi uchun kirish yordamchilari yo‘q.
+
+## Monitoring
+
+`GET /healthz` — kirishsiz, faqat `{"ok":true}` (baza ochilsa) yoki 503. Rad etilgan so‘rovlar `journalctl -u topshinalar-miniapp` da `request denied: ... ip=... path=...` ko‘rinishida yoziladi (token va sarlavhalarsiz); fail2ban shu qatordan foydalanishi mumkin.

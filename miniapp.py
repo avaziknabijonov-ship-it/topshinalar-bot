@@ -345,11 +345,22 @@ class MiniHandler(BaseHTTPRequestHandler):
         self.send_response(status);self.send_header('Content-Type',kind)
         self.send_header('Cache-Control','no-store');self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','no-referrer')
-        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; object-src 'none'; base-uri 'none'")
+        self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self' https://telegram.org; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org; object-src 'none'; base-uri 'none'; form-action 'self'")
+        self.send_header('Permissions-Policy','geolocation=(), microphone=(), payment=(), usb=()')
+        self.send_header('Cross-Origin-Resource-Policy','same-origin')
         for value in getattr(self,'extra_cookies',[]):self.send_header('Set-Cookie',value)
         self.extra_cookies=[]
         if filename:self.send_header('Content-Disposition','attachment; filename="'+filename+'"')
         self.send_header('Content-Length',str(len(payload)));self.end_headers();self.wfile.write(payload)
+
+    def client_ip(self):
+        """Behind nginx every peer is loopback; only then trust X-Real-IP (set by nginx, never by the client)."""
+        peer=self.client_address[0];forwarded=(self.headers.get('X-Real-IP') or '').strip()
+        return forwarded[:64] if peer in ('127.0.0.1','::1') and re.fullmatch(r'[0-9A-Fa-f:.]{3,45}',forwarded) else peer
+
+    def deny(self,reason):
+        # One greppable line per refused request (no headers, tokens or bodies) so fail2ban/journalctl can spot abuse.
+        logging.warning('request denied: %s ip=%s method=%s path=%s',reason,self.client_ip(),self.command,urlsplit(self.path).path[:100])
 
     def do_GET(self):self.handle_request(False)
     def do_POST(self):self.handle_request(True)
@@ -359,6 +370,12 @@ class MiniHandler(BaseHTTPRequestHandler):
         if path.startswith(('/director-auth/','/director-api/')):
             from director import handle_http
             handle_http(self,path,write);return
+        if not write and path=='/healthz':
+            try:
+                with closing(sqlite3.connect(self.server.db_path,timeout=5)) as probe:probe.execute('SELECT 1').fetchone()
+                self.send(200,{'ok':True})
+            except sqlite3.Error:self.send(503,{'ok':False})
+            return
         if not write and path=='/ui-text.js':
             from ui_text import browser_script
             self.send(200,browser_script().encode(),'text/javascript; charset=utf-8');return
@@ -467,8 +484,9 @@ class MiniHandler(BaseHTTPRequestHandler):
                 self.send(200,service.photo(uid,int(parts[2]),int(parts[3]) if len(parts)>3 else 0),'image/jpeg');return
             else:self.send(404,{'error':text('not_found',language(self.headers.get('X-UI-Language'),user['lang']))});return
             self.send(200,result)
-        except (AuthError,PermissionError):self.send(403,{'error':text('permission_error',language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz'))})
+        except (AuthError,PermissionError):self.deny('forbidden');self.send(403,{'error':text('permission_error',language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz'))})
         except (ValueError,TypeError,KeyError,sqlite3.IntegrityError) as exc:
+            if user is None:self.deny('bad request before sign-in')
             lang=language(self.headers.get('X-UI-Language'),user['lang'] if user else 'uz');message=ERRORS.get(str(exc),('Ma’lumotni tekshiring','Проверьте данные'))[lang=='ru']
             if isinstance(exc,ExcelError):message=exc.localized(lang)
             self.send(400,{'error':message})
