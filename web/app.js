@@ -10,7 +10,8 @@ const money=value=>{if(value==null||(typeof value==='number'&&!Number.isSafeInte
 const icon=name=>{const paths={catalog:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',cart:'<path d="M3 3h2l3 12h11l3-9H6M9 20h.01M19 20h.01"/>',clients:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0112 0v3M16 5a3 3 0 010 6M18 15a4 4 0 013 4v2"/>',debts:'<rect x="2" y="5" width="20" height="15" rx="3"/><path d="M2 10h20M6 15h4"/>',dashboard:'<path d="M4 20V10M12 20V4M20 20v-7M2 21h21"/>',plus:'<path d="M12 5v14M5 12h14"/>',check:'<path d="M4 12l5 5L20 6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>',file:'<path d="M14 2H5v20h14V7zM14 2v6h5M8 13h8M8 17h6"/>',tyre:'<ellipse cx="12" cy="12" rx="8" ry="10"/><ellipse cx="12" cy="12" rx="4" ry="7"/><path d="M5 6l3 2M4 12h4M5 18l3-2M19 6l-3 2M20 12h-4M19 18l-3-2"/>',box:'<path d="M3 6l9-4 9 4v13l-9 3-9-3zM3 6l9 4 9-4M12 10v12"/>',phone:'<path d="M5 3h4l2 5-3 2a14 14 0 006 6l2-3 5 2v4a2 2 0 01-2 2C10 21 3 14 3 5a2 2 0 012-2z"/>'};return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.file}</svg>`};
 const key=()=>crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 async function api(path,options={}){
- const headers={'X-Telegram-Init-Data':tg?.initData||'','X-UI-Language':state.me?.lang||'uz',...options.headers};
+ const desktop=typeof DesktopSession!=='undefined'?DesktopSession:null;
+ const headers={'X-Telegram-Init-Data':tg?.initData||'','X-UI-Language':state.me?.lang||'uz',...(desktop?{'X-CSRF-Token':desktop.csrf}:{}),...options.headers};
  const request={...options,headers,cache:'no-store'};
  if(options.body){headers['Content-Type']='application/json';request.body=JSON.stringify({...options.body,...(path==='/api/action'?{money_version:2}:{})})}
  const method=(options.method||'GET').toUpperCase();
@@ -23,6 +24,7 @@ async function api(path,options={}){
    throw Error(connectionError());
   }
   if(!response.ok){
+   if(desktop&&response.status===403&&!await desktop.stillSignedIn()){desktop.relogin();throw Error(T('Sessiya tugadi. Qayta kirish kerak.','Сессия истекла. Нужно войти снова.'))}
    if(retryable&&[502,503,504].includes(response.status)&&attempt<2){await new Promise(resolve=>setTimeout(resolve,1000*(attempt+1)));continue}
    const data=await response.json().catch(()=>({}));
    throw Error(data.error?`${WorkspaceText.error(data.error,state.me?.lang||'uz')} (HTTP ${response.status})`:connectionError(response.status));
@@ -183,7 +185,7 @@ document.addEventListener('input',event=>{const el=event.target;if(el.dataset.qt
 document.addEventListener('click',event=>{const button=event.target.closest('[data-client-pick]');if(!button)return;const selectEl=$('modal').querySelector('[name=client]');if(selectEl){selectEl.value=button.dataset.clientPick;$('client-search-results').textContent=T('Mijoz tanlandi','Клиент выбран');toast(T('Mijoz tanlandi','Клиент выбран'))}});
 $('language').addEventListener('click',async()=>{if(!state.me)return;try{const lang=state.me.lang==='uz'?'ru':'uz';await api('/api/action',{method:'POST',headers:{'Idempotency-Key':key()},body:{cmd:'language',data:{lang}}});state.me.lang=lang;closeModal();await render()}catch(error){toast(WorkspaceText.error(error,state.me?.lang||'uz'))}});
 tg?.BackButton?.onClick(closeModal);
-async function init(){tg?.ready();tg?.expand();tg?.setHeaderColor?.('#ffffff');tg?.setBackgroundColor?.('#f3f5f8');if(!tg?.initData){$('app').innerHTML=empty('Telegram orqali oching','Botdagi «Ilovani ochish» tugmasini bosing.<br>Откройте приложение кнопкой в Telegram-боте.');return}try{state.me=await api('/api/me');state.tab=can('catalog')?'catalog':'dashboard';if(state.me.role!=='driver')state.points=await api('/api/points');await render()}catch(error){$('app').innerHTML=empty(T('Kirish imkoni yo‘q','Нет доступа'),E(WorkspaceText.error(error,state.me?.lang||'uz')))+`<p class="help">${T('Botni qayta oching yoki direktorga murojaat qiling.','Откройте бот заново или обратитесь к директору.')}</p>`}}
+async function init(){tg?.ready();tg?.expand();tg?.setHeaderColor?.('#ffffff');tg?.setBackgroundColor?.('#f3f5f8');if(!tg?.initData&&typeof DesktopSession!=='undefined')await DesktopSession.require($('app'));else if(!tg?.initData){$('app').innerHTML=empty('Telegram orqali oching','Botdagi «Ilovani ochish» tugmasini bosing.<br>Откройте приложение кнопкой в Telegram-боте.');return}try{state.me=await api('/api/me');state.tab=can('catalog')?'catalog':'dashboard';if(state.me.role!=='driver')state.points=await api('/api/points');await render()}catch(error){$('app').innerHTML=empty(T('Kirish imkoni yo‘q','Нет доступа'),E(WorkspaceText.error(error,state.me?.lang||'uz')))+`<p class="help">${T('Botni qayta oching yoki direktorga murojaat qiling.','Откройте бот заново или обратитесь к директору.')}</p>`}}
 init();
 
 document.addEventListener('change',event=>{
