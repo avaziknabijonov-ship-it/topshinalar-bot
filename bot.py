@@ -674,6 +674,8 @@ class Bot(Usability):
                 self.queue(row['actor'],tr('reminder',row['lang'],id=row['id'],client=row['client_name'],due=row['due'],note=row['note']))
                 self.s.db.execute('UPDATE tasks SET notified=1 WHERE id=?',(row['id'],))
             self.schedule_business()
+        from topic_notices import poll
+        poll(self.s)
 
     def drain(self,api):
         # Never send a message about a business write that can still roll back.
@@ -687,6 +689,16 @@ class Bot(Usability):
                 if not may_deliver(self.s,row['id'],row['chat']):
                     with self.s.db:
                         self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],));finish(self.s,row['id'],'skipped')
+                    continue
+                payload=json.loads(row['payload'])
+                if 'route' in payload:
+                    # Category notices for the director group: guard, then send without the marker.
+                    from topic_notices import allowed
+                    if not allowed(self.s,api,row['chat'],payload):
+                        with self.s.db:self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],))
+                        continue
+                    payload.pop('route');api.call('sendMessage',{'chat_id':row['chat'],**payload})
+                    with self.s.db:self.s.db.execute('UPDATE outbox SET sent=1 WHERE id=?',(row['id'],))
                     continue
                 # Access revocation also prevents queued private information delivery.
                 try:self.s.user(row['chat'])
