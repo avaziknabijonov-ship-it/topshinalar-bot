@@ -419,6 +419,9 @@ class Store(Accounting):
         for line,raw in zip(lines,items):
             line['point']=quantity(raw.get('point',point))
             line['location_kind']=self.one('points',line['point'])['kind']
+            # Optional: sell from one supplier's batches. None keeps the automatic oldest-first choice.
+            supplier=raw.get('supplier')
+            line['supplier']=None if supplier in (None,'') else self.supplier_row(quantity(supplier))['id']
         payment=normalize_payment(payment)
         paid=money(paid)
         if paid>total:
@@ -430,8 +433,8 @@ class Store(Accounting):
             cur=self.db.execute('UPDATE stock SET qty=qty-? WHERE product=? AND point=? AND qty>=?',(item['qty'],item['product'],item_point,item['qty']))
             if not cur.rowcount:
                 raise ValueError('stock')
-            item_ref=self.add('sale_items',sale=ref,**{k:v for k,v in item.items() if k!='total'})
-            self._consume_lots(item['product'],item_point,item['qty'],item_ref)
+            item_ref=self.add('sale_items',sale=ref,**{k:v for k,v in item.items() if k not in ('total','supplier')})
+            self._consume_lots(item['product'],item_point,item['qty'],item_ref,item.get('supplier'))
             self.add('movements',product=item['product'],point=item_point,qty=-item['qty'],kind='sale',actor=uid,note=f'#{ref}',created=now())
         if paid:
             self.add('payments',sale=ref,amount=paid,method=payment,actor=uid,created=now())

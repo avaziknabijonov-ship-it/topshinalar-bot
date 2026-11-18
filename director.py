@@ -72,7 +72,7 @@ def read(service,uid,kind,q):
     if kind=='sales':
         rows=s.rows('''SELECT s.*,c.name client_name,u.name manager_name,(s.total-s.paid) debt FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor WHERE substr(s.created,1,10) BETWEEN ? AND ? ORDER BY s.id DESC''',(start,end))
         for row in rows:
-            row['items']=[{**item,'currency':row['currency']} for item in s.rows('SELECT * FROM sale_items WHERE sale=?',(row['id'],))];row['payments']=s.rows('SELECT * FROM payments WHERE sale=? ORDER BY id',(row['id'],))
+            row['items']=[{**item,'currency':row['currency']} for item in s.rows('SELECT i.*,(SELECT group_concat(DISTINCT v.name) FROM sale_allocations a JOIN inventory_lots l ON l.id=a.lot JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier WHERE a.item=i.id) suppliers FROM sale_items i WHERE i.sale=?',(row['id'],))];row['payments']=s.rows('SELECT * FROM payments WHERE sale=? ORDER BY id',(row['id'],))
         if q.get('id'):rows=[r for r in rows if r['id']==quantity(q['id'])]
         for key,column in [('client','client'),('manager','actor')]:
             if q.get(key):rows=[r for r in rows if str(r[column])==q[key]]

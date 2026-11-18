@@ -193,9 +193,13 @@ class Accounting:
         if qty:
             return self.add('inventory_lots', receipt=None, product=product, point=point, qty=qty, created=now())
 
-    def _consume_lots(self, product, point, qty, item=None):
+    def _consume_lots(self, product, point, qty, item=None, supplier=None):
         remaining = qty
-        lots = self.rows('SELECT * FROM inventory_lots WHERE product=? AND point=? AND qty>0 ORDER BY receipt IS NOT NULL,receipt,id', (product, point))
+        if supplier is None:
+            lots = self.rows('SELECT * FROM inventory_lots WHERE product=? AND point=? AND qty>0 ORDER BY receipt IS NOT NULL,receipt,id', (product, point))
+        else:
+            # The seller chose a supplier: sell only that supplier's batches (oldest first).
+            lots = self.rows('SELECT l.* FROM inventory_lots l JOIN receipts r ON r.id=l.receipt WHERE l.product=? AND l.point=? AND l.qty>0 AND r.supplier=? ORDER BY l.receipt,l.id', (product, point, supplier))
         for lot in lots:
             take = min(remaining, lot['qty'])
             self.db.execute('UPDATE inventory_lots SET qty=qty-? WHERE id=?', (take, lot['id']))
@@ -204,7 +208,7 @@ class Accounting:
             remaining -= take
             if not remaining:
                 return
-        raise ValueError('stock_provenance')
+        raise ValueError('supplier_stock' if supplier is not None else 'stock_provenance')
 
     @atomic
     def receive(self, uid, product, supplier, cost, allocations, note='', date=None, currency='USD', payments=None, manager=None):

@@ -39,7 +39,7 @@ def history(s,uid,q,employee=None):
         rows=s.rows("SELECT s.id,s.client,c.name client_name,s.created,s.total,s.paid,CASE WHEN s.status='active' THEN s.total-s.paid ELSE 0 END debt,s.currency,s.status,s.debt_due,s.cancelled_at,s.cancel_reason"+join+' ORDER BY s.created DESC,s.id DESC LIMIT ? OFFSET ?',(*params,size,page*size))
         for row in rows:
             for field in ('total','paid','debt'):row[field+'_cents']=str(row[field])
-            row['items']=s.rows('SELECT i.name,i.qty,i.price,i.discount,t.name point_name FROM sale_items i JOIN points t ON t.id=COALESCE(i.point,?) WHERE i.sale=?',(s.one('sales',row['id'])['point'],row['id']))
+            row['items']=s.rows('SELECT i.name,i.qty,i.price,i.discount,t.name point_name,(SELECT group_concat(DISTINCT v.name) FROM sale_allocations a JOIN inventory_lots l ON l.id=a.lot JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier WHERE a.item=i.id) suppliers FROM sale_items i JOIN points t ON t.id=COALESCE(i.point,?) WHERE i.sale=?',(s.one('sales',row['id'])['point'],row['id']))
             row['payments']=s.rows('SELECT p.amount,p.method,p.currency,p.created,u.name collector_name FROM payments p JOIN users u ON u.id=p.actor WHERE p.sale=? ORDER BY p.created,p.id',(row['id'],))
             row['payment_history_complete']=sum(p['amount'] for p in row['payments'] if p['currency']==row['currency'])==row['paid']
             row['refunds']=s.rows('SELECT amount,currency,created,reason FROM refunds WHERE sale=? ORDER BY id',(row['id'],))
