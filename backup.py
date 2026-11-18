@@ -1,6 +1,7 @@
 """Create a verified SQLite snapshot without stopping the running bot."""
 import argparse
 import os
+import re
 import sqlite3
 import tempfile
 from contextlib import closing
@@ -69,18 +70,38 @@ def create_backup(source, directory, verify=False):
     return destination
 
 
+BACKUP_NAME=re.compile(r'topshinalar-\d{8}T\d{6}Z-[0-9a-f]{8}\.sqlite3')
+
+
+def prune_backups(directory,keep):
+    """Delete the oldest backups made by this tool, keeping the newest `keep` (>=1). Other files are never touched."""
+    if type(keep) is not int or keep<1:raise ValueError('keep must be at least 1')
+    directory=Path(directory)
+    files=sorted((f for f in directory.iterdir() if f.is_file() and not f.is_symlink() and BACKUP_NAME.fullmatch(f.name)),key=lambda f:f.name)
+    removed=files[:-keep] if len(files)>keep else []
+    for file in removed:file.unlink()
+    return [f.name for f in removed]
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source',default=os.environ.get('DB_PATH','data/topshinalar.sqlite3'))
     parser.add_argument('--directory',default=None)
     parser.add_argument('--verify-restore',action='store_true',help='Restore into an isolated temporary database and compare all tables')
+    parser.add_argument('--keep',type=int,default=None,help='After a successful backup, keep only the newest N backups (default: keep all)')
     args=parser.parse_args()
+    if args.keep is not None and args.keep<1:parser.error('--keep must be at least 1')
     directory=args.directory or str(Path(args.source).resolve().parent/'backups')
     try:
         result=create_backup(args.source,directory,verify=args.verify_restore)
     except (OSError,ValueError,sqlite3.Error):
         parser.exit(1,'Backup failed; source and earlier backups were not replaced.\n')
     print(result)
+    if args.keep:
+        try:
+            for name in prune_backups(directory,args.keep):print('removed old backup',name)
+        except OSError:
+            parser.exit(1,'Backup created, but old backups could not be removed.\n')
 
 
 if __name__=='__main__':main()
