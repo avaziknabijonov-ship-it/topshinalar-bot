@@ -28,7 +28,7 @@ jobs:
         env:
           TOPSHINALAR_SERVER_URL: ${{ inputs.server_url || vars.TOPSHINALAR_SERVER_URL }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: TOPSHINALAR-Windows-installer
           path: desktop/dist/TOPSHINALAR-Setup-*.exe
