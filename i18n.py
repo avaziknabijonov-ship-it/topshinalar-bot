@@ -192,6 +192,7 @@ ERRORS.update({
 'allocations':('Bir yoki ikki turli manzil va musbat butun miqdor kiriting.','Укажите одно или два разных места и целое положительное количество.'),
 'supplier_lot':('Yetkazib beruvchisi ma’lum, qoldig‘i bor partiyani tanlang.','Выберите партию с поставщиком и доступным остатком.'),
 'stock_provenance':('Partiyalar va qoldiq mos emas. Direktorga murojaat qiling.','Остатки партий не совпадают. Обратитесь к директору.'),
+'supplier_stock':('Tanlangan yetkazib beruvchida bu joyda mahsulot yetarli emas. Boshqa yetkazib beruvchini tanlang yoki miqdorni kamaytiring.','У выбранного поставщика на этой точке недостаточно товара. Выберите другого поставщика или уменьшите количество.'),
 'currency':('USD yoki UZS tanlang.','Выберите USD или UZS.'),
 'point_kind':('sklad yoki vitrina tanlang.','Выберите sklad или vitrina.'),
 'manager':('Mas’ul sifatida xodimni tanlang.','Выберите сотрудника в качестве ответственного.'),

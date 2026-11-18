@@ -33,9 +33,9 @@ function accountingPayload(cmd,data){
   data.payments=payments;
  }
  if(cmd==='sell'){
-  data.items=data.items.map((item,i)=>({...item,point:Number(data['item_point_'+i])}));
+  data.items=data.items.map((item,i)=>({...item,point:Number(data['item_point_'+i]),...(data['item_supplier_'+i]?{supplier:Number(data['item_supplier_'+i])}:{})}));
   data.point=data.items[0].point;
-  for(let i=0;i<data.items.length;i++)delete data['item_point_'+i];
+  for(let i=0;i<data.items.length;i++){delete data['item_point_'+i];delete data['item_supplier_'+i]}
  }
  return data;
 }

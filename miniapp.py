@@ -83,6 +83,9 @@ class MiniService:
     def catalog(self,uid,query='',point='',brand='',page=0):
         self.s.user(uid)
         photo_counts={r['product']:r['n'] for r in self.s.rows('SELECT product,COUNT(*) n FROM product_photos GROUP BY product')}
+        lot_suppliers={}
+        for r in self.s.rows("SELECT l.product,l.point,r.supplier id,COALESCE(v.name,'') name,SUM(l.qty) qty FROM inventory_lots l LEFT JOIN receipts r ON r.id=l.receipt LEFT JOIN suppliers v ON v.id=r.supplier WHERE l.qty>0 GROUP BY l.product,l.point,r.supplier ORDER BY name,r.supplier"):
+            lot_suppliers.setdefault((r['product'],r['point']),[]).append({'id':r['id'],'name':r['name'],'qty':r['qty']})
         groups={}
         for row in self.s.stock(uid):
             if not matches_product(query,row):continue
@@ -95,7 +98,7 @@ class MiniService:
                 groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(count),'photo_count':count,'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
             if row['stock_set']:groups[row['id']]['stock_pending']=False
             if row['point_id'] is not None:
-                groups[row['id']]['points'].append({'id':row['point_id'],'name':row['point'],'qty':row['qty'],'stock_pending':bool(row['catalog_sku'] and not row['stock_set'])})
+                groups[row['id']]['points'].append({'id':row['point_id'],'name':row['point'],'qty':row['qty'],'suppliers':lot_suppliers.get((row['id'],row['point_id']),[]),'stock_pending':bool(row['catalog_sku'] and not row['stock_set'])})
                 groups[row['id']]['qty']+=row['qty']
         items=list(groups.values());page=max(0,int(page))
         brands=sorted({p['brand'] or p['name'].split()[0] for p in self.s.rows('SELECT name,brand FROM products WHERE active=1')})
@@ -119,7 +122,7 @@ class MiniService:
         if kind=='sales':
             for row in rows:
                 row['debt']=row['total']-row['paid'] if row['status']=='active' else 0
-                row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
+                row['items']=self.s.rows('SELECT i.name,i.qty,i.price,COALESCE(i.point,s.point) point,t.name point_name,(SELECT group_concat(DISTINCT v.name) FROM sale_allocations a JOIN inventory_lots l ON l.id=a.lot JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier WHERE a.item=i.id) suppliers FROM sale_items i JOIN sales s ON s.id=i.sale JOIN points t ON t.id=COALESCE(i.point,s.point) WHERE i.sale=?',(row['id'],))
         return rows
 
     def write(self,uid,key,cmd,data):
@@ -244,6 +247,7 @@ class MiniService:
             if cmd=='sell':
                 for line,raw in zip(clean,items):
                     if 'point' in raw:line['point']=integer(raw['point'])
+                    if raw.get('supplier') not in (None,''):line['supplier']=integer(raw['supplier'])
             payload={'client':client,'items':clean,'payment':text(d.get('payment',''),required=cmd!='quote')}
             if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
             else:payload.update(fulfillment=text(d.get('fulfillment',''),required=False),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
