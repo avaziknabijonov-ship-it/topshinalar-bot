@@ -79,7 +79,7 @@ class ExcelTests(unittest.TestCase):
             with self.assertRaises(ExcelError):self.preview(d)
             self.assertEqual(self.s.rows('SELECT * FROM products'),[])
         with self.s.db:
-            self.s.product(10,'Same','10');self.s.product(10,'Same','20')
+            self.s.product(10,'Same','10');self.s.add('products',name='Same',price=2000)  # legacy duplicate that can predate the uniqueness check
         with self.assertRaises(ExcelError):self.preview({'file':xlsx([['Name','Price','Qty'],['Same',10,2]]),'point':1})
 
     def test_employee_denied_and_zero_is_explicit_known_stock(self):

@@ -269,13 +269,10 @@ class MiniService:
             if type(d.get('expected_paid')) is not int:raise ValueError('sale_changed')
             return self.s.cancel_sale(uid,integer(d.get('sale')),text(d.get('reason','')),d.get('settlement') is True,d['expected_paid'])
         if cmd=='income_product':
-            ref=self.s.product(uid,text(d.get('name','')),str(d.get('price','')),allow_income=True)
-            self.s.db.execute('UPDATE products SET brand=?,size=? WHERE id=?',(text(d.get('brand',''),False,150),text(d.get('size',''),False,150),ref))
-            return ref
+            return self.s.product(uid,text(d.get('name','')),str(d.get('price','')),allow_income=True,brand=text(d.get('brand',''),False,150),size=text(d.get('size',''),False,150))
         if cmd=='product':
             self.s.director(uid)
-            ref=self.s.product(uid,text(d.get('name','')),str(d.get('price','')))
-            self.s.db.execute('UPDATE products SET brand=?,size=? WHERE id=?',(text(d.get('brand',''),False,150),text(d.get('size',''),False,150),ref))
+            ref=self.s.product(uid,text(d.get('name','')),str(d.get('price','')),brand=text(d.get('brand',''),False,150),size=text(d.get('size',''),False,150))
             if d.get('point'):
                 self.s.opening_stock(uid,ref,integer(d['point']),d.get('qty','0'),'New product / Yangi mahsulot')
             elif str(d.get('qty','0')) not in {'','0'}:raise ValueError('no_points')

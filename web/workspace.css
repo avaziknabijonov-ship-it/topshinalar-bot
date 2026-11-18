@@ -283,3 +283,115 @@
 @media (prefers-reduced-motion: reduce) {
   .director-workspace *, .employee-workspace * { animation: none !important; transition: none !important; }
 }
+
+/* ===== Business-premium layer: one navy + gold system for employee and director screens ===== */
+:root {
+  --premium-navy: #0f2236;
+  --premium-navy-2: #1a3652;
+  --premium-gold: #c2a165;
+  --premium-gold-soft: #f6efe0;
+  --premium-radius: 18px;
+  --premium-ring: 0 0 0 4px #c2a16526;
+}
+.director-workspace, .employee-workspace { font-variant-numeric: tabular-nums; text-rendering: optimizeLegibility; }
+::selection { background: #c2a16540; }
+* { scrollbar-width: thin; scrollbar-color: #b7c2cf transparent; }
+
+/* Inputs: calm border, gold focus ring */
+.director-workspace input, .director-workspace select, .director-workspace textarea,
+.employee-workspace input, .employee-workspace select, .employee-workspace textarea,
+.sheet input, .sheet select, .sheet textarea { border-color: #d9e0e8; transition: border-color .15s, box-shadow .15s; }
+.director-workspace input:focus, .director-workspace select:focus, .director-workspace textarea:focus,
+.employee-workspace input:focus, .employee-workspace select:focus, .employee-workspace textarea:focus,
+.sheet input:focus, .sheet select:focus, .sheet textarea:focus { outline: none; border-color: var(--premium-gold); box-shadow: var(--premium-ring); }
+.sheet label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .2px; color: #3b5068; margin: 14px 0 6px; }
+.sheet label input, .sheet label select, .sheet label textarea { margin-top: 6px; font-weight: 400; }
+.sheet h2, .sheet h3 { letter-spacing: -.3px; color: var(--premium-navy); }
+
+/* Primary buttons: navy gradient with a gold hairline on hover */
+.employee-workspace .primary, .director-workspace .primary, .sheet .primary {
+  background: linear-gradient(135deg, var(--premium-navy-2), var(--premium-navy)); color: #fff; border: 1px solid var(--premium-navy);
+  box-shadow: 0 6px 18px #0f223622; font-weight: 650; letter-spacing: .2px;
+}
+.employee-workspace .primary:hover, .director-workspace .primary:hover, .sheet .primary:hover { border-color: var(--premium-gold); box-shadow: 0 8px 22px #0f223630; }
+.employee-workspace .primary:active, .director-workspace .primary:active, .sheet .primary:active { transform: translateY(1px); }
+.employee-workspace .primary:disabled, .sheet .primary:disabled { opacity: .55; box-shadow: none; cursor: not-allowed; }
+.sheet .secondary, .employee-workspace .secondary { border: 1px solid #d9e0e8; background: #fff; color: var(--premium-navy); }
+.sheet .secondary:hover, .employee-workspace .secondary:hover { border-color: var(--premium-gold); background: #fffdf8; }
+.sheet .danger, .employee-workspace .danger { color: #a3261f; border-color: #efc9c5; }
+
+/* Employee navigation: the same dark navy as the director sidebar, gold marker on the active item */
+.employee-workspace nav { background: linear-gradient(170deg, #182e45, #0e1d2d); border: 1px solid #243f5a; box-shadow: 0 14px 40px #0f223640; }
+.employee-workspace nav button { color: #b6c4d3; background: transparent; }
+.employee-workspace nav button:hover { background: #ffffff12; color: #fff; }
+.employee-workspace nav button.active { background: #ffffff1a; color: #fff; box-shadow: inset 0 -3px 0 var(--premium-gold); }
+.employee-workspace nav button.active svg { color: var(--premium-gold); }
+
+/* Cards: consistent radius, soft lift on hover, gold edge for the lead metric */
+.employee-workspace .product, .employee-workspace .list-card, .employee-workspace .stat, .employee-workspace .cart-item { border-radius: var(--premium-radius); transition: transform .18s, box-shadow .18s, border-color .18s; }
+.employee-workspace .product:hover, .employee-workspace .list-card:hover { transform: translateY(-2px); box-shadow: 0 14px 34px #0f22361a; border-color: #d8c6a0; }
+.employee-workspace .stat:first-child { border-color: var(--premium-gold); box-shadow: 0 10px 30px #0f223633; }
+.employee-workspace .price, .employee-workspace .stat strong { color: var(--premium-navy); }
+.employee-workspace .stat:first-child strong, .employee-workspace .stat:first-child p { color: #fff; }
+.employee-workspace .eyebrow { color: #9a7b3f; }
+.employee-workspace h1 { color: var(--premium-navy); }
+
+/* Modal: blurred backdrop, larger radius, deeper shadow, grab handle on phones */
+#modal { backdrop-filter: blur(6px); background: #0b1826a6; }
+.sheet { border-radius: 24px; box-shadow: 0 30px 80px #0b182655; border: 1px solid #ffffff80; }
+.sheet::before { content: ""; display: block; width: 44px; height: 4px; border-radius: 4px; background: #d5dce5; margin: -8px auto 14px; }
+@media (min-width: 700px) { .sheet::before { display: none; } }
+.sheet .summary-line { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px dashed #e3e8ee; font-size: 14px; }
+.sheet .summary-line strong { color: var(--premium-navy); text-align: right; }
+.sheet .help { color: #5d7186; line-height: 1.7; font-size: 13px; }
+.sheet .error, #form-error.error { background: #fdf0ef; color: #a3261f; border: 1px solid #f1cbc8; border-radius: 12px; padding: 11px 14px; font-size: 13px; }
+
+/* Toast and empty states */
+#toast { background: var(--premium-navy); border: 1px solid var(--premium-gold); box-shadow: 0 14px 40px #0f223655; }
+.empty { border: 1px dashed #d5dce5; background: #fafbfc; }
+
+/* Tables (director): sticky header, zebra on hover */
+.director-workspace table { border-collapse: separate; border-spacing: 0; }
+.director-workspace th { position: sticky; top: 0; background: #f6f8fb; color: #51667c; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; z-index: 1; }
+.director-workspace tbody tr:hover td { background: #faf7f0; }
+.director-workspace .list-card, .director-workspace .stat, .director-workspace .card { border-radius: var(--premium-radius); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media print { #modal, nav, aside, #toast { display: none !important; } .employee-workspace, .director-workspace { background: #fff; } }
+.employee-workspace .top > img, .employee-workspace .top img.logo { mix-blend-mode: multiply; }
+
+/* ===== Tyre-trade identity: tread texture, sidewall size badges, rubber-and-brass palette ===== */
+:root { --tread: repeating-linear-gradient(115deg, #ffffff08 0 2px, transparent 2px 9px); --rubber: #0b1622; }
+/* Tread pattern on every dark surface */
+.director-workspace aside, .employee-workspace nav, .employee-workspace .stat:first-child, .director-workspace .stat:first-child {
+  background-image: var(--tread), linear-gradient(165deg, #1b3550, #0c1b2b);
+}
+.director-workspace .stat:first-child { background-image: var(--tread), linear-gradient(120deg, #21405b, #0f2236); }
+/* Section dividers look like a tread blocks strip */
+.employee-workspace .intro::after, .director-workspace .page-head::after {
+  content: ""; display: block; height: 6px; margin-top: 20px; border-radius: 3px; opacity: .55;
+  background: repeating-linear-gradient(90deg, var(--premium-navy) 0 14px, transparent 14px 18px);
+  -webkit-mask: linear-gradient(90deg, #000 0, #000 28%, transparent 100%); mask: linear-gradient(90deg, #000 0, #000 28%, transparent 100%);
+}
+/* Tyre size reads like moulded sidewall lettering */
+.employee-workspace .product .size, .sheet .size {
+  display: inline-block; padding: 4px 10px; border-radius: 8px; background: var(--rubber); color: #f1e3c2;
+  font: 600 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 1.2px; text-transform: uppercase;
+  border: 1px solid #2b4259; box-shadow: inset 0 0 0 1px #c2a16533;
+}
+/* Product photo area: rim-like ring behind the placeholder, brass top edge */
+.employee-workspace .picture { border-bottom: 2px solid #e9dfc6; position: relative; }
+.employee-workspace .picture::before {
+  content: ""; position: absolute; inset: 0; opacity: .5; pointer-events: none;
+  background: radial-gradient(circle at 50% 55%, transparent 0 34%, #14283d0d 34% 36%, transparent 36% 52%, #14283d08 52% 54%, transparent 54%);
+}
+.employee-workspace .tag { display: inline-block; padding: 2px 9px; border-radius: 20px; background: var(--premium-gold-soft); color: #7a5f2c; border: 1px solid #ecdcb7; font-weight: 700; }
+/* Stock status: green in stock, amber low, grey none (works with existing availability text) */
+.employee-workspace .availability { padding-left: 14px; position: relative; color: #4a5f74; }
+.employee-workspace .availability::before { content: ""; position: absolute; left: 0; top: .62em; width: 8px; height: 8px; border-radius: 50%; background: #2f9e6b; box-shadow: 0 0 0 3px #2f9e6b22; }
+/* Brass hairline under the page title area and a tyre-block brand mark in sidebar */
+.director-workspace .brand-mark { background: linear-gradient(145deg, #e2c58a, #b38d4f); color: #1a2a3a; box-shadow: 0 6px 16px #00000040, inset 0 0 0 2px #ffffff40; }
+.director-workspace aside::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 90px; pointer-events: none; opacity: .5;
+  background: repeating-linear-gradient(90deg, #ffffff0a 0 12px, transparent 12px 20px); -webkit-mask: linear-gradient(0deg,#000,transparent); mask: linear-gradient(0deg,#000,transparent); }
+/* Money in brass-on-navy for key totals */
+.employee-workspace .stat:first-child strong small, .director-workspace .stat:first-child small { color: var(--premium-gold); }
