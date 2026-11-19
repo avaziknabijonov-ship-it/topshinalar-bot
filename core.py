@@ -254,19 +254,37 @@ class Store(Accounting):
             # panel suspension also overrides legacy EMPLOYEE_IDS entries.
             self.db.execute("UPDATE users SET active=(SELECT active FROM staff_access WHERE user_id=users.id),role=CASE WHEN (SELECT managed_role FROM staff_access WHERE user_id=users.id)='driver' THEN 'employee' ELSE COALESCE((SELECT managed_role FROM staff_access WHERE user_id=users.id),role) END WHERE id IN (SELECT user_id FROM staff_access)")
 
-    def product(self, uid, name, price, photo=None, allow_income=False):
+    @staticmethod
+    def _product_key(*parts):
+        # Case, spacing and punctuation-insensitive identity: "315/80  r22.5" == "315/80 R22.5".
+        return ' | '.join(' '.join(str(p or '').casefold().split()) for p in parts)
+
+    def _clean_product(self, name, brand, size, price, exclude=None):
+        name, brand, size = (' '.join(str(v or '').split()) for v in (name, brand, size))
+        if not name or len(name) > 200 or len(brand) > 150 or len(size) > 150:
+            raise ValueError('product_text')
+        cents = money(price, True)  # a product needs a real price: 0 would sell tyres for free
+        key = self._product_key(name, brand, size)
+        for r in self.rows('SELECT id,name,brand,size FROM products WHERE active=1'):
+            if r['id'] != exclude and self._product_key(r['name'], r['brand'], r['size']) == key:
+                raise ValueError('product_exists')
+        return name, brand, size, cents
+
+    def product(self, uid, name, price, photo=None, allow_income=False, brand='', size=''):
         if allow_income:
             from staff import require_command
             require_command(self,uid,'income_product')
         else:self.director(uid)
-        ref = self.add('products',name=name,price=money(price),photo=photo)
+        name, brand, size, cents = self._clean_product(name, brand, size, price)
+        ref = self.add('products',name=name,brand=brand,size=size,price=cents,photo=photo)
         self.log(uid,'product',ref)
         return ref
 
     def edit_product(self,uid,product,name,brand,size,price,photo=None):
         self.director(uid);old=self.one('products',product)
+        name, brand, size, cents = self._clean_product(name or old['name'], brand, size, price, exclude=product)
         self.db.execute("UPDATE products SET name=?,brand=?,size=?,price=?,photo=?,price_pending=0,currency='USD' WHERE id=?",
-            (name or old['name'],brand,size,money(price),photo if photo is not None else old['photo'],product))
+            (name,brand,size,cents,photo if photo is not None else old['photo'],product))
         self.log(uid,'product_edit',product)
         return product
 

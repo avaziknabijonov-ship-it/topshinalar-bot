@@ -283,3 +283,96 @@
 @media (prefers-reduced-motion: reduce) {
   .director-workspace *, .employee-workspace * { animation: none !important; transition: none !important; }
 }
+
+/* ===== Refined layer: restrained, solid colours, one accent, hairlines. No gradients, textures or glow. ===== */
+:root {
+  --rf-ink: #14181c; --rf-paper: #f5f5f2; --rf-card: #ffffff; --rf-hair: #e4e4de; --rf-mute: #6b6f73; --rf-accent: #a8530b; --rf-ok: #2f7d57;
+  --rf-radius: 12px; --rf-radius-s: 8px;
+}
+.director-workspace, .employee-workspace { background: var(--rf-paper); color: var(--rf-ink); font-variant-numeric: tabular-nums; text-rendering: optimizeLegibility; }
+::selection { background: #a8530b33; }
+* { scrollbar-width: thin; scrollbar-color: #c4c4bc transparent; }
+
+/* Dark surfaces: one flat ink colour everywhere */
+.director-workspace aside, .employee-workspace nav { background: var(--rf-ink); background-image: none; border: 0; }
+.director-workspace aside::after { display: none; }
+.director-workspace .brand-mark { background: #f5f5f2; color: var(--rf-ink); box-shadow: none; }
+.employee-workspace .stat:first-child, .director-workspace .stat:first-child { background: var(--rf-ink); background-image: none; border-color: var(--rf-ink); box-shadow: none; }
+.employee-workspace .stat:first-child strong, .employee-workspace .stat:first-child p { color: #fff; }
+
+/* Navigation: quiet text, a single amber marker for the active item */
+.employee-workspace nav { box-shadow: 0 12px 32px #14181c33; border-radius: 14px; }
+.employee-workspace nav button { color: #aeb2b6; background: transparent; }
+.employee-workspace nav button:hover { color: #fff; background: #ffffff0f; }
+.employee-workspace nav button.active { color: #fff; background: #ffffff14; box-shadow: inset 0 -2px 0 var(--rf-accent); }
+.employee-workspace nav button.active svg { color: #fff; }
+.director-workspace nav button.active, .director-workspace .nav-item.active { box-shadow: inset 3px 0 0 var(--rf-accent); }
+
+/* Typography: strong hierarchy, small restrained eyebrow */
+.employee-workspace h1, .director-workspace h1 { color: var(--rf-ink); letter-spacing: -.03em; font-weight: 700; }
+.employee-workspace .eyebrow, .director-workspace .eyebrow { color: var(--rf-accent); letter-spacing: .14em; font-weight: 600; }
+
+/* Cards and lists: white, 1px hairline, no shadow, no hover animation */
+.employee-workspace .product, .employee-workspace .list-card, .employee-workspace .stat, .employee-workspace .cart-item,
+.director-workspace .list-card, .director-workspace .stat, .director-workspace .card { background: var(--rf-card); border: 1px solid var(--rf-hair); border-radius: var(--rf-radius); box-shadow: none; }
+.employee-workspace .product:hover, .employee-workspace .list-card:hover { border-color: #bdbdb4; box-shadow: none; transform: none; }
+.employee-workspace .picture { background: #efefea; border-bottom: 1px solid var(--rf-hair); }
+.employee-workspace .picture svg { color: #b4b4ab; }
+.employee-workspace .price, .employee-workspace .stat strong { color: var(--rf-ink); }
+.employee-workspace .stat:first-child strong { color: #fff; }
+
+/* Tyre identity, understated: brand as small caps text, size as a plain mono tag, stock as a dot */
+.employee-workspace .tag { background: none; border: 0; padding: 0; color: var(--rf-mute); font-weight: 600; letter-spacing: .1em; }
+.employee-workspace .product .size, .sheet .size { display: inline-block; padding: 3px 8px; border-radius: 6px; background: #efefea; color: var(--rf-ink); border: 1px solid var(--rf-hair);
+  font: 500 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .04em; }
+.employee-workspace .availability { padding-left: 14px; position: relative; color: var(--rf-mute); }
+.employee-workspace .availability::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 7px; border-radius: 50%; background: var(--rf-ok); }
+
+/* Controls: flat ink primary, outlined secondary, amber focus ring */
+.employee-workspace .primary, .director-workspace .primary, .sheet .primary { background: var(--rf-ink); background-image: none; color: #fff; border: 1px solid var(--rf-ink); border-radius: var(--rf-radius-s); box-shadow: none; font-weight: 600; }
+.employee-workspace .primary:hover, .director-workspace .primary:hover, .sheet .primary:hover { background: #2a3036; box-shadow: none; }
+.employee-workspace .primary:disabled, .sheet .primary:disabled { opacity: .5; cursor: not-allowed; }
+.employee-workspace .search button, .employee-workspace .add button { background: var(--rf-ink); border-radius: var(--rf-radius-s); box-shadow: none; }
+.sheet .secondary, .employee-workspace .secondary, .director-workspace .secondary { background: #fff; color: var(--rf-ink); border: 1px solid #cfcfc7; border-radius: var(--rf-radius-s); }
+.sheet .secondary:hover, .employee-workspace .secondary:hover { background: var(--rf-paper); }
+.sheet .danger, .employee-workspace .danger { color: #a3261f; border-color: #e7c2be; }
+.director-workspace input, .director-workspace select, .director-workspace textarea,
+.employee-workspace input, .employee-workspace select, .employee-workspace textarea,
+.sheet input, .sheet select, .sheet textarea { border: 1px solid #cfcfc7; border-radius: var(--rf-radius-s); background: #fff; transition: border-color .12s, box-shadow .12s; }
+.director-workspace input:focus, .director-workspace select:focus, .director-workspace textarea:focus,
+.employee-workspace input:focus, .employee-workspace select:focus, .employee-workspace textarea:focus,
+.sheet input:focus, .sheet select:focus, .sheet textarea:focus { outline: none; border-color: var(--rf-ink); box-shadow: 0 0 0 3px #a8530b2e; }
+.director-workspace :focus-visible, .employee-workspace :focus-visible { outline: 2px solid var(--rf-accent); outline-offset: 2px; }
+
+/* Modal, forms, toast */
+#modal { background: #14181ca6; backdrop-filter: none; }
+.sheet { border-radius: 16px; box-shadow: 0 24px 60px #14181c4d; border: 0; }
+.sheet::before { display: none; }
+.sheet label { display: block; font-size: 12px; font-weight: 600; color: #3c4146; margin: 14px 0 6px; }
+.sheet label input, .sheet label select, .sheet label textarea { margin-top: 6px; font-weight: 400; }
+.sheet h2, .sheet h3 { color: var(--rf-ink); letter-spacing: -.02em; }
+.sheet .summary-line { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--rf-hair); font-size: 14px; }
+.sheet .help { color: var(--rf-mute); line-height: 1.7; font-size: 13px; }
+.sheet .error, #form-error.error { background: #fbeeed; color: #a3261f; border: 1px solid #efcbc8; border-radius: var(--rf-radius-s); padding: 10px 14px; font-size: 13px; }
+#toast { background: var(--rf-ink); border: 0; box-shadow: 0 10px 30px #14181c55; }
+.empty { background: #fafaf8; border: 1px dashed #cfcfc7; }
+
+/* Director tables */
+.director-workspace table { border-collapse: separate; border-spacing: 0; }
+.director-workspace th { position: sticky; top: 0; background: #efefea; color: var(--rf-mute); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; z-index: 1; }
+.director-workspace tbody tr:hover td { background: #f8f8f5; }
+
+.employee-workspace .top > img { mix-blend-mode: multiply; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media print { #modal, nav, aside, #toast { display: none !important; } .employee-workspace, .director-workspace { background: #fff; } }
+.director-workspace .stat:first-child, .director-workspace .stat:first-child * { color: #fff; }
+.director-workspace .stat:first-child small, .director-workspace .stat:first-child p { color: #c9ccd0; }
+.employee-workspace .add button, .employee-workspace .search button { background: var(--rf-ink); }
+.employee-workspace h1, .director-workspace h1, .employee-workspace .price, .employee-workspace .stat strong { color: var(--rf-ink); }
+.employee-workspace .stat:first-child strong { color: #fff; }
+/* Flat ink surfaces: override legacy navy gradients */
+.director-workspace aside { background: var(--rf-ink); }
+.director-workspace .metric-primary,
+.employee-workspace .stat:first-child,
+.employee-workspace .cart-total { background: var(--rf-ink); border-color: var(--rf-ink); }
+.employee-workspace .picture { background: #eeeeea; }
