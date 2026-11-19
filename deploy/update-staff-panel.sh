@@ -49,6 +49,13 @@ for file in "${files[@]}"; do
   install -d -o root -g topshinalar -m 750 "$(dirname "$preflight_dir/$file")"
   install -o root -g topshinalar -m 640 "$source_dir/$file" "$preflight_dir/$file"
 done
+# Security tests read deployment files; they are copied for the preflight only
+# and are never installed into the production target.
+for file in compose.yaml .env.example $(cd "$source_dir" && find deploy -type f ! -name '*.pyc' | sort); do
+  [[ -f "$source_dir/$file" ]] || continue
+  install -d -o root -g topshinalar -m 750 "$(dirname "$preflight_dir/$file")"
+  install -o root -g topshinalar -m 640 "$source_dir/$file" "$preflight_dir/$file"
+done
 echo 'Xizmatlar ishlamoqda. Yangi nusxa testlari bajarilmoqda...'
 (
   cd "$preflight_dir"
