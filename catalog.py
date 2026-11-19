@@ -1,10 +1,16 @@
 """Idempotent import of the owner's tyre list, without supplier prices or stock."""
 import json
+import os
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 MANIFEST = ROOT / 'assets' / 'tyres.json'
+
+
+def seed_enabled():
+    """CATALOG_SEED=0 stops the bundled tyre list from being re-added on every start."""
+    return os.environ.get('CATALOG_SEED', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
 
 
 def local_photo(reference):
