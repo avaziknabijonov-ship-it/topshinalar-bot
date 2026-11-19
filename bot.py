@@ -12,7 +12,7 @@ from i18n import tr, label, MENU, DIRECTOR_ONLY, ERRORS
 from payments import normalize_payment, payment_label, payment_labels, normalize_fulfillment, fulfillment_label, fulfillment_labels
 from storage import SingleInstance
 from usability import Usability
-from catalog import import_catalog, local_photo
+from catalog import import_catalog, local_photo, seed_enabled
 from staff import require_command, permissions
 
 # Each dialog collects fields, previews the result, then saves only after confirmation.
@@ -743,7 +743,7 @@ def run_bot():
     path=os.environ.get('DB_PATH','data/topshinalar.sqlite3')
     os.makedirs(os.path.dirname(os.path.abspath(path)),exist_ok=True)
     s=Store(path);s.configure(ids('DIRECTOR_IDS'),ids('EMPLOYEE_IDS'))
-    import_catalog(s)
+    if seed_enabled():import_catalog(s)
     bot=Bot(s);api=API(token)
     # Refuse to disrupt another deployment's webhook.
     if api.call('getWebhookInfo',{}).get('url'):

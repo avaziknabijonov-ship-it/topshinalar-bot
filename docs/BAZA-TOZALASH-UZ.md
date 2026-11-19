@@ -4,6 +4,12 @@
 mijozlar, omborlar, yetkazib beruvchilar, tarix. **Xodimlar va direktor kirish huquqi qoladi.**
 Qaytarib bo'lmaydi, lekin skript o'chirishdan oldin tekshirilgan zaxira nusxa oladi.
 
+## Muhim: tayyor katalog
+
+Bot va Mini App har ishga tushganda paketdagi tayyor shina ro'yxatini (taxminan 248 ta, narx va qoldiqsiz) qayta qo'shadi.
+Tozalagandan keyin tovarlar qaytib kelmasligi uchun serverdagi `/etc/topshinalar.env` ga `CATALOG_SEED=0` yozing
+(tozalashdan **oldin**). Tayyor katalog kerak bo'lib qolsa, qiymatni `1` ga qaytarib xizmatlarni qayta ishga tushiring.
+
 ## Serverda
 
 1. Avval reja (hech narsa o'chmaydi):

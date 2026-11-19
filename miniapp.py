@@ -17,7 +17,7 @@ from bot import Bot,API,ids
 from core import Store,integer as core_integer,money,now,exchange_rate,normalize_contact_phone
 from i18n import ERRORS
 from usability import matches_product,size_parts
-from catalog import import_catalog, local_photo
+from catalog import import_catalog, local_photo, seed_enabled
 from staff import StaffAccess, effective_role, permissions, require_command
 import company_documents
 from excel_import import InventoryExcel, ExcelError
@@ -509,7 +509,7 @@ def main():
     if not re.fullmatch(r'\d+:[A-Za-z0-9_-]+',token):raise SystemExit('BOT_TOKEN is required')
     path=os.path.abspath(os.environ.get('DB_PATH','data/topshinalar.sqlite3'))
     Path(path).parent.mkdir(parents=True,exist_ok=True)
-    store=Store(path);store.configure(ids('DIRECTOR_IDS'),ids('EMPLOYEE_IDS'));import_catalog(store);store.db.close()
+    store=Store(path);store.configure(ids('DIRECTOR_IDS'),ids('EMPLOYEE_IDS'));(import_catalog(store) if seed_enabled() else None);store.db.close()
     origin=os.environ.get('PUBLIC_APP_URL','')
     if origin:
         parsed=urlsplit(origin)
