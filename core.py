@@ -409,7 +409,7 @@ class Store(Accounting):
         return result
 
     @atomic
-    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None, contact_phone=None):
+    def order(self, uid, client, items, point=None, paid='0', payment='', terms='', quote=False, fulfillment='', exchange_rate=None, contact_phone=None, splits=None):
         self.user(uid); self.one('clients',client)
         lines=self.items(items); total=sum(i['total'] for i in lines)
         if total > 10**16:
@@ -444,6 +444,12 @@ class Store(Accounting):
             line['supplier']=None if supplier in (None,'') else self.supplier_row(quantity(supplier))['id']
         payment=normalize_payment(payment)
         paid=money(paid)
+        parts=None
+        if splits:
+            if quote or not isinstance(splits,(list,tuple)) or len(splits)>6:raise ValueError('payment')
+            parts=[(normalize_payment(x.get('method')),money(x.get('amount'),True)) for x in splits]
+            paid=sum(a for _,a in parts)
+            payment=max(parts,key=lambda x:x[1])[0]
         if paid>total:
             raise ValueError('paid')
         # All changes must run in the caller's transaction. Any failed line rolls everything back.
@@ -456,7 +462,10 @@ class Store(Accounting):
             item_ref=self.add('sale_items',sale=ref,**{k:v for k,v in item.items() if k not in ('total','supplier')})
             self._consume_lots(item['product'],item_point,item['qty'],item_ref,item.get('supplier'))
             self.add('movements',product=item['product'],point=item_point,qty=-item['qty'],kind='sale',actor=uid,note=f'#{ref}',created=now())
-        if paid:
+        if parts:
+            for method,amount in parts:
+                self.add('payments',sale=ref,amount=amount,method=method,actor=uid,created=now())
+        elif paid:
             self.add('payments',sale=ref,amount=paid,method=payment,actor=uid,created=now())
         self.log(uid,'sale',ref)
         return ref
