@@ -50,7 +50,7 @@ def main():
                 ctx,page=context(10);page.goto(server.origin+'/director')
                 expect(page.locator('.metric')).to_have_count(4)
                 expect(page.locator('.nav-group')).to_have_count(4)
-                expect(page.locator('[data-section]')).to_have_count(19)
+                expect(page.locator('[data-section]')).to_have_count(18)
                 expect(page.locator('[aria-current=page]')).to_have_attribute('data-section','overview')
                 page.screenshot(path=str(screens/'workspace-premium-director-desktop.png'),full_page=False)
                 # A failed list request must clear its skeleton and offer a working retry.

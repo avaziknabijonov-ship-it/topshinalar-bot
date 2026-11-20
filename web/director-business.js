@@ -90,6 +90,12 @@ function wireDebts(){
   form(tr('Ta’minotchiga to‘lash muddati','Срок оплаты поставщику')+' · '+currency,input('due',tr('Sana (bo‘sh — muddatni olib tashlash)','Дата (пусто — снять срок)'),'date',b.dataset.current),f=>command('supplier_due',{supplier,currency,due:f.get('due')||''}));};});
 }
 
+function returnTabs(){
+ return '<div class="debt-tabs" role="tablist">'+[['customer_returns',tr('Mijozdan qaytarish','Возврат от клиента')],['supplier_returns',tr('Ta’minotchiga qaytarish','Возврат поставщику')]].map(([key,label])=>'<button type="button" role="tab" class="debt-tab'+(section===key?' active':'')+'" aria-selected="'+(section===key)+'" data-return-tab="'+key+'">'+esc(label)+'</button>').join('')+'</div>';
+}
+function wireReturnTabs(){
+ $('content').querySelectorAll('[data-return-tab]').forEach(b=>b.onclick=()=>{if(section===b.dataset.returnTab)return;section=b.dataset.returnTab;page=0;$('search').value='';nav();load();});
+}
 function renderCashbox(data){
  const cols=['currency','balance','received','given','expenses','returned'];
  let html='<p class="note">'+tr('Kassa — menejerlar zimmasidagi pulning jami. Xarajat menejerda mavjud puldan oshib ketsa saqlanmaydi (minusga ruxsat yo‘q). Alohida bank hisobi yuritilmaydi.','Касса — сумма денег на руках у менеджеров. Расход сверх имеющихся денег не сохраняется (минус запрещён). Отдельный банковский счёт не ведётся.')+'</p>';

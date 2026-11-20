@@ -20,6 +20,7 @@ def records(s,uid,kind,start,end,q):
             if mode in ('supplier','operating'):rows=[r for r in rows if r['expense_type']==mode]
             if q.get('category'):
                 want=int(q['category']);rows=[r for r in rows if r.get('category')==want]
+            for r in rows:r.pop('expense_type',None);r.pop('category',None)
             return rows
         if kind=='customer_returns':
             rows=s.rows("SELECT s.id,s.client,c.name client_name,s.actor,u.name manager_name,s.total,s.paid,s.currency,s.status,s.created sale_date,s.cancelled_at created,s.cancel_reason reason,s.cancelled_by,a.name actor_name,COALESCE(r.amount,0) amount FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor LEFT JOIN users a ON a.id=s.cancelled_by LEFT JOIN refunds r ON r.sale=s.id WHERE s.status='cancelled' AND substr(s.cancelled_at,1,10) BETWEEN ? AND ? ORDER BY s.cancelled_at DESC,s.id DESC",(start,end))

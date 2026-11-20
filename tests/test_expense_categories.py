@@ -17,7 +17,9 @@ class ExpenseCategories(unittest.TestCase):
         self.api.write(10,'expense-test-key-3-padded','manager_record',{'manager':20,'kind':'expense','amount':'10','currency':'USD','note':'oy','date':'2026-11-01','category':c})
         self.api.write(10,'expense-test-key-4-padded','manager_record',{'manager':20,'kind':'expense','amount':'5','currency':'USD','note':'boshqa','date':'2026-11-01'})
         rows=records(self.s,10,'expenses','2026-11-01','2026-11-30',{})
-        self.assertEqual(sorted((r['category_name'] or '',r['expense_type']) for r in rows),[('','operating'),('Ijara','operating')])
+        self.assertEqual(sorted(r['category_name'] or '' for r in rows),['','Ijara'])
+        self.assertEqual(records(self.s,10,'expenses','2026-11-01','2026-11-30',{'expense_type':'supplier'}),[])
+        self.assertEqual(len(records(self.s,10,'expenses','2026-11-01','2026-11-30',{'expense_type':'operating'})),2)
         only=records(self.s,10,'expenses','2026-11-01','2026-11-30',{'category':str(c)})
         self.assertEqual(len(only),1)
     def test_rules(self):
