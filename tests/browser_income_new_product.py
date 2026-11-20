@@ -1,4 +1,4 @@
-"""Real-Chromium check: in the Prixod (income) form the 'new product' button sits under the product picker.
+"""Real-Chromium check: Prixod (income) form has search inside the product field, a discount field, and no new-product buttons.
 Run: python tests/browser_income_new_product.py  (CHROMIUM_PATH selects the browser)"""
 import json
 import os
@@ -42,15 +42,14 @@ def main():
                     page.locator('[data-action="income"]').first.click()
                     modal = page.locator('#modal')
                     expect(modal.locator('select[name="product"]')).to_be_visible()
-                    btn = modal.locator('[data-action="quick-product"]')
-                    assert btn.count() == 1, (btn.count(), modal.inner_html()[:1500])
-                    # order inside the form: product picker, then the button, then the warehouse
-                    order = modal.locator('select[name="product"], [data-action="quick-product"], select[name="supplier"], select[name="first_point"]').evaluate_all(
-                        "els => els.map(e => e.tagName + ':' + (e.getAttribute('name') || e.dataset.action))")
-                    assert order == ['SELECT:product', 'BUTTON:quick-product', 'SELECT:supplier', 'SELECT:first_point'], order
+                    # No "new product" buttons inside the income form; search lives inside the product field.
+                    assert modal.locator('[data-action="quick-product"], [data-action="income-new-product"]').count() == 0
+                    order = modal.locator('#picker-product, select[name="product"], select[name="supplier"], select[name="first_point"]').evaluate_all(
+                        "els => els.map(e => e.tagName + ':' + (e.getAttribute('name') || e.id))")
+                    assert order == ['INPUT:picker-product', 'SELECT:product', 'SELECT:supplier', 'SELECT:first_point'], order
+                    assert modal.locator('label:has(#picker-product):has(select[name="product"])').count() == 1
+                    expect(modal.locator('input[name="discount"]')).to_be_visible()
                     page.screenshot(path=str(screens / f'income-form-{name}.png'))
-                    btn.click()
-                    expect(modal.locator('input[name="name"]')).to_be_visible(timeout=10000)
                     ctx.close()
                 browser.close()
         finally:
