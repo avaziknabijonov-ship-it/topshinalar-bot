@@ -647,6 +647,10 @@
     "due_action": [
       "Muddat",
       "Срок"
+    ],
+    "rate": [
+      "Kurs (so‘m)",
+      "Курс (сум)"
     ]
   },
   "values": {

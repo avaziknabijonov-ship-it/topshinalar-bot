@@ -89,3 +89,17 @@ function wireDebts(){
   const supplier=+b.dataset.due,currency=b.dataset.currency;
   form(tr('Ta’minotchiga to‘lash muddati','Срок оплаты поставщику')+' · '+currency,input('due',tr('Sana (bo‘sh — muddatni olib tashlash)','Дата (пусто — снять срок)'),'date',b.dataset.current),f=>command('supplier_due',{supplier,currency,due:f.get('due')||''}));};});
 }
+
+function renderCashbox(data){
+ const cols=['currency','balance','received','given','expenses','returned'];
+ let html='<p class="note">'+tr('Kassa — menejerlar zimmasidagi pulning jami. Xarajat menejerda mavjud puldan oshib ketsa saqlanmaydi (minusga ruxsat yo‘q). Alohida bank hisobi yuritilmaydi.','Касса — сумма денег на руках у менеджеров. Расход сверх имеющихся денег не сохраняется (минус запрещён). Отдельный банковский счёт не ведётся.')+'</p>';
+ html+='<h2>'+tr('Kassadagi pullar','Деньги в кассе')+'</h2>'+table(data.totals,cols,false,{noTotals:true});
+ const neg=data.totals.filter(r=>r.negative);
+ if(neg.length)html+='<p class="note"><span class="chip bad">'+tr('Diqqat','Внимание')+'</span> '+tr('Manfiy qoldiqli menejerlar bor: ','Есть менеджеры с отрицательным остатком: ')+neg.map(r=>r.currency+' × '+r.negative).join(', ')+'</p>';
+ html+='<h2>'+tr('Menejerlar qo‘lidagi qoldiq','Остаток у менеджеров')+'</h2>'+table(data.managers,['manager_name','currency','balance','pending_return'],false);
+ html+='<h2>'+tr('USD kursi tarixi','История курса USD')+'</h2>'+(data.rates.length?table(data.rates,['date','rate','actor_name'],false):'<p class="note">'+tr('Kurs hali kiritilmagan.','Курс ещё не введён.')+'</p>');
+ return html;
+}
+function openRateForm(){
+ form(tr('USD kursi','Курс USD'),input('date',tr('Sana','Дата'),'date',$('end').value,'required')+input('rate',tr('1 USD = … so‘m','1 USD = … сум'),'text','','required'),f=>command('exchange_rate',Object.fromEntries(f)));
+}

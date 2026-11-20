@@ -146,6 +146,17 @@ def read(service,uid,kind,q):
         names={r['id']:r['name'] for r in result['suppliers']}
         result['balances']=[{**r,'supplier_name':names[r['supplier']]} for r in balances if r['supplier'] in names]
         paged=page(result['suppliers'],q);result['suppliers']=paged.pop('items');visible={r['id'] for r in result['suppliers']};result['balances']=[r for r in result['balances'] if r['supplier'] in visible];result.update(paged);return result
+    if kind=='cashbox':
+        import manager_money
+        s.director(uid)
+        with manager_money.read_snapshot(s):balances=s.manager_account(uid)['balances']
+        totals={}
+        for b in balances:
+            row=totals.setdefault(b['currency'],dict(currency=b['currency'],received=0,given=0,expenses=0,refunds=0,returned=0,pending_return=0,balance=0,negative=0))
+            for k in ('received','given','expenses','refunds','returned','pending_return','balance'):row[k]+=b[k]
+            if b['balance']<0:row['negative']+=1
+        rates=s.exchange_rates()
+        return dict(totals=sorted(totals.values(),key=lambda r:r['currency']),managers=[b for b in balances if b['balance']!=0 or b['pending_return']],rates=rates,current_rate=rates[0] if rates else None)
     if kind=='managers':
         import manager_money
         with manager_money.read_snapshot(s):

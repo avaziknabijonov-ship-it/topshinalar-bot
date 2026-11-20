@@ -101,7 +101,7 @@ TABLES = (
 )
 
 
-TABLES = TABLES + (
+TABLES = TABLES + ('''CREATE TABLE IF NOT EXISTS exchange_rates(date TEXT PRIMARY KEY, rate TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL)''',
     '''CREATE TABLE IF NOT EXISTS supplier_due(
         supplier INTEGER NOT NULL REFERENCES suppliers(id), currency TEXT NOT NULL CHECK(currency IN ('USD','UZS')),
         due TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL,
@@ -137,6 +137,19 @@ class Accounting:
         if not rows:
             raise ValueError('missing')
         return rows[0]
+
+    @atomic
+    def exchange_rate_set(self, uid, date, rate):
+        from core import now, exchange_rate
+        self.director(uid)
+        day = accounting_date(date)
+        value = str(exchange_rate(rate))
+        self.db.execute('INSERT INTO exchange_rates(date,rate,actor,created) VALUES(?,?,?,?) ON CONFLICT(date) DO UPDATE SET rate=excluded.rate,actor=excluded.actor,created=excluded.created', (day, value, uid, now()))
+        self.log(uid, 'exchange_rate', None)
+        return value
+
+    def exchange_rates(self, limit=60):
+        return self.rows('SELECT r.date,r.rate,u.name actor_name,r.created FROM exchange_rates r JOIN users u ON u.id=r.actor ORDER BY r.date DESC LIMIT ?', (limit,))
 
     @atomic
     def supplier_save(self, uid, name, phone='', note='', supplier=None):
@@ -299,7 +312,7 @@ class Accounting:
             self.director(uid)
 
     @atomic
-    def manager_record(self, uid, manager, kind, amount, note='', date=None, currency='USD'):
+    def manager_record(self, uid, manager, kind, amount, note='', date=None, currency='USD', strict=False):
         from core import now, money
         self._manager_access(uid, manager)
         if kind not in ('fund', 'expense', 'return'):
@@ -307,6 +320,9 @@ class Accounting:
         if kind == 'fund':
             self.director(uid)
             self.user(manager)
+        if kind=='expense' and strict:
+            from manager_money import balance
+            if money(amount,True)>balance(self,uid,manager,valid_currency(currency))['balance']:raise ValueError('manager_cash_available')
         if kind=='return':
             from manager_money import balance
             b=balance(self,uid,manager,currency)
