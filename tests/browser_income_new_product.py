@@ -42,11 +42,11 @@ def main():
                     page.locator('[data-action="income"]').first.click()
                     modal = page.locator('#modal')
                     expect(modal.locator('select[name="product"]')).to_be_visible()
-                    # No "new product" buttons inside the income form; search lives inside the product field.
-                    assert modal.locator('[data-action="quick-product"], [data-action="income-new-product"]').count() == 0
-                    order = modal.locator('#picker-product, select[name="product"], select[name="supplier"], select[name="first_point"]').evaluate_all(
-                        "els => els.map(e => e.tagName + ':' + (e.getAttribute('name') || e.id))")
-                    assert order == ['INPUT:picker-product', 'SELECT:product', 'SELECT:supplier', 'SELECT:first_point'], order
+                    # The new-product button stays right under the product field; search lives inside the field.
+                    assert modal.locator('[data-action="quick-product"]').count() == 1
+                    order = modal.locator('#picker-product, select[name="product"], [data-action="quick-product"], select[name="supplier"], select[name="first_point"]').evaluate_all(
+                        "els => els.map(e => e.tagName + ':' + (e.getAttribute('name') || e.id || e.dataset.action))")
+                    assert order == ['INPUT:picker-product', 'SELECT:product', 'BUTTON:quick-product', 'SELECT:supplier', 'SELECT:first_point'], order
                     assert modal.locator('label:has(#picker-product):has(select[name="product"])').count() == 1
                     expect(modal.locator('input[name="discount"]')).to_be_visible()
                     page.screenshot(path=str(screens / f'income-form-{name}.png'))
