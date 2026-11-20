@@ -20,6 +20,8 @@ async function test(){
  const app=fs.readFileSync('web/app.js','utf8');
  vm.runInContext(app.slice(app.indexOf('const field='),app.indexOf('const clientField=')),context);
  vm.runInContext(app.slice(app.indexOf('async function checkout('),app.indexOf('function detail(')),context);
+ // The receipt form uses the searchable product picker defined elsewhere in app.js.
+ vm.runInContext(app.slice(app.indexOf('const productSelect='),app.indexOf('\n',app.indexOf('const productSelect='))),context);
  vm.runInContext(fs.readFileSync('web/accounting.js','utf8'),context);
  const payload=context.accountingPayload('supplier_income',{payment_method:'cash',paid_amount:'0',product:'7',supplier:'3',cost:'10.25',first_point:'1',first_qty:'5',second_point:'2',second_qty:'3',currency:'USD'});
  assert.deepEqual(JSON.parse(JSON.stringify(payload.allocations)),[{point:1,qty:5},{point:2,qty:3}]);
