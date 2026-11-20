@@ -215,6 +215,13 @@ class MiniService:
         if cmd=='supplier_save':return self.s.supplier_save(uid,text(d.get('name','')),text(d.get('phone',''),False,100),text(d.get('note',''),False),integer(d['supplier']) if d.get('supplier') else None)
         if cmd=='exchange_rate':return self.s.exchange_rate_set(uid,d.get('date'),d.get('rate'))
         if cmd=='expense_category':return self.s.expense_category_save(uid,d.get('name',''),None if d.get('category') in (None,'') else integer(d.get('category')),str(d.get('active','1'))!='0')
+        if cmd=='receipt_send':
+            from receipt import sale_receipt_pdf
+            ref=integer(d.get('sale'));fmt_name=d.get('format','a4')
+            if fmt_name not in ('a4','80mm'):raise ValueError('format')
+            self.s.own(uid,self.s.one('sales',ref))
+            self.b.queue(uid,document=sale_receipt_pdf(self.s,uid,ref,fmt_name,self.s.user(uid)['lang']),filename=f'TOPSHINALAR-chek-{ref}.pdf')
+            return ref
         if cmd=='supplier_due':return self.s.supplier_set_due(uid,integer(d.get('supplier')),d.get('currency','USD'),d.get('due',''))
         if cmd=='supplier_archive':return self.s.supplier_set_active(uid,integer(d.get('supplier')),d.get('active'))
         if cmd=='supplier_income':return self.s.receive(uid,integer(d.get('product')),integer(d.get('supplier')),d.get('cost'),d.get('allocations'),text(d.get('note',''),False),d.get('date'),d.get('currency','USD'),d.get('payments',[]),telegram_id(d['manager']) if d.get('manager') else None)
@@ -441,7 +448,7 @@ class MiniHandler(BaseHTTPRequestHandler):
             if effective_role(store,uid)=='driver' and path not in {'/api/me','/api/dashboard','/api/driver-deliveries'}:raise PermissionError()
             read_cmd={'/api/catalog':'catalog','/api/photo':'catalog','/api/clients':'clients','/api/debts':'debts','/api/my-sales':'sales','/api/sales':'sales','/api/quotes':'quotes','/api/tasks':'tasks','/api/report':'report','/api/supplier-ledger':'suppliers','/api/drivers':'delivery','/api/driver-deliveries':'driver_deliveries'}
             if not (effective_role(store,uid)=='driver' and path in {'/api/me','/api/dashboard'}):
-                require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith('/api/quote/') else 'photo' if path.startswith('/api/photo/') else ''))
+                require_command(store,uid,read_cmd.get(path,'pdf' if path.startswith(('/api/quote/','/api/receipt/')) else 'photo' if path.startswith('/api/photo/') else ''))
             if path=='/api/me':result={**{k:user[k] for k in ('id','name','lang')},'role':effective_role(store,uid),'permissions':permissions(store,uid),'contact_phone':store.contact_phone(uid)}
             elif path=='/api/catalog':result=service.catalog(uid,query.get('q','')[:200],query.get('point',''),query.get('brand','')[:150],page)
             elif path=='/api/points':result=store.rows('SELECT id,name,kind FROM points WHERE active=1 ORDER BY name,id')
@@ -492,6 +499,11 @@ class MiniHandler(BaseHTTPRequestHandler):
                 from reports import workbook
                 data=store.report(uid,query.get('start',now()[:10]),query.get('end',now()[:10]));data.update(store.inventory_report(uid))
                 self.send(200,workbook(service.b.enrich(data),user['lang']),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-report.xlsx');return
+            elif re.fullmatch(r'/api/receipt/\d+\.pdf',path):
+                from receipt import sale_receipt_pdf
+                ref=int(path.rsplit('/',1)[-1][:-4]);fmt_name=query.get('format','a4')
+                if fmt_name not in ('a4','80mm'):raise ValueError('format')
+                self.send(200,sale_receipt_pdf(store,uid,ref,fmt_name,ui_lang),'application/pdf',f'TOPSHINALAR-chek-{ref}.pdf');return
             elif re.fullmatch(r'/api/quote/\d+\.pdf',path):
                 from quotation import quotation_pdf
                 ref=int(path.rsplit('/',1)[-1][:-4]);store.own(uid,store.one('quotes',ref))

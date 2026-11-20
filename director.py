@@ -266,6 +266,11 @@ def handle_http(handler,path,write):
                 handler.send(200,stream.getvalue(),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','TOPSHINALAR-kirim-template.xlsx');return
             if kind=='photo':
                 handler.send(200,service.photo(uid,quantity(q.get('product')),quantity(q.get('index',0),zero=True)),'image/jpeg');return
+            if kind=='receipt':
+                from receipt import sale_receipt_pdf
+                ref=quantity(q.get('id'));fmt_name=q.get('format','a4')
+                if fmt_name not in ('a4','80mm'):raise ValueError('format')
+                handler.send(200,sale_receipt_pdf(s,uid,ref,fmt_name,q.get('lang','uz') if q.get('lang') in ('uz','ru') else 'uz'),'application/pdf',f'TOPSHINALAR-chek-{ref}.pdf');return
             if kind=='quote':
                 from quotation import quotation_pdf
                 ref=quantity(q.get('id'));s.one('quotes',ref)

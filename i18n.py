@@ -181,6 +181,7 @@ MENU.update({
 'supplier_payment':('Yetkazib beruvchiga to‘lov','Оплата поставщику'),
 'supplier_return':('Yetkazib beruvchiga qaytarish','Возврат поставщику'),
 'exchange_rate':('USD kursi','Курс USD'),
+'receipt_send':('Chekni Telegramga yuborish','Отправить чек в Telegram'),
 'supplier_due':('Ta’minotchi qarzi muddati','Срок долга поставщику'),
 'expense_category':('Xarajat kategoriyasi','Категория расхода'),
 'supplier_report':('Yetkazib beruvchi hisoboti','Отчёт по поставщикам'),
