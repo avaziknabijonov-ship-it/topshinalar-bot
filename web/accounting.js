@@ -11,7 +11,7 @@ const accountingHistory = entries => entries.map(r=>`<article class="list-card">
 function accountingPayload(cmd,data){
  if(cmd==='supplier_income'){
   const allocations=[];
-  for(const prefix of ['first','second']){
+  for(const prefix of ['first']){
    const qty=Number(data[prefix+'_qty']);
    if(!Number.isInteger(qty)||qty<0)throw Error(T('Dona butun son bo‘lsin','Количество должно быть целым'));
    if(qty)allocations.push({point:Number(data[prefix+'_point']),qty});
@@ -110,7 +110,7 @@ async function accountingOperations(action,id){
   const [products,suppliers]=await Promise.all([api('/api/catalog'),api('/api/suppliers?picker=1')]);state.productPick=products.items;
   const points=state.points.map(p=>[p.id,p.name+' · '+(p.kind==='vitrina'?T('Vitrina','Витрина'):T('Sklad','Склад'))]);
   const staff=director?(await api('/api/staff')).filter(r=>r.role==='employee'):[];
-  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',productSelect(products.items.map(p=>[p.id,p.name]))+(director?`<button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button>`:'')+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+field('discount',T('Skidka: % yoki summa (bir dona uchun, masalan 5% yoki 2)','Скидка: % или сумма (за штуку, например 5% или 2)'),'text','',false)+select('first_point',T('Kirim manzili','Место прихода'),points)+(director?`<button type="button" class="secondary" data-receipt-point-archive>${T('Tanlangan manzilni o‘chirish','Удалить выбранное место')}</button>`:'')+field('first_qty',T('Miqdor','Количество'),'number','1')+select('second_point',T('Ikkinchi manzil (ixtiyoriy)','Второе место (необязательно)'),points,'',false)+field('second_qty',T('Ikkinchi manzil miqdori','Количество во втором месте'),'number','0')+select('payment_method',T('To‘lov usuli','Способ оплаты'),[['cash',T('Naqd','Наличные')],['transfer',T('Bank o‘tkazmasi','Банковский перевод')]])+field('paid_amount',T('To‘langan summa','Оплаченная сумма'),'number','0',false)+accountingFields()+`<p class="help">${T('To‘lov usulini tanlang va summani kiriting. Qolgan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Выберите один способ оплаты и введите сумму. Остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
+  form(T('Mahsulot kirimi','Приход товара'),'supplier_income',productSelect(products.items.map(p=>[p.id,p.name]))+(director?`<button type="button" class="secondary full" data-action="quick-product">${T('+ Yangi mahsulot','+ Новый товар')}</button>`:'')+supplierPicker(suppliers)+field('cost',T('Kirim narxi (bir dona)','Закупочная цена за штуку'),'number')+field('discount',T('Skidka: % yoki summa (bir dona uchun, masalan 5% yoki 2)','Скидка: % или сумма (за штуку, например 5% или 2)'),'text','',false)+select('first_point',T('Kirim manzili','Место прихода'),points)+(director?`<button type="button" class="secondary" data-receipt-point-archive>${T('Tanlangan manzilni o‘chirish','Удалить выбранное место')}</button>`:'')+field('first_qty',T('Miqdor','Количество'),'number','1')+select('payment_method',T('To‘lov usuli','Способ оплаты'),[['cash',T('Naqd','Наличные')],['transfer',T('Bank o‘tkazmasi','Банковский перевод')]])+field('paid_amount',T('To‘langan summa','Оплаченная сумма'),'number','0',false)+accountingFields()+`<p class="help">${T('To‘lov usulini tanlang va summani kiriting. Qolgan qismi yetkazib beruvchi qarzi bo‘lib avtomatik hisoblanadi.','Выберите один способ оплаты и введите сумму. Остаток автоматически станет долгом поставщику.')}</p>`+(director?`<button type="button" class="secondary full" data-action="other-import">${T('Boshqa usulda qo‘shish','Добавить другим способом')}</button><p class="help">${T('Excel/PDF kirimi yetkazib beruvchisiz saqlanadi.','Приход Excel/PDF сохраняется без поставщика.')}</p><button type="button" class="secondary full" data-action="opening_stock">${T('Boshlang‘ich qoldiq (bir marta)','Начальный остаток (однократно)')}</button>`:''));return true;
  }
  if(action==='supplier-report'){
   const data=await api('/api/suppliers');
@@ -144,9 +144,9 @@ async function archiveReceiptPoint(button){
  try{
   await api('/api/action',{method:'POST',headers:{'Idempotency-Key':key()},body:{cmd:'point_archive',data:{point:point.id,active:false}}});
   state.points=state.points.filter(p=>p.id!==point.id);
-  for(const name of ['first_point','second_point']){
+  for(const name of ['first_point']){
    const select=form.elements.namedItem(name);
-   if(select.value===String(point.id))select.value="";
+   if(select&&select.value===String(point.id))select.value="";
    select.querySelector('option[value="'+point.id+'"]')?.remove();
   }
   toast(T('Manzil arxivlandi','Место архивировано'));
