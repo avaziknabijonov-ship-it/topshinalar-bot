@@ -381,7 +381,7 @@ class Bot(Usability):
                 lot=self.s.rows('SELECT p.name,t.name point_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.id=?',(state['data']['lot'],))[0]
                 lines.append(lot['name']+' · '+lot['point_name']+' · '+fmt(lot['cost']*state['data']['qty'])+' '+lot['currency'])
             if state['cmd']=='sell':
-                total=sum(x['total'] for x in self.s.items(state['data']['items']));paid=money(state['data']['paid'])
+                total=sum(x['total'] for x in self.s.items(state['data']['items']));paid=sum(money(x['amount'],True) for x in state['data']['splits']) if state['data'].get('splits') else money(state['data']['paid'])
                 if paid>total:raise ValueError('paid')
                 lines.append(tr('payment_summary',lang,total=fmt(total),paid=fmt(paid),debt=fmt(total-paid)))
             if state['cmd']=='cancel_sale':
