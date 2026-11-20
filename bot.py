@@ -683,6 +683,8 @@ class Bot(Usability):
             self.schedule_business()
         from topic_notices import poll
         poll(self.s)
+        from manager_dm import poll as manager_poll
+        manager_poll(self.s)
 
     def drain(self,api):
         # Never send a message about a business write that can still roll back.
