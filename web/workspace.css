@@ -474,3 +474,14 @@
 
 .cat-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .cat-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 12px;border:1px solid #EFEFEF;border-radius:10px}
+
+/* Payment status line */
+.paycell{display:grid;gap:3px;min-width:120px;text-align:right}
+.paycell small{color:#9D9D9D;font-size:11px}
+.paybar{appearance:none;-webkit-appearance:none;width:100%;height:5px;border:0;border-radius:3px;background:#EFEFEF;overflow:hidden;color:#E6332A}
+.paybar::-webkit-progress-bar{background:#EFEFEF;border-radius:3px}
+.paybar::-webkit-progress-value{background:#E6332A;border-radius:3px}
+.paybar::-moz-progress-bar{background:#E6332A;border-radius:3px}
+.paybar.ok::-webkit-progress-value{background:#1a8f4c}.paybar.ok::-moz-progress-bar{background:#1a8f4c}
+.paybar.part::-webkit-progress-value{background:#e0a100}.paybar.part::-moz-progress-bar{background:#e0a100}
+.es-receipt-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
