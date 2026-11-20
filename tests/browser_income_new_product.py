@@ -49,6 +49,7 @@ def main():
                     assert order == ['INPUT:picker-product', 'SELECT:product', 'BUTTON:quick-product', 'SELECT:supplier', 'SELECT:first_point'], order
                     assert modal.locator('label:has(#picker-product):has(select[name="product"])').count() == 1
                     expect(modal.locator('input[name="discount"]')).to_be_visible()
+                    assert modal.locator('[name="second_point"], [name="second_qty"]').count() == 0
                     page.screenshot(path=str(screens / f'income-form-{name}.png'))
                     ctx.close()
                 browser.close()
