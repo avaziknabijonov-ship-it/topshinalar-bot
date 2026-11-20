@@ -101,6 +101,14 @@ TABLES = (
 )
 
 
+TABLES = TABLES + (
+    '''CREATE TABLE IF NOT EXISTS supplier_due(
+        supplier INTEGER NOT NULL REFERENCES suppliers(id), currency TEXT NOT NULL CHECK(currency IN ('USD','UZS')),
+        due TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL,
+        PRIMARY KEY(supplier,currency))''',
+)
+
+
 def migrate(store):
     """Idempotent, transactional migration. No existing commercial data changes."""
     from core import now
@@ -145,6 +153,21 @@ class Accounting:
             # Retain old and new values in the existing immutable audit stream.
             self.log(uid, 'supplier_edit:' + json.dumps({'before':old, 'after':data}, ensure_ascii=False, sort_keys=True), ref)
         return ref
+
+    @atomic
+    def supplier_set_due(self, uid, supplier, currency, due):
+        """Director sets (or clears with an empty date) when the debt to a supplier must be paid."""
+        from core import now
+        self.director(uid)
+        supplier = quantity(supplier)
+        self.supplier_row(supplier)
+        currency = valid_currency(currency)
+        if due in (None, ''):
+            self.db.execute('DELETE FROM supplier_due WHERE supplier=? AND currency=?', (supplier, currency))
+        else:
+            self.db.execute('INSERT INTO supplier_due(supplier,currency,due,actor,created) VALUES(?,?,?,?,?) ON CONFLICT(supplier,currency) DO UPDATE SET due=excluded.due,actor=excluded.actor,created=excluded.created', (supplier, currency, accounting_date(due), uid, now()))
+        self.log(uid, 'supplier_due', supplier)
+        return supplier
 
     @atomic
     def supplier_set_active(self, uid, supplier, active):

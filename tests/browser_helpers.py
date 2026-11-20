@@ -8,6 +8,7 @@ def menu(page):
 def section(page, key):
     menu(page)
     button=page.locator('[data-section="'+key+'"]')
+    button.wait_for(state='attached')
     if not button.is_visible():
         # Menu groups are collapsible: open the group that holds this section.
         button.locator('xpath=ancestor::div[contains(@class,"nav-group")]//button[contains(@class,"nav-group-label")]').click()
