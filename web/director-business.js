@@ -18,8 +18,21 @@ function renderSectionFilters(){
  defs.supplier_returns=[['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['point',lookups.points,tr('Ombor / vitrina','Склад / витрина')],['currency',currencies,tr('Valyuta','Валюта')]];
  defs.receipts=[['receipt_source',states(['supplier','Ta’minotchi kirimi','Приход от поставщика'],['movements','Excel/PDF va boshqa kirim','Excel/PDF и прочий приход']),tr('Kirim manbasi','Источник прихода')],...(directorFilterState.receipts?.receipt_source==='movements'?[['point',lookups.points,tr('Joy','Место')]]:[['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['currency',currencies,tr('Valyuta','Валюта')]])];
  const fields=defs[section]||[];const box=$('section-filters');box.hidden=!fields.length;box.className='section-filter-panel';box.innerHTML=fields.map(([k,items,label])=>select(k,k==='receipt_source'?items:options(items||[]),label)).join('')+(['stock','products'].includes(section)?input('size',tr('O‘lcham','Размер')):'')+(fields.length?'<button id="clear-section-filters" class="quiet-button">'+tr('Filtrni tozalash','Сбросить фильтры')+'</button>':'');
- box.querySelectorAll('select,input').forEach(el=>{el.value=directorFilterState[section]?.[el.name]||(el.name==='receipt_source'?'supplier':'');el.onchange=()=>{(directorFilterState[section]||={})[el.name]=el.value;page=0;load(el.name==='receipt_source');};});
+ box.querySelectorAll('select,input').forEach(el=>{el.value=directorFilterState[section]?.[el.name]||(el.name==='receipt_source'?'supplier':'');el.onchange=()=>{(directorFilterState[section]||={})[el.name]=el.value;page=0;syncFilterToggle();load(el.name==='receipt_source');};});
  if($('clear-section-filters'))$('clear-section-filters').onclick=()=>{directorFilterState[section]={};$('search').value='';page=0;load();};
+ let toggle=$('filter-toggle');
+ if(!toggle){toggle=document.createElement('button');toggle.type='button';toggle.id='filter-toggle';toggle.className='filter-toggle';$('filters').insertBefore(toggle,$('filters').querySelector('button[type=submit]'));toggle.onclick=()=>{directorFiltersOpen=!directorFiltersOpen;syncFilterToggle();};}
+ toggle.hidden=!fields.length;directorFiltersOpen=activeFilterCount()>0;syncFilterToggle();
+}
+let directorFiltersOpen=false;
+function activeFilterCount(){return Object.values(directorFilterState[section]||{}).filter(Boolean).length;}
+function syncFilterToggle(){
+ const toggle=$('filter-toggle'),box=$('section-filters');if(!toggle||!box)return;
+ const count=activeFilterCount();
+ box.classList.toggle('filters-collapsed',!directorFiltersOpen);
+ toggle.setAttribute('aria-expanded',String(directorFiltersOpen));toggle.setAttribute('aria-controls','section-filters');
+ toggle.classList.toggle('has-filters',count>0);
+ toggle.textContent=tr('Filtrlar','Фильтры')+(count?' · '+count:'');
 }
 function editDirectorClient(row){
  const owners=(lookups.staff||[]).filter(x=>x.active||x.id===row?.owner);
