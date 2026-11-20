@@ -655,6 +655,10 @@
     "rate": [
       "Kurs (so‘m)",
       "Курс (сум)"
+    ],
+    "wholesale_price": [
+      "Optom narx",
+      "Оптовая цена"
     ]
   },
   "values": {

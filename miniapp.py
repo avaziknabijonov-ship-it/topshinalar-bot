@@ -86,6 +86,7 @@ class MiniService:
         lot_suppliers={}
         for r in self.s.rows("SELECT l.product,l.point,r.supplier id,COALESCE(v.name,'') name,SUM(l.qty) qty FROM inventory_lots l LEFT JOIN receipts r ON r.id=l.receipt LEFT JOIN suppliers v ON v.id=r.supplier WHERE l.qty>0 GROUP BY l.product,l.point,r.supplier ORDER BY name,r.supplier"):
             lot_suppliers.setdefault((r['product'],r['point']),[]).append({'id':r['id'],'name':r['name'],'qty':r['qty']})
+        wholesale={r['id']:r['wholesale_price'] for r in self.s.rows('SELECT id,wholesale_price FROM products')}
         groups={}
         for row in self.s.stock(uid):
             if not matches_product(query,row):continue
@@ -95,7 +96,7 @@ class MiniService:
             if row['id'] not in groups:
                 parts=size_parts(row['name'])
                 count=photo_counts.get(row['id'],0) or int(bool(row['photo']))
-                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(count),'photo_count':count,'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
+                groups[row['id']]={'id':row['id'],'name':row['name'],'brand':row_brand,'size':row['size'] or ('/'.join(parts[:2])+(' R'+parts[2] if parts[2] else '') if parts else ''),'price':row['price'],'wholesale_price':wholesale.get(row['id']),'currency':row['currency'],'price_pending':bool(row['price_pending']),'stock_pending':bool(row['catalog_sku']),'photo':bool(count),'photo_count':count,'photo_reference':bool(row['photo'] and row['photo'].startswith('catalog:')),'points':[],'qty':0}
             if row['stock_set']:groups[row['id']]['stock_pending']=False
             if row['point_id'] is not None:
                 groups[row['id']]['points'].append({'id':row['point_id'],'name':row['point'],'qty':row['qty'],'suppliers':lot_suppliers.get((row['id'],row['point_id']),[]),'stock_pending':bool(row['catalog_sku'] and not row['stock_set'])})
@@ -284,7 +285,11 @@ class MiniService:
             elif str(d.get('qty','0')) not in {'','0'}:raise ValueError('no_points')
             return ref
         if cmd=='editproduct':
-            return self.s.edit_product(uid,integer(d.get('product')),text(d.get('name','')),text(d.get('brand',''),False,150),text(d.get('size',''),False,150),str(d.get('price','')))
+            product=self.s.edit_product(uid,integer(d.get('product')),text(d.get('name','')),text(d.get('brand',''),False,150),text(d.get('size',''),False,150),str(d.get('price','')))
+            if 'wholesale_price' in d:
+                raw=str(d.get('wholesale_price') or '').strip()
+                self.s.db.execute('UPDATE products SET wholesale_price=? WHERE id=?',(money(raw) if raw else None,product))
+            return product
         if cmd=='minimum':return self.s.set_minimum(uid,integer(d.get('product')),integer(d.get('point')),d.get('minimum'))
         if cmd in {'income','return','writeoff'}:
             return self.s.move(uid,integer(d.get('product')),integer(d.get('point')),d.get('qty'),{'income':'in','return':'return','writeoff':'writeoff'}[cmd],text(d.get('note',''),False))
@@ -457,7 +462,7 @@ class MiniHandler(BaseHTTPRequestHandler):
             elif path=='/api/clients':
                 q=' '.join(query.get('q','').casefold().split())[:200]
                 scope=" WHERE owner=? OR EXISTS(SELECT 1 FROM sales s WHERE s.client=clients.id AND s.actor=?)" if query.get('scope')=='mine' and user['role']!='director' else ''
-                rows=store.rows('SELECT id,name,phone,address,note FROM clients'+scope+' ORDER BY name,id',(uid,uid) if scope else ())
+                rows=store.rows('SELECT id,name,phone,address,note,category FROM clients'+scope+' ORDER BY name,id',(uid,uid) if scope else ())
                 digits=re.sub(r'\D','',q)
                 rows=[r for r in rows if q in ' '.join((r['name']+' '+r['phone']).casefold().split()) or (digits and re.fullmatch(r'[+\d\s()-]+',q) and digits in re.sub(r'\D','',r['phone']))]
                 result={'items':rows[page*20:(page+1)*20],'total':len(rows)}

@@ -124,6 +124,8 @@ def migrate(store):
                 ('supplier_entries', 'method', "TEXT NOT NULL DEFAULT ''"),
                 ('suppliers', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
                 ('manager_entries', 'category', 'INTEGER REFERENCES expense_categories(id)'),
+                ('clients', 'category', "TEXT NOT NULL DEFAULT 'retail' CHECK(category IN ('retail','wholesale'))"),
+                ('products', 'wholesale_price', 'INTEGER CHECK(wholesale_price IS NULL OR wholesale_price>=0)'),
                 ('points', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
             ):
                 if column not in {r[1] for r in store.db.execute(f'PRAGMA table_info({table})')}:
