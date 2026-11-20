@@ -464,3 +464,10 @@
   .director-workspace .sidebar-heading { position: relative; }
   .director-workspace:not(.rail) #rail-toggle { position: absolute; right: 0; top: 0; }
 }
+
+/* Qarzlar: customer / supplier tabs and totals strip */
+.debt-tabs{display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap}
+.debt-tab{border:1px solid var(--line,#EFEFEF);background:#fff;color:#313131;border-radius:10px;padding:9px 16px;font-weight:600;cursor:pointer}
+.debt-tab.active{background:#0B0B0A;border-color:#0B0B0A;color:#FBFBFB}
+.debt-totals{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 12px;padding:12px 16px;border:1px solid var(--line,#EFEFEF);border-radius:12px;background:#fff}
+.debt-totals strong{color:#E6332A}

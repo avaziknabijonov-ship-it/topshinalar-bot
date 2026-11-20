@@ -635,6 +635,18 @@
     "operation": [
       "Operatsiya",
       "Операция"
+    ],
+    "owed": [
+      "Biz qarzmiz",
+      "Мы должны"
+    ],
+    "late_days": [
+      "Kechikish",
+      "Просрочка"
+    ],
+    "due_action": [
+      "Muddat",
+      "Срок"
     ]
   },
   "values": {

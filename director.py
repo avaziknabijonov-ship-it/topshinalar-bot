@@ -41,13 +41,45 @@ def count_stock(s,uid,d):
     return product
 
 
-def page(rows,q):
+def page(rows,q,totals=None):
     from director_business import filtered
     rows=filtered(rows,q)
     search=q.get('q','').casefold().strip()[:200]
     if search:rows=[r for r in rows if search in json.dumps(r,ensure_ascii=False).casefold()]
     index=max(0,min(100000,int(q.get('page',0))));size=25
-    return {'items':rows[index*size:(index+1)*size],'total':len(rows),'page':index,'page_size':size}
+    result={'items':rows[index*size:(index+1)*size],'total':len(rows),'page':index,'page_size':size}
+    if totals:result['totals']=totals(rows)
+    return result
+
+
+def late_days(due,today=None):
+    """Whole days a payment is overdue (0 when not overdue or no due date)."""
+    from datetime import date
+    today=today or now()[:10]
+    if not due or due>=today:return 0
+    return (date.fromisoformat(today)-date.fromisoformat(due)).days
+
+
+def currency_totals(rows,field):
+    result={}
+    for r in rows:
+        if isinstance(r.get(field),int):result[r['currency']]=result.get(r['currency'],0)+r[field]
+    return [{'currency':c,'amount':a} for c,a in sorted(result.items())]
+
+
+def payables(s,uid):
+    """What we owe suppliers, per supplier and currency, with the director-set due date."""
+    s.director(uid)
+    data=s.suppliers(uid)
+    names={r['id']:r['name'] for r in data['suppliers']}
+    due={(r['supplier'],r['currency']):r['due'] for r in s.rows('SELECT supplier,currency,due FROM supplier_due')}
+    rows=[]
+    for b in data['balances']:
+        if b['balance']<=0 or b['supplier'] not in names:continue
+        d=due.get((b['supplier'],b['currency']),'')
+        rows.append({'id':b['supplier'],'supplier':b['supplier'],'supplier_name':names[b['supplier']],'currency':b['currency'],'balance':b['balance'],'owed':b['balance'],'debt_due':d,'late_days':late_days(d)})
+    rows.sort(key=lambda r:(r['debt_due']=='',r['debt_due'],r['supplier_name'].casefold()))
+    return rows
 
 
 def read(service,uid,kind,q):
@@ -68,7 +100,13 @@ def read(service,uid,kind,q):
     if kind in ('payments','refunds'):
         return page(s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end)),q)
     if kind in ('debts','overdue'):
-        return page(s.debts(uid,kind=='overdue'),q)
+        rows=s.debts(uid,kind=='overdue' or q.get('overdue')=='1')
+        for r in rows:r['late_days']=late_days(r.get('debt_due'))
+        return page(rows,q,lambda rs:currency_totals(rs,'debt'))
+    if kind=='payables':
+        rows=payables(s,uid)
+        if q.get('overdue')=='1':rows=[r for r in rows if r['late_days']>0]
+        return page(rows,q,lambda rs:currency_totals(rs,'balance'))
     if kind=='sales':
         rows=s.rows('''SELECT s.*,c.name client_name,u.name manager_name,(s.total-s.paid) debt FROM sales s JOIN clients c ON c.id=s.client JOIN users u ON u.id=s.actor WHERE substr(s.created,1,10) BETWEEN ? AND ? ORDER BY s.id DESC''',(start,end))
         for row in rows:
