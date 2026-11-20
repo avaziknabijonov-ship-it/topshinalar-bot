@@ -17,6 +17,8 @@ def save_client(s,uid,d):
     old=s.one('clients',quantity(d['client'])) if d.get('client') else None
     if old and d.get('revision')!=revision(old):raise ValueError('client_changed')
     fields=dict(name=clean_note(d.get('name',''),True,150),phone=normalize_contact_phone(d['phone']) if str(d.get('phone','')).strip() else '',address=clean_note(d.get('address',''),False,1000),note=clean_note(d.get('note',''),False,1500))
+    category=d.get('category',old['category'] if old else 'retail')
+    if category not in ('retail','wholesale'):raise ValueError('category')
     owner=d.get('owner',old['owner'] if old else uid)
     if isinstance(owner,bool) or not str(owner).isdigit() or not 0<int(owner)<=2**53:raise ValueError('staff_target')
     owner=int(owner);s.one('users',owner)
@@ -26,6 +28,7 @@ def save_client(s,uid,d):
         ref=old['id'];s.log(uid,'client_edit:'+json.dumps({'before':{k:old[k] for k in fields},'after':fields,'owner_before':old['owner'],'owner_after':owner},ensure_ascii=False),ref)
     else:
         ref=s.client(uid,**fields);s.db.execute('UPDATE clients SET owner=? WHERE id=?',(owner,ref))
+    s.db.execute('UPDATE clients SET category=? WHERE id=?',(category,ref))
     return ref
 
 

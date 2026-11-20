@@ -8,7 +8,7 @@ def records(s,uid,kind,start,end,q):
     s.director(uid)
     with read_snapshot(s):
         if kind=='products':
-            rows=s.rows('SELECT id,name,brand,size,price,currency,price_pending,active FROM products ORDER BY id DESC')
+            rows=s.rows('SELECT id,name,brand,size,price,wholesale_price,currency,price_pending,active FROM products ORDER BY id DESC')
             for r in rows:
                 if r['price_pending']:r['price']=None
             return rows
