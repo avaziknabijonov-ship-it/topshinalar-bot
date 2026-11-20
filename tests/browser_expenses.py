@@ -28,6 +28,7 @@ def main():
             s.db.execute("UPDATE users SET name='Sinov direktori' WHERE id=10");s.db.execute("UPDATE users SET name='Sinov xodimi' WHERE id=20")
         initialize(path)
         s.db.commit()
+        MiniService(s,'f').write(10,'expense-browser-fund-0001','manager_record',{'manager':20,'kind':'fund','amount':'100','currency':'USD','note':'x','date':today})
         server=MiniServer(('127.0.0.1',0),path,TOKEN);server.origin='http://localhost:'+str(server.server_address[1])
         threading.Thread(target=server.serve_forever,daemon=True).start()
         with sync_playwright() as p:

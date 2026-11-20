@@ -180,6 +180,7 @@ MENU.update({
 'supplier_edit':('Yetkazib beruvchi tahriri','Изменить поставщика'),
 'supplier_payment':('Yetkazib beruvchiga to‘lov','Оплата поставщику'),
 'supplier_return':('Yetkazib beruvchiga qaytarish','Возврат поставщику'),
+'exchange_rate':('USD kursi','Курс USD'),
 'supplier_due':('Ta’minotchi qarzi muddati','Срок долга поставщику'),
 'expense_category':('Xarajat kategoriyasi','Категория расхода'),
 'supplier_report':('Yetkazib beruvchi hisoboti','Отчёт по поставщикам'),

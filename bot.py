@@ -515,7 +515,7 @@ class Bot(Usability):
         if cmd=='point_kind':return self.s.point_kind(uid,**d)
         if cmd=='transfer':return self.s.transfer(uid,**d)
         if cmd in {'manager_fund','manager_expense','manager_return'}:
-            return self.s.manager_record(uid,kind={'manager_fund':'fund','manager_expense':'expense','manager_return':'return'}[cmd],**d)
+            return self.s.manager_record(uid,kind={'manager_fund':'fund','manager_expense':'expense','manager_return':'return'}[cmd],strict=cmd=='manager_expense',**d)
         if cmd=='supplier_report':
             report=self.s.supplier_report(uid,d['from'],d['until'],d['supplier'])
             self.xlsx(uid,{'supplier_stock':report['stock'],'supplier_sold':report['sold'],'supplier_entries':report['entries'],'supplier_balances':report['balances'],'supplier_lots':report['lots']},'supplier-report.xlsx')

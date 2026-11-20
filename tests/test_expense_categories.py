@@ -9,6 +9,7 @@ class ExpenseCategories(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.path=Path(self.tmp.name)/'x.sqlite3'
         self.s=Store(self.path);self.s.configure([10],[20]);initialize(self.path);self.api=MiniService(self.s,'t')
+        self.api.write(10,'expense-fund-key-0-padded','manager_record',{'manager':20,'kind':'fund','amount':'1000','currency':'USD','note':'fond','date':'2026-11-01'})
     def tearDown(self):self.tmp.cleanup()
     def test_category_flow(self):
         c=self.api.write(10,'expense-test-key-1-padded','expense_category',{'name':'Ijara'})['id']
