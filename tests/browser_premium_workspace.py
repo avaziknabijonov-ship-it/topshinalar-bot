@@ -67,7 +67,7 @@ def main():
                 expect(page.locator('#content tr[data-id]')).to_have_count(1)
                 row=page.locator('#content tr[data-id]').first;row.focus();page.keyboard.press('Enter')
                 expect(page.locator('#detail')).to_be_visible();page.keyboard.press('Escape')
-                page.locator('#search').fill('not-a-customer');page.locator('#filters button').click()
+                page.locator('#search').fill('not-a-customer');page.locator('#filters button[type="submit"]').click()
                 expect(page.locator('#content .workspace-empty')).to_be_visible()
                 page.locator('#search').fill('');section(page,'overview')
                 # Drawer focus containment, Escape, navigation, breakpoints and scroll.

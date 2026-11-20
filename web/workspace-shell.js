@@ -67,6 +67,18 @@ window.WorkspaceUI = (() => {
       if (!value) dismiss(false);
       update();
     };
+    const railToggle = document.getElementById('rail-toggle');
+    function applyRail(on) {
+      document.body.classList.toggle('rail', on);
+      railToggle.setAttribute('aria-pressed', String(on));
+      try { localStorage.setItem('dirRail', on ? '1' : '0'); } catch {}
+    }
+    if (railToggle) {
+      let saved = false;
+      try { saved = localStorage.getItem('dirRail') === '1'; } catch {}
+      applyRail(saved);
+      railToggle.onclick = () => applyRail(!document.body.classList.contains('rail'));
+    }
     setAuthenticated(false);
   }
   return { director, authenticated: value => setAuthenticated(value) };
