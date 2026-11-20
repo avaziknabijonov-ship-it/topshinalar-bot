@@ -251,7 +251,10 @@ class MiniService:
                     if 'point' in raw:line['point']=integer(raw['point'])
                     if raw.get('supplier') not in (None,''):line['supplier']=integer(raw['supplier'])
             payload={'client':client,'items':clean,'payment':text(d.get('payment',''),required=cmd!='quote')}
-            if cmd=='sell':payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
+            if cmd=='sell':
+                payload.update(point=integer(d.get('point')),paid=str(d.get('paid','0')))
+                if d.get('splits'):
+                    payload['splits']=[{'method':text(x.get('method')),'amount':str(x.get('amount'))} for x in d['splits'][:6]]
             else:payload.update(fulfillment=text(d.get('fulfillment',''),required=False),exchange_rate=str(exchange_rate(d.get('exchange_rate'))))
             if cmd=='quote' and 'contact_phone' in d:payload['contact_phone']=normalize_contact_phone(d['contact_phone'])
             ref=self.b.execute(uid,cmd,payload)

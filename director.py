@@ -98,7 +98,13 @@ def read(service,uid,kind,q):
         from director_overview import overview
         return overview(service,uid,start,end)
     if kind in ('payments','refunds'):
-        return page(s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end)),q)
+        rows=s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name,s.currency FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end))
+        if kind=='payments' and q.get('link')!='linked':
+            # Money received outside any sale: shown in the same journal, marked as not linked to a sale.
+            extra=s.rows("SELECT e.id,e.created,e.amount,e.currency,e.note,e.manager actor,u.name actor_name FROM manager_received e JOIN users u ON u.id=e.manager WHERE e.date BETWEEN ? AND ? ORDER BY e.id DESC",(start,end))
+            for r in extra:r.update(sale=None,client=0,client_name=None,method='',unlinked=1)
+            rows=sorted(rows+extra,key=lambda r:(r['created'],r['id']),reverse=True) if q.get('link')!='unlinked' else extra
+        return page(rows,q,lambda rs:currency_totals(rs,'amount'))
     if kind in ('debts','overdue'):
         rows=s.debts(uid,kind=='overdue' or q.get('overdue')=='1')
         for r in rows:r['late_days']=late_days(r.get('debt_due'))
