@@ -98,7 +98,13 @@ def read(service,uid,kind,q):
         from director_overview import overview
         return overview(service,uid,start,end)
     if kind in ('payments','refunds'):
-        return page(s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end)),q)
+        rows=s.rows(f'SELECT p.*,s.client,c.name client_name,u.name actor_name,s.currency FROM {kind} p JOIN sales s ON s.id=p.sale JOIN clients c ON c.id=s.client JOIN users u ON u.id=p.actor WHERE substr(p.created,1,10) BETWEEN ? AND ? ORDER BY p.id DESC',(start,end))
+        if kind=='payments' and q.get('link')!='linked':
+            # Money received outside any sale: shown in the same journal, marked as not linked to a sale.
+            extra=s.rows("SELECT e.id,e.created,e.amount,e.currency,e.note,e.manager actor,u.name actor_name FROM manager_received e JOIN users u ON u.id=e.manager WHERE e.date BETWEEN ? AND ? ORDER BY e.id DESC",(start,end))
+            for r in extra:r.update(sale=None,client=0,client_name=None,method='',unlinked=1)
+            rows=sorted(rows+extra,key=lambda r:(r['created'],r['id']),reverse=True) if q.get('link')!='unlinked' else extra
+        return page(rows,q,lambda rs:currency_totals(rs,'amount'))
     if kind in ('debts','overdue'):
         rows=s.debts(uid,kind=='overdue' or q.get('overdue')=='1')
         for r in rows:r['late_days']=late_days(r.get('debt_due'))
@@ -146,6 +152,17 @@ def read(service,uid,kind,q):
         names={r['id']:r['name'] for r in result['suppliers']}
         result['balances']=[{**r,'supplier_name':names[r['supplier']]} for r in balances if r['supplier'] in names]
         paged=page(result['suppliers'],q);result['suppliers']=paged.pop('items');visible={r['id'] for r in result['suppliers']};result['balances']=[r for r in result['balances'] if r['supplier'] in visible];result.update(paged);return result
+    if kind=='cashbox':
+        import manager_money
+        s.director(uid)
+        with manager_money.read_snapshot(s):balances=s.manager_account(uid)['balances']
+        totals={}
+        for b in balances:
+            row=totals.setdefault(b['currency'],dict(currency=b['currency'],received=0,given=0,expenses=0,refunds=0,returned=0,pending_return=0,balance=0,negative=0))
+            for k in ('received','given','expenses','refunds','returned','pending_return','balance'):row[k]+=b[k]
+            if b['balance']<0:row['negative']+=1
+        rates=s.exchange_rates()
+        return dict(totals=sorted(totals.values(),key=lambda r:r['currency']),managers=[b for b in balances if b['balance']!=0 or b['pending_return']],rates=rates,current_rate=rates[0] if rates else None)
     if kind=='managers':
         import manager_money
         with manager_money.read_snapshot(s):
@@ -173,7 +190,7 @@ def read(service,uid,kind,q):
         product=quantity(q.get('product'));point=quantity(q.get('point'));s.one('products',product);s.one('points',point)
         row=s.db.execute('SELECT qty FROM stock WHERE product=? AND point=?',(product,point)).fetchone()
         return {'qty':row['qty'] if row else 0,'known':bool(row)}
-    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points WHERE active=1'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers WHERE active=1')}
+    if kind=='lookups':return {'brands':[r['brand'] for r in s.rows("SELECT DISTINCT brand FROM products WHERE brand<>'' ORDER BY brand")],'lots':s.rows('SELECT l.id,l.qty,l.created,p.name product_name,t.name point_name,v.name supplier_name,r.cost,r.currency FROM inventory_lots l JOIN receipts r ON r.id=l.receipt JOIN suppliers v ON v.id=r.supplier JOIN products p ON p.id=l.product JOIN points t ON t.id=l.point WHERE l.qty>0 ORDER BY l.id DESC'),'points':s.rows('SELECT id,name,kind FROM points WHERE active=1'),'products':s.rows('SELECT id,name,brand,size FROM products'),'clients':s.rows('SELECT id,name FROM clients'),'staff':s.rows('SELECT id,name,active,role FROM users'),'suppliers':s.rows('SELECT id,name FROM suppliers WHERE active=1'),'expense_categories':s.rows('SELECT id,name,active FROM expense_categories ORDER BY name')}
     raise ValueError('route')
 
 

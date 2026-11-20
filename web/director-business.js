@@ -12,8 +12,8 @@ function renderSectionFilters(){
  audit:[['manager',lookups.staff,tr('Xodim','Сотрудник')]],
  website:[['brand',(lookups.brands||[]).map(x=>({id:x,name:x})),tr('Brend','Бренд')],['sync_status',states(['synced','Yuborilgan','Синхронизировано'],['pending','Navbatda','В очереди'],['retry_required','Xato','Ошибка']),tr('Sinxronlash','Синхронизация')]]};
  defs.products=[...defs.website.filter(x=>x[0]==='brand'),['active',states(['1','Faol','Активен'],['0','Faol emas','Неактивен']),tr('Holat','Статус')],['currency',currencies,tr('Valyuta','Валюта')]];
- defs.payments=[['client',lookups.clients,tr('Mijoz','Клиент')],['manager',lookups.staff,tr('Pulni olgan','Получил')],['currency',currencies,tr('Valyuta','Валюта')],['method',states(['cash','Naqd','Наличные'],['card','Karta','Карта'],['transfer','Bank','Банк']),tr('To‘lov usuli','Способ оплаты')]];
- defs.expenses=[['manager',lookups.staff.filter(x=>x.role==='employee'),tr('Mas’ul menejer','Ответственный менеджер')],['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['currency',currencies,tr('Valyuta','Валюта')]];
+ defs.payments=[['link',[{id:'linked',name:tr('Savdoga bog‘langan','Привязаны к продаже')},{id:'unlinked',name:tr('Savdoga bog‘lanmagan','Не привязаны к продаже')}],tr('Bog‘lanish','Привязка')],['client',lookups.clients,tr('Mijoz','Клиент')],['manager',lookups.staff,tr('Pulni olgan','Получил')],['currency',currencies,tr('Valyuta','Валюта')],['method',states(['cash','Naqd','Наличные'],['card','Karta','Карта'],['transfer','Bank','Банк']),tr('To‘lov usuli','Способ оплаты')]];
+ defs.expenses=[['category',(lookups.expense_categories||[]).filter(x=>x.active),tr('Kategoriya','Категория')],['expense_type',[{id:'operating',name:tr('Oddiy xarajat','Обычный расход')},{id:'supplier',name:tr('Ta’minotchiga to‘lov','Оплата поставщику')}],tr('Turi','Тип')],['manager',lookups.staff.filter(x=>x.role==='employee'),tr('Mas’ul menejer','Ответственный менеджер')],['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['currency',currencies,tr('Valyuta','Валюта')]];
  defs.debts=debtView()==='suppliers'?[['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['overdue',states(['1','Muddati o‘tgan','Просрочено']),tr('Muddat','Срок')],['currency',currencies,tr('Valyuta','Валюта')]]:[['client',lookups.clients,tr('Mijoz','Клиент')],['manager',lookups.staff,tr('Menejer','Менеджер')],['overdue',states(['1','Muddati o‘tgan','Просрочено']),tr('Muddat','Срок')],['currency',currencies,tr('Valyuta','Валюта')]];
  defs.customer_returns=defs.sales.filter(x=>['client','manager','currency'].includes(x[0]));
  defs.supplier_returns=[['supplier',lookups.suppliers,tr('Ta’minotchi','Поставщик')],['point',lookups.points,tr('Ombor / vitrina','Склад / витрина')],['currency',currencies,tr('Valyuta','Валюта')]];
@@ -63,7 +63,7 @@ function openSupplierReturn(){return form(tr('Partiyadan qaytarish','Возвр�
 function goDirectorSection(target){section=target;page=0;$('search').value='';nav();load();}
 function openDirectorExpense(){
  const employees=lookups.staff.filter(x=>x.active&&x.role==='employee');
- form(tr('Menejer xarajati','Расход менеджера'),select('manager',employees,tr('Mas’ul menejer','Ответственный менеджер'),'required')+select('currency',[{id:'USD',name:'USD'},{id:'UZS',name:'UZS'}],tr('Valyuta','Валюта'))+input('amount',tr('Summa','Сумма'),'text','','required')+input('date',tr('Hisob kuni','Учётный день'),'date',$('end').value,'required')+input('note',tr('Xarajat sababi','Причина расхода'),'text','','required')+'<p class="wide note">'+tr('Menejer zimmasidagi puldan xarajat yoziladi. Bu umumiy kassa/bank hisobi emas. Ta’minotchiga to‘lovni tegishli kirim/to‘lov formasida kiriting.','Расход учитывается из денег сотрудника. Это не общий учёт кассы/банка. Оплату поставщику оформляйте через форму прихода/оплаты.')+'</p>',f=>command('manager_record',{...Object.fromEntries(f),manager:+f.get('manager'),kind:'expense'}));
+ form(tr('Menejer xarajati','Расход менеджера'),select('manager',employees,tr('Mas’ul menejer','Ответственный менеджер'),'required')+select('category',[{id:'',name:tr('Kategoriyasiz','Без категории')},...(lookups.expense_categories||[]).filter(x=>x.active)],tr('Kategoriya','Категория'))+select('currency',[{id:'USD',name:'USD'},{id:'UZS',name:'UZS'}],tr('Valyuta','Валюта'))+input('amount',tr('Summa','Сумма'),'text','','required')+input('date',tr('Hisob kuni','Учётный день'),'date',$('end').value,'required')+input('note',tr('Xarajat sababi','Причина расхода'),'text','','required')+'<p class="wide note">'+tr('Menejer zimmasidagi puldan xarajat yoziladi. Bu umumiy kassa/bank hisobi emas. Ta’minotchiga to‘lovni tegishli kirim/to‘lov formasida kiriting.','Расход учитывается из денег сотрудника. Это не общий учёт кассы/банка. Оплату поставщику оформляйте через форму прихода/оплаты.')+'</p>',f=>command('manager_record',{...Object.fromEntries(f),manager:+f.get('manager'),kind:'expense'}));
 }
 function editDirectorProduct(row){
  const needsReview=row.currency!=='USD'||row.price_pending;
@@ -95,4 +95,22 @@ function returnTabs(){
 }
 function wireReturnTabs(){
  $('content').querySelectorAll('[data-return-tab]').forEach(b=>b.onclick=()=>{if(section===b.dataset.returnTab)return;section=b.dataset.returnTab;page=0;$('search').value='';nav();load();});
+}
+function renderCashbox(data){
+ const cols=['currency','balance','received','given','expenses','returned'];
+ let html='<p class="note">'+tr('Kassa — menejerlar zimmasidagi pulning jami. Xarajat menejerda mavjud puldan oshib ketsa saqlanmaydi (minusga ruxsat yo‘q). Alohida bank hisobi yuritilmaydi.','Касса — сумма денег на руках у менеджеров. Расход сверх имеющихся денег не сохраняется (минус запрещён). Отдельный банковский счёт не ведётся.')+'</p>';
+ html+='<h2>'+tr('Kassadagi pullar','Деньги в кассе')+'</h2>'+table(data.totals,cols,false,{noTotals:true});
+ const neg=data.totals.filter(r=>r.negative);
+ if(neg.length)html+='<p class="note"><span class="chip bad">'+tr('Diqqat','Внимание')+'</span> '+tr('Manfiy qoldiqli menejerlar bor: ','Есть менеджеры с отрицательным остатком: ')+neg.map(r=>r.currency+' × '+r.negative).join(', ')+'</p>';
+ html+='<h2>'+tr('Menejerlar qo‘lidagi qoldiq','Остаток у менеджеров')+'</h2>'+table(data.managers,['manager_name','currency','balance','pending_return'],false);
+ html+='<h2>'+tr('USD kursi tarixi','История курса USD')+'</h2>'+(data.rates.length?table(data.rates,['date','rate','actor_name'],false):'<p class="note">'+tr('Kurs hali kiritilmagan.','Курс ещё не введён.')+'</p>');
+ return html;
+}
+function openRateForm(){
+ form(tr('USD kursi','Курс USD'),input('date',tr('Sana','Дата'),'date',$('end').value,'required')+input('rate',tr('1 USD = … so‘m','1 USD = … сум'),'text','','required'),f=>command('exchange_rate',Object.fromEntries(f)));
+}
+function openExpenseCategories(){
+ const list=(lookups.expense_categories||[]).map(c=>`<li><span>${esc(c.name)}${c.active?'':' · '+tr('arxiv','архив')}</span><button type="button" data-cat="${c.id}" data-name="${esc(c.name)}" data-active="${c.active?1:0}">${c.active?tr('Arxivga','В архив'):tr('Qaytarish','Вернуть')}</button></li>`).join('')||`<li>${tr('Hozircha kategoriya yo‘q','Категорий пока нет')}</li>`;
+ form(tr('Xarajat kategoriyalari','Категории расходов'),input('name',tr('Yangi kategoriya','Новая категория'),'text','','required')+`<ul class="wide cat-list">${list}</ul>`,f=>command('expense_category',{name:f.get('name')}).then(async()=>{lookups=await api('/director-api/lookups');}));
+ $('operation').querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>command('expense_category',{category:+b.dataset.cat,name:b.dataset.name,active:b.dataset.active==='1'?'0':'1'}).then(async()=>{lookups=await api('/director-api/lookups');openExpenseCategories();}).catch(e=>$('form-error').textContent=WorkspaceText.error(e,lang)));
 }

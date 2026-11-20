@@ -647,6 +647,14 @@
     "due_action": [
       "Muddat",
       "Срок"
+    ],
+    "category_name": [
+      "Kategoriya",
+      "Категория"
+    ],
+    "rate": [
+      "Kurs (so‘m)",
+      "Курс (сум)"
     ]
   },
   "values": {
