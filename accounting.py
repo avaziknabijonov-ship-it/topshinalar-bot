@@ -101,7 +101,7 @@ TABLES = (
 )
 
 
-TABLES = TABLES + (
+TABLES = TABLES + ('''CREATE TABLE IF NOT EXISTS expense_categories(id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)), actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL)''',
     '''CREATE TABLE IF NOT EXISTS supplier_due(
         supplier INTEGER NOT NULL REFERENCES suppliers(id), currency TEXT NOT NULL CHECK(currency IN ('USD','UZS')),
         due TEXT NOT NULL, actor INTEGER NOT NULL REFERENCES users(id), created TEXT NOT NULL,
@@ -122,6 +122,7 @@ def migrate(store):
                 ('sale_items', 'location_kind', "TEXT CHECK(location_kind IN ('sklad','vitrina'))"),
                 ('supplier_entries', 'method', "TEXT NOT NULL DEFAULT ''"),
                 ('suppliers', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
+                ('manager_entries', 'category', 'INTEGER REFERENCES expense_categories(id)'),
                 ('points', 'active', 'INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1))'),
             ):
                 if column not in {r[1] for r in store.db.execute(f'PRAGMA table_info({table})')}:
@@ -137,6 +138,25 @@ class Accounting:
         if not rows:
             raise ValueError('missing')
         return rows[0]
+
+    @atomic
+    def expense_category_save(self, uid, name, category=None, active=True):
+        from core import now
+        self.director(uid)
+        name = clean_note(name, True, 80)
+        if category is None:
+            if self.db.execute('SELECT 1 FROM expense_categories WHERE lower(name)=lower(?)', (name,)).fetchone():
+                raise ValueError('duplicate')
+            ref = self.add('expense_categories', name=name, active=1, actor=uid, created=now())
+        else:
+            ref = quantity(category)
+            if not self.db.execute('SELECT 1 FROM expense_categories WHERE id=?', (ref,)).fetchone():
+                raise ValueError('missing')
+            if self.db.execute('SELECT 1 FROM expense_categories WHERE lower(name)=lower(?) AND id<>?', (name, ref)).fetchone():
+                raise ValueError('duplicate')
+            self.db.execute('UPDATE expense_categories SET name=?,active=? WHERE id=?', (name, 1 if active else 0, ref))
+        self.log(uid, 'expense_category', ref)
+        return ref
 
     @atomic
     def supplier_save(self, uid, name, phone='', note='', supplier=None):
@@ -299,7 +319,7 @@ class Accounting:
             self.director(uid)
 
     @atomic
-    def manager_record(self, uid, manager, kind, amount, note='', date=None, currency='USD'):
+    def manager_record(self, uid, manager, kind, amount, note='', date=None, currency='USD', category=None):
         from core import now, money
         self._manager_access(uid, manager)
         if kind not in ('fund', 'expense', 'return'):
@@ -311,7 +331,13 @@ class Accounting:
             from manager_money import balance
             b=balance(self,uid,manager,currency)
             if money(amount,True)>b['balance']-b['pending_return']:raise ValueError('manager_cash_available')
-        ref = self.add('manager_entries', manager=manager, kind=kind, amount=money(amount, True), currency=valid_currency(currency), actor=uid, note=clean_note(note), date=accounting_date(date), created=now())
+        if category in ('', 0, '0'):
+            category = None
+        if category is not None:
+            if kind != 'expense' or not self.db.execute('SELECT 1 FROM expense_categories WHERE id=? AND active=1', (quantity(category),)).fetchone():
+                raise ValueError('category')
+            category = quantity(category)
+        ref = self.add('manager_entries', manager=manager, kind=kind, amount=money(amount, True), currency=valid_currency(currency), actor=uid, note=clean_note(note), date=accounting_date(date), created=now(), category=category)
         if kind=='return':self.db.execute('INSERT INTO manager_return_receipts(entry) VALUES(?)',(ref,))
         self.log(uid, 'manager_' + kind, ref)
         return ref
