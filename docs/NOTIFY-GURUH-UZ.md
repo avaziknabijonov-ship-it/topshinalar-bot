@@ -44,3 +44,14 @@ Istalgan turkumni bo'sh qoldirsangiz, u o'chiq bo'ladi.
   eski navbatdagi xabarlar yangi guruhga ko'chmaydi.
 - Mavjud "qarz to'lovi" shaxsiy xabari (`DIRECTOR_DEBT_CHAT_ID`) o'z holicha qoladi. Guruh ishlay
   boshlagach uni bo'sh qoldirib, takrorlanishni o'chirishingiz mumkin.
+
+## Har bir menejerga o'z xabarlari (shaxsiy chatda)
+
+Guruhda hamma menejerlarning pul harakatlari aralash chiqadi. Menejer "qancha pul berdim, qancha pul menda"
+deb hisoblashda adashmasligi uchun bot har bir menejerga **faqat uning o'z** harakatlarini bot bilan
+shaxsiy chatida yuboradi: unga pul berilishi, chiqim, pul topshirish so'rovi, qabul/rad, kun yopilishi.
+Har bir xabar ostida "Sizdagi qoldiq" va tasdiq kutayotgan summa ko'rsatiladi. Boshqa menejerning puli
+bu xabarlarga hech qachon tushmaydi. Direktorlar guruhi avvalgidek ishlayveradi.
+
+Bu sukut bo'yicha yoqilgan, yoqilishdan oldingi tarix yuborilmaydi. O'chirish uchun `.env` ga
+`NOTIFY_MANAGER_DM=0` yozing.
